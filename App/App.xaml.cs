@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using App.Views;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace App
 {
@@ -11,7 +12,7 @@ namespace App
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new AppShell());
+            return new Window(new SplashPage());
         }
     }
 }
