@@ -21,7 +21,8 @@ namespace App.Views
 
             await Task.Delay(300);
 
-            Application.Current!.Windows[0].Page = new AppShell();
+            // Chuyển sang AppShell để hiển thị Bottom Navigation
+            Application.Current!.MainPage = new AppShell();
         }
     }
 }
