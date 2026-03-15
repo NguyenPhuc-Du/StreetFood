@@ -1,5 +1,4 @@
 ﻿using App.Views;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace App
 {

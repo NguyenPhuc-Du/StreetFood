@@ -24,13 +24,13 @@ app.UseAuthorization();
 app.MapControllers();
 
 
-// AUTO MIGRATION
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<StreetFoodDBContext>();
+//// AUTO MIGRATION
+//using (var scope = app.Services.CreateScope())
+//{
+//    var db = scope.ServiceProvider.GetRequiredService<StreetFoodDBContext>();
 
-    Console.WriteLine("RUNNING SQL MIGRATIONS...");
-    await DbInitializer.InitializeAsync(db);
-}
+//    Console.WriteLine("RUNNING SQL MIGRATIONS...");
+//    await DbInitializer.InitializeAsync(db);
+//}
 
 app.Run();

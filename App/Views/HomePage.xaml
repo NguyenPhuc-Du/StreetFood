@@ -5,197 +5,199 @@
     x:Class="App.Views.HomePage"
     NavigationPage.HasNavigationBar="False">
 
-    <Grid>
+    <AbsoluteLayout>
 
         <!-- MAP -->
         <maps:Map
             x:Name="MixiMap"
             MapType="Street"
-            IsShowingUser="True"/>
+            IsShowingUser="True"
+            AbsoluteLayout.LayoutBounds="0,0,1,1"
+            AbsoluteLayout.LayoutFlags="All"/>
+
 
         <!-- SEARCH BAR -->
-        <Grid
-            Margin="20,60,20,0"
-            HeightRequest="55"
-            VerticalOptions="Start">
-
-            <Frame
-                BackgroundColor="White"
-                CornerRadius="30"
-                HasShadow="True">
-
-                <Grid ColumnDefinitions="40,*,40">
-
-                    <Image
-                        Source="search.png"
-                        HeightRequest="20"
-                        VerticalOptions="Center"/>
-
-                    <Entry
-                        x:Name="SearchEntry"
-                        Grid.Column="1"
-                        Placeholder="Search shops or points of interest"
-                        FontSize="16"
-                        TextChanged="OnSearchChanged"/>
-
-                    <Image
-                        Grid.Column="2"
-                        Source="filter.png"
-                        HeightRequest="20"
-                        VerticalOptions="Center"/>
-
-                </Grid>
-
-            </Frame>
-
-        </Grid>
-
-        <!-- FILTER CHIPS -->
-        <HorizontalStackLayout
-            Margin="20,130,20,0"
-            Spacing="10"
-            VerticalOptions="Start">
-
-            <Button
-                Text="All"
-                Clicked="OnAllFilter"
-                BackgroundColor="#2E7D32"
-                TextColor="White"
-                CornerRadius="20"/>
-
-            <Button
-                Text="Shops"
-                Clicked="OnShopFilter"
-                BackgroundColor="#F1F1F1"
-                TextColor="Black"
-                CornerRadius="20"/>
-
-            <Button
-                Text="POI"
-                Clicked="OnPoiFilter"
-                BackgroundColor="#F1F1F1"
-                TextColor="Black"
-                CornerRadius="20"/>
-
-            <Button
-                Text="Food"
-                Clicked="OnFoodFilter"
-                BackgroundColor="#F1F1F1"
-                TextColor="Black"
-                CornerRadius="20"/>
-
-        </HorizontalStackLayout>
-
-        <!-- FLOATING BUTTONS -->
-        <VerticalStackLayout
-            Spacing="15"
-            Margin="0,0,20,160"
-            VerticalOptions="End"
-            HorizontalOptions="End">
-
-            <!-- LAYER -->
-            <Frame
-                BackgroundColor="White"
-                HeightRequest="50"
-                WidthRequest="50"
-                CornerRadius="25"
-                HasShadow="True">
-
-                <Image
-                    Source="layers.png"
-                    HeightRequest="24"
-                    HorizontalOptions="Center"
-                    VerticalOptions="Center"/>
-            </Frame>
-
-            <!-- LOCATION -->
-            <Frame
-                BackgroundColor="White"
-                HeightRequest="50"
-                WidthRequest="50"
-                CornerRadius="25"
-                HasShadow="True">
-
-                <Image
-                    Source="location.png"
-                    HeightRequest="24"
-                    HorizontalOptions="Center"
-                    VerticalOptions="Center">
-
-                    <Image.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnLocationClicked"/>
-                    </Image.GestureRecognizers>
-
-                </Image>
-
-            </Frame>
-
-        </VerticalStackLayout>
-
-        <!-- BOTTOM PLACE CARD -->
-        <Frame
-            Margin="20,0,20,90"
-            VerticalOptions="End"
-            CornerRadius="20"
+        <Border
             BackgroundColor="White"
-            HasShadow="True">
+            StrokeThickness="0"
+            StrokeShape="RoundRectangle 30"
+            Padding="15"
+            Margin="20,50,20,0"
+            HeightRequest="55"
+            AbsoluteLayout.LayoutBounds="0.5,0,0.9,55"
+            AbsoluteLayout.LayoutFlags="PositionProportional,WidthProportional">
 
-            <Grid ColumnDefinitions="80,*,60">
+            <Grid ColumnDefinitions="30,*,30">
 
                 <Image
-                    Source="shop.png"
-                    HeightRequest="60"
-                    WidthRequest="60"
-                    Aspect="AspectFill"/>
+                    Source="ic_search.svg"
+                    HeightRequest="20"
+                    VerticalOptions="Center"/>
 
-                <VerticalStackLayout
+                <Entry
                     Grid.Column="1"
-                    Spacing="3">
+                    Placeholder="Search places"
+                    BackgroundColor="Transparent"
+                    TextChanged="OnSearchChanged"/>
+
+                <Image
+                    Grid.Column="2"
+                    Source="ic_filter.svg"
+                    HeightRequest="20"
+                    HorizontalOptions="End"/>
+
+            </Grid>
+
+        </Border>
+
+
+        <!-- CATEGORY -->
+        <ScrollView
+            Orientation="Horizontal"
+            Margin="20,120,0,0"
+            AbsoluteLayout.LayoutBounds="0,0,1,50"
+            AbsoluteLayout.LayoutFlags="WidthProportional">
+
+            <HorizontalStackLayout Spacing="10">
+
+                <Button
+                    Text="All"
+                    BackgroundColor="#2E7D32"
+                    TextColor="White"
+                    CornerRadius="25"
+                    Padding="20,8"/>
+
+                <Button
+                    Text="Shops"
+                    BackgroundColor="White"
+                    TextColor="Black"
+                    CornerRadius="25"
+                    Padding="20,8"/>
+
+                <Button
+                    Text="POI"
+                    BackgroundColor="White"
+                    TextColor="Black"
+                    CornerRadius="25"
+                    Padding="20,8"/>
+
+                <Button
+                    Text="Food"
+                    BackgroundColor="White"
+                    TextColor="Black"
+                    CornerRadius="25"
+                    Padding="20,8"/>
+
+            </HorizontalStackLayout>
+
+        </ScrollView>
+
+
+        <!-- GPS BUTTON -->
+        <Border
+            BackgroundColor="White"
+            StrokeThickness="0"
+            WidthRequest="50"
+            HeightRequest="50"
+            StrokeShape="RoundRectangle 25"
+            AbsoluteLayout.LayoutBounds="0.95,0.35,50,50"
+            AbsoluteLayout.LayoutFlags="PositionProportional">
+
+            <Image
+                Source="ic_map.svg"
+                Margin="10"/>
+
+        </Border>
+
+
+        <!-- BOTTOM INFO CARD -->
+        <Border
+            BackgroundColor="White"
+            StrokeThickness="0"
+            StrokeShape="RoundRectangle 25"
+            Padding="15"
+            Margin="20"
+            AbsoluteLayout.LayoutBounds="0.5,1,0.9,160"
+            AbsoluteLayout.LayoutFlags="PositionProportional,WidthProportional">
+
+            <Grid ColumnDefinitions="*,100">
+
+                <VerticalStackLayout Spacing="6">
 
                     <Label
                         x:Name="PlaceName"
-                        Text="Place name"
+                        Text="Nearby place"
+                        FontSize="18"
                         FontAttributes="Bold"
-                        FontSize="16"/>
+                        TextColor="Black"/>
+
+                    <HorizontalStackLayout Spacing="5">
+
+                        <Image
+                            Source="ic_star.svg"
+                            HeightRequest="14"/>
+
+                        <Label
+                            x:Name="PlaceRating"
+                            Text="4.8 (120 reviews)"
+                            FontSize="13"
+                            TextColor="Gray"/>
+
+                    </HorizontalStackLayout>
 
                     <Label
-                        Text="⭐ 4.8 (120 reviews)"
-                        FontSize="13"
-                        TextColor="Gray"/>
-
-                    <Label
+                        x:Name="PlaceStatus"
                         Text="Open • Closes 8 PM"
                         FontSize="13"
                         TextColor="#2E7D32"/>
 
+
+                    <HorizontalStackLayout
+                        Spacing="15"
+                        Margin="0,5,0,0">
+
+                        <Button
+                            WidthRequest="40"
+                            HeightRequest="40"
+                            CornerRadius="20"
+                            BackgroundColor="#2E7D32"
+                            Clicked="OnPlayClicked"
+                            ImageSource="ic_play.svg"/>
+
+                        <Button
+                            WidthRequest="40"
+                            HeightRequest="40"
+                            CornerRadius="20"
+                            BackgroundColor="#E0E0E0"
+                            Clicked="OnPauseClicked"
+                            ImageSource="ic_pause.svg"/>
+
+                        <Button
+                            WidthRequest="40"
+                            HeightRequest="40"
+                            CornerRadius="20"
+                            BackgroundColor="#2196F3"
+                            Clicked="OnNavigateClicked"
+                            ImageSource="ic_navigation.svg"/>
+
+                    </HorizontalStackLayout>
+
                 </VerticalStackLayout>
 
-                <Frame
-                    Grid.Column="2"
-                    BackgroundColor="#2E7D32"
-                    CornerRadius="25"
-                    HeightRequest="45"
-                    WidthRequest="45"
-                    VerticalOptions="Center">
 
-                    <Image
-                        Source="direction.png"
-                        HeightRequest="20"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center">
-
-                        <Image.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnNavigateClicked"/>
-                        </Image.GestureRecognizers>
-
-                    </Image>
-
-                </Frame>
+                <Image
+                    x:Name="PlaceImage"
+                    Grid.Column="1"
+                    HeightRequest="90"
+                    WidthRequest="90"
+                    Aspect="AspectFill"
+                    HorizontalOptions="End"
+                    VerticalOptions="Center"/>
 
             </Grid>
 
-        </Frame>
+        </Border>
 
-    </Grid>
+    </AbsoluteLayout>
 
 </ContentPage>
