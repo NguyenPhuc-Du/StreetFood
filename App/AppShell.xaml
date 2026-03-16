@@ -4,29 +4,18 @@
     xmlns:views="clr-namespace:App.Views"
     x:Class="App.AppShell"
     Shell.NavBarIsVisible="False"
-    Shell.BackgroundColor="Black"
-    Shell.ForegroundColor="White"
-    Shell.TabBarForegroundColor="White"
-    Shell.TabBarTitleColor="White"
-    Shell.TabBarUnselectedColor="Gray">
+    Shell.BackgroundColor="White"
+    Shell.ForegroundColor="#2f7f34">
 
     <TabBar>
-
-        <ShellContent
-            Title="Home"
-            Icon="ic_map.svg"
-            ContentTemplate="{DataTemplate views:HomePage}" />
-
-        <ShellContent
-            Title="Suggest"
-            Icon="ic_suggest.svg"
-            ContentTemplate="{DataTemplate views:HomePage}" />
-
-        <ShellContent
-            Title="Settings"
-            Icon="ic_settings.svg"
-            ContentTemplate="{DataTemplate views:HomePage}" />
-
+        <Tab Title="Bản đồ" Icon="ic_map.svg">
+            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+        </Tab>
+        <Tab Title="Đề xuất" Icon="ic_suggest.svg">
+            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+        </Tab>
+        <Tab Title="Cài đặt" Icon="ic_settings.svg">
+            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+        </Tab>
     </TabBar>
-
 </Shell>
