@@ -19,5 +19,17 @@ namespace StreetFood.Infrastructure.Data
         public DbSet<LocationLog> LocationLogs { get; set; }
         public DbSet<MovementPath> MovementPaths { get; set; }
         public DbSet<Admin> Admins { get; set; }
+
+        public DbSet<UserAccount> Users { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            
+            modelBuilder.Entity<UserAccount>().ToTable("users");
+
+            
+        }
     }
 }

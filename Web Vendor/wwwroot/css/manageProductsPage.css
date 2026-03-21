@@ -1,0 +1,225 @@
+:root {
+    --primary-orange: #ff5c1a;
+    --bg-light: #f8fafc;
+    --border-color: #e2e8f0;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --in-stock: #10b981;
+    --out-stock: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+}
+
+body {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+}
+
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar tương tự bài trước */
+/*.sidebar {
+    width: 240px;
+    background: white;
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+}
+
+.menu a {
+    display: block;
+    padding: 12px;
+    text-decoration: none;
+    color: var(--text-muted);
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+    .menu a.active {
+        background: #fff5f0;
+        color: var(--primary-orange);
+        font-weight: bold;
+    }
+*/
+/* Main Content */
+.content {
+    flex: 1;
+    padding: 40px;
+}
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.add-btn {
+    background: var(--primary-orange);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Filter buttons */
+.filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+    .filter-btn.active {
+        background: var(--primary-orange);
+        color: white;
+        border-color: var(--primary-orange);
+    }
+
+/* Grid System */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 25px;
+}
+
+
+/* Card Styling */
+.product-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s;
+}
+
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+
+.image-container {
+    position: relative;
+    height: 200px;
+    background: #f1f5f9;
+}
+
+    .image-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+.badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+}
+
+    .badge.in-stock {
+        background: var(--in-stock);
+    }
+
+    .badge.out-stock {
+        background: var(--out-stock);
+    }
+
+.product-info {
+    padding: 20px;
+}
+
+    .product-info h3 {
+        font-size: 16px;
+        margin-bottom: 8px;
+        height: 40px;
+    }
+
+.price {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--primary-orange);
+    margin-bottom: 8px;
+}
+
+.stock-count {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+/* Action Buttons */
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.edit-btn, .delete-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.delete-btn {
+    color: #ef4444;
+    border-color: #fee2e2;
+}
+
+    .delete-btn:hover {
+        background: #fee2e2;
+    }
+
+/* Pagination */
+.pagination {
+    margin-top: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.page-numbers {
+    display: flex;
+    gap: 8px;
+}
+
+.page-btn {
+    width: 35px;
+    height: 35px;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+    .page-btn.active {
+        background: var(--primary-orange);
+        color: white;
+        border-color: var(--primary-orange);
+    }

@@ -1,0 +1,141 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Analytics</title>
+    <link rel="stylesheet" href="/css/sideBar.css">
+    <link rel="stylesheet" href="/css/statisticsShopPage.css">
+</head>
+<body>
+    <div class="container">
+
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🛒</span>
+                <h2>Mixi</h2>
+            </div>
+            <nav class="menu">
+                <a href="dashboardShopPage.html"><span>📊</span> Overview</a>
+                <a href="manageProductsPage.html"><span>📦</span> Products</a>
+                <a href="statisticsShopsPage.html" class="active"><span>📈</span> Statistics</a>
+                <a href="#"><span>👤</span> Profile</a>
+            </nav>
+            <div class="user-profile">
+                <div class="avatar"></div>
+                <div class="user-info">
+                    <strong>Alex Rivera</strong>
+                    <span>Shop Owner</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div class="search-bar"></div>
+                <div class="user-actions">
+                    <button type="button">🔔</button>
+                    <button type="button">⚙️</button>
+                    <div class="profile-img">👤</div>
+                </div>
+            </header>
+
+            <section class="performance-header">
+                <div class="performance-title">
+                    <h1>Store Performance</h1>
+                    <p>See how your shop is growing today</p>
+                </div>
+                <div class="date-filter">
+                    <button type="button" class="active">7 Days</button>
+                    <button type="button">30 Days</button>
+                </div>
+            </section>
+
+            <section class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-top">
+                        <span class="icon view-icon">👁️</span>
+                        <span class="trend pos">↗ 14%</span>
+                    </div>
+                    <p>Total Views</p>
+                    <h3>24,592</h3>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-top">
+                        <span class="icon conv-icon">🛍️</span>
+                        <span class="trend pos">↗ 8%</span>
+                    </div>
+                    <p>Conversions</p>
+                    <h3>1,204</h3>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-top">
+                        <span class="icon wish-icon">💜</span>
+                        <span class="trend neg">↘ 2%</span>
+                    </div>
+                    <p>New Wishlists</p>
+                    <h3>843</h3>
+                </div>
+            </section>
+
+            <div class="chart-box">
+                <h3>Views over time</h3>
+                <div class="chart-placeholder">
+                    <div class="visual-chart">
+                        <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="width: 100%; height: 100%;">
+                            <path d="M0,25 C10,20 20,28 30,15 S50,5 60,18 S80,22 100,10"
+                                  fill="none"
+                                  stroke="#ff5c1a"
+                                  stroke-width="1"
+                                  vector-effect="non-scaling-stroke" />
+
+                            <circle cx="5" cy="23" r="1.5" fill="#ff5c1a" />
+                            <circle cx="20" cy="25" r="1.5" fill="#ff5c1a" />
+                            <circle cx="35" cy="15" r="1.5" fill="#ff5c1a" />
+                            <circle cx="50" cy="8" r="1.5" fill="#ff5c1a" />
+                            <circle cx="65" cy="18" r="1.5" fill="#ff5c1a" />
+                            <circle cx="80" cy="20" r="1.5" fill="#ff5c1a" />
+                            <circle cx="95" cy="11" r="1.5" fill="#ff5c1a" />
+                        </svg>
+                    </div>
+
+                    <div class="days-labels">
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                    </div>
+                </div>
+            </div>
+
+            <section class="product-report">
+                <div class="report-header">
+                    <h3>Most Viewed Products</h3>
+                    <a href="#" class="see-full">See full report</a>
+                </div>
+                <div class="product-list">
+                    <div class="product-item">
+                        <img src="https://via.placeholder.com/50" alt="Vase">
+                        <div class="p-info">
+                            <h4>Minimalist Ceramic Vase</h4>
+                            <p>Home Decor • $45.00</p>
+                        </div>
+                        <div class="p-stats">
+                            <strong>4,281</strong>
+                            <span>Total views</span>
+                        </div>
+                    </div>
+                    <div class="product-item">
+                        <img src="https://via.placeholder.com/50" alt="Throw">
+                        <div class="p-info">
+                            <h4>Handwoven Linen Throw</h4>
+                            <p>Textiles • $89.00</p>
+                        </div>
+                        <div class="p-stats">
+                            <strong>3,105</strong>
+                            <span>Total views</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,229 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage POIs | Smart Tourism</title>
+    <link rel="stylesheet" href="/css/managePOIPage.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-wrapper">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <span>SmartTour</span>
+            </div>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Dashboard</a></li>
+
+                    <li class="active"><a href="managePOIPage.html"><i class="fa-solid fa-location-dot"></i> Manage POI</a></li>
+
+                    <li><a href="manageShopsPage.html"><i class="fa-solid fa-store"></i> Manage Shops</a></li>
+
+                    <li><a href="#"><i class="fa-solid fa-users"></i> Users</a></li>
+
+                    <li><a href="analyticsPage.html"><i class="fa-solid fa-chart-simple"></i> Analytics</a></li>
+                </ul>
+            </nav>
+            <div class="settings">
+                <a href="settings.html"><i class="fa-solid fa-gear"></i> Settings</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search POIs...">
+                </div>
+                <div class="top-actions">
+                    <button class="icon-btn"><i class="fa-solid fa-bell"></i></button>
+                    <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add POI</button>
+                </div>
+            </header>
+
+            <div class="content-area">
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="icon-box bg-light-blue"><i class="fa-solid fa-location-dot text-blue"></i></div>
+                            <span class="badge badge-green">+12%</span>
+                        </div>
+                        <p class="stat-label">TOTAL POIS</p>
+                        <h2 class="stat-number">1,284</h2>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="icon-box bg-light-blue2"><i class="fa-solid fa-play text-blue2"></i></div>
+                            <span class="badge badge-green">+5.4%</span>
+                        </div>
+                        <p class="stat-label">TOTAL PLAYS</p>
+                        <h2 class="stat-number">42.8k</h2>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="icon-box bg-light-orange"><i class="fa-solid fa-bullseye text-orange"></i></div>
+                            <span class="badge badge-gray">Avg</span>
+                        </div>
+                        <p class="stat-label">ACTIVE RADIUS</p>
+                        <h2 class="stat-number">450m</h2>
+                    </div>
+                </div>
+
+                <div class="main-grid">
+
+                    <div class="card form-card">
+                        <div class="card-header">
+                            <h3>POI Configuration</h3>
+                            <span class="badge badge-blue">NEW ENTRY</span>
+                        </div>
+
+                        <form class="poi-form">
+                            <div class="form-group">
+                                <label>POI NAME</label>
+                                <input type="text" placeholder="e.g. Statue of Liberty">
+                            </div>
+
+                            <div class="form-group">
+                                <label>DESCRIPTION</label>
+                                <textarea placeholder="Tell visitors about this location..." rows="3"></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>RADIUS (M)</label>
+                                    <input type="number" value="300">
+                                </div>
+                                <div class="form-group">
+                                    <label>STATUS</label>
+                                    <select>
+                                        <option>Active</option>
+                                        <option>Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>MEDIA ASSETS</label>
+                                <div class="upload-row">
+                                    <div class="upload-box">
+                                        <i class="fa-regular fa-image"></i>
+                                        <span>UPLOAD IMAGE</span>
+                                    </div>
+                                    <div class="upload-box">
+                                        <i class="fa-solid fa-file-audio"></i>
+                                        <span>UPLOAD AUDIO</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>MAP LOCATION</label>
+                                <div class="map-placeholder">
+                                    <i class="fa-solid fa-location-dot pin"></i>
+                                    <div class="coordinates">40.6892° N, 74.0445° W</div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block">Save POI</button>
+                        </form>
+                    </div>
+
+                    <div class="card table-card">
+                        <div class="card-header">
+                            <h3>Manage Points of Interest</h3>
+                            <div class="header-actions">
+                                <button class="icon-btn text-gray"><i class="fa-solid fa-filter"></i></button>
+                                <button class="icon-btn text-gray"><i class="fa-solid fa-download"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>POI NAME</th>
+                                        <th>LOCATION</th>
+                                        <th>RADIUS</th>
+                                        <th>STATUS</th>
+                                        <th>TOTAL PLAYS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div class="poi-info">
+                                                <div class="poi-avatar"><img src="https://i.pravatar.cc/150?img=68" alt="Avatar"></div>
+                                                <span class="fw-600">Eiffel Tower</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-blue2">Paris, FR</td>
+                                        <td>500m</td>
+                                        <td><span class="status-pill active">ACTIVE</span></td>
+                                        <td class="fw-600">12,400</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="poi-info">
+                                                <div class="poi-avatar bg-dark"><i class="fa-solid fa-lightbulb text-yellow"></i></div>
+                                                <span class="fw-600">Louvre Museum</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-blue2">Paris, FR</td>
+                                        <td>300m</td>
+                                        <td><span class="status-pill active">ACTIVE</span></td>
+                                        <td class="fw-600">8,200</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="poi-info">
+                                                <div class="poi-avatar"><img src="https://i.pravatar.cc/150?img=47" alt="Avatar"></div>
+                                                <span class="fw-600">Colosseum</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-blue2">Rome, IT</td>
+                                        <td>400m</td>
+                                        <td><span class="status-pill inactive">INACTIVE</span></td>
+                                        <td class="fw-600">5,100</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="poi-info">
+                                                <div class="poi-avatar"><img src="https://i.pravatar.cc/150?img=11" alt="Avatar"></div>
+                                                <span class="fw-600">Big Ben</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-blue2">London, UK</td>
+                                        <td>250m</td>
+                                        <td><span class="status-pill active">ACTIVE</span></td>
+                                        <td class="fw-600">3,900</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="pagination">
+                            <p class="page-info">Showing <strong>1 to 4</strong> of 1,284 results</p>
+                            <div class="page-controls">
+                                <button class="page-text">Prev</button>
+                                <button class="page-num active">1</button>
+                                <button class="page-num">2</button>
+                                <button class="page-num">3</button>
+                                <button class="page-text fw-600">Next</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,113 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopAdmin Dashboard</title>
+    <link rel="stylesheet" href="/css/dashboardShopPage.css">
+    <link rel="stylesheet" href="/css/sideBar.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🛒</span>
+                <h2>Mixi</h2>
+            </div>
+            <nav class="menu">
+                <a href="dashboardShopPage.html" class="active">
+                    <span>📊</span> Overview
+                </a>
+
+                <a href="manageProductsPage.html">
+                    <span>📦</span> Products
+                </a>
+
+                <a href="statisticsShopsPage.html">
+                    <span>📈</span> Statistics
+                </a>
+
+                <a href="#">
+                    <span>👤</span> Profile
+                </a>
+            </nav>
+            <div class="user-profile">
+                <div class="avatar"></div>
+                <div class="user-info">
+                    <strong>Alex Rivera</strong>
+                    <span>Shop Owner</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <span>Dashboard Overview</span>
+                <div class="header-actions">
+                    <button class="notif-btn">🔔</button>
+                    <a href="loginPage.html" class="sign-out-btn" style="text-decoration: none;">
+                        🚪 Sign Out
+                    </a>
+                </div>
+            </header>
+
+            <section class="welcome">
+                <h1>Welcome back, Alex</h1>
+                <p>Here's a summary of your shop's performance today.</p>
+            </section>
+
+            <section class="stats-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="label">TODAY VIEWS</p>
+                            <h3>1,284</h3>
+                        </div>
+                        <div class="icon-box eye">👁️</div>
+                    </div>
+                    <p class="trend up">↗ +12.5% from yesterday</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="label">QR SCANS</p>
+                            <h3>432</h3>
+                        </div>
+                        <div class="icon-box qr">📱</div>
+                    </div>
+                    <p class="trend up">↗ +5.2% from yesterday</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="label">TOTAL PRODUCTS</p>
+                            <h3>156</h3>
+                        </div>
+                        <div class="icon-box box">📋</div>
+                    </div>
+                    <p class="trend neutral">— Stable performance</p>
+                </div>
+            </section>
+
+            <section class="chart-container">
+                <div class="chart-header">
+                    <div>
+                        <h3>Views over time</h3>
+                        <p>Visitor traffic for the last 7 days</p>
+                    </div>
+                    <div class="time-filters">
+                        <button class="active">Week</button>
+                        <button>Month</button>
+                        <button>Year</button>
+                    </div>
+                </div>
+                <div class="chart-placeholder">
+                    <div class="fake-chart"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

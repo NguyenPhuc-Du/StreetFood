@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Management</title>
+    <link rel="stylesheet" href="/css/manageProductsPage.css">
+    <link rel="stylesheet" href="/css/sideBar.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🛒</span>
+                <h2>Mixi</h2>
+            </div>
+            <nav class="menu">
+                <a href="dashboardShopPage.html"><span>📊</span> Overview</a>
+                <a href="manageProductsPage.html" class="active"><span>📦</span> Products</a>
+                <a href="statisticsShopsPage.html"><span>📈</span> Statistics</a>
+                <a href="#"><span>👤</span> Profile</a>
+            </nav>
+            <div class="user-profile">
+                <div class="avatar"></div>
+                <div class="user-info">
+                    <strong>Alex Rivera</strong>
+                    <span>Shop Owner</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header class="content-header">
+                <div class="header-title">
+                    <h1>Product Management</h1>
+                    <p>Total 124 active products in your inventory</p>
+                </div>
+                 
+                <button class="add-btn" type="button" onclick="window.location.href='addProductPage.html'">
+                    + Add New Product
+                </button>
+            </header>
+
+            <div class="filters">
+                <button class="filter-btn active">All Items</button>
+                <button class="filter-btn">Electronics</button>
+                <button class="filter-btn">Home & Living</button>
+                <button class="filter-btn">Apparel</button>
+            </div>
+
+            <div class="product-grid">
+                <div class="product-card">
+                    <div class="image-container">
+                        <img src="https://via.placeholder.com/200" alt="Headphones">
+                        <span class="badge in-stock">IN STOCK</span>
+                    </div>
+                    <div class="product-info">
+                        <h3>Elite Wireless Headphones</h3>
+                        <p class="price">$199.00</p>
+                        <p class="stock-count">📦 42 units remaining</p>
+                        <div class="card-actions">
+                            <button class="edit-btn">Edit</button>
+                            <button class="delete-btn">Delete</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="image-container">
+                        <img src="https://via.placeholder.com/200" alt="Camera">
+                        <span class="badge out-stock">OUT OF STOCK</span>
+                    </div>
+                    <div class="product-info">
+                        <h3>Nexus Pro Controller</h3>
+                        <p class="price">$69.99</p>
+                        <p class="stock-count">📦 0 units remaining</p>
+                        <div class="card-actions">
+                            <button class="edit-btn">Edit</button>
+                            <button class="delete-btn">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pagination">
+                <p>Showing 1 to 8 of 124 products</p>
+                <div class="page-numbers">
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">2</button>
+                    <button class="page-btn">3</button>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

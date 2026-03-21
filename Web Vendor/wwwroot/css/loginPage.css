@@ -1,0 +1,108 @@
+﻿body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(to right, #f0f2f5, #e6e9f0);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.wrapper {
+    text-align: center;
+}
+
+.logo .icon {
+    width: 60px;
+    height: 60px;
+    background: #2d4ba0;
+    color: white;
+    border-radius: 12px;
+    line-height: 60px;
+    font-weight: bold;
+    margin: auto;
+}
+
+.logo h1 {
+    margin: 10px 0 0;
+}
+
+.logo p {
+    color: gray;
+    margin-bottom: 30px;
+}
+
+.card {
+    width: 380px;
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    text-align: left;
+}
+
+    .card h2 {
+        margin: 0;
+    }
+
+    .card p {
+        color: gray;
+        font-size: 14px;
+    }
+
+label {
+    display: block;
+    font-weight: 500;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="user_name"] {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: #2d4ba0;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    margin-top: 20px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+    button:hover {
+        background: #223a7a;
+    }
+
+.support {
+    text-align: center;
+    margin-top: 20px;
+    color: gray;
+}
+
+.status {
+    margin-top: 20px;
+    color: green;
+    font-size: 13px;
+}
