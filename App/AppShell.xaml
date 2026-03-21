@@ -12,10 +12,10 @@
             <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
         </Tab>
         <Tab Title="Đề xuất" Icon="ic_suggest.svg">
-            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+            <ShellContent ContentTemplate="{DataTemplate views:SuggestPage}" />
         </Tab>
         <Tab Title="Cài đặt" Icon="ic_settings.svg">
-            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+            <ShellContent ContentTemplate="{DataTemplate views:SettingsPage}" />
         </Tab>
     </TabBar>
 </Shell>

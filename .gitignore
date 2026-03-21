@@ -9,4 +9,6 @@ obj/
 *.cache
 *.db
 
+/App/Platforms/Android/Resources/values/Strings.xml
+
 appsettings.Development.json

@@ -1,7 +1,7 @@
-﻿namespace StreetFood.Application
+namespace StreetFood.Application
 {
     // All the code in this file is only included on Windows.
-    public class PlatformClass1
+    public class PlatformClass1Windows
     {
     }
 }

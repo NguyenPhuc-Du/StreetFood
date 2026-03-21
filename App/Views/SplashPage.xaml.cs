@@ -21,8 +21,11 @@ namespace App.Views
 
             await Task.Delay(300);
 
-            // Chuyển sang AppShell để hiển thị Bottom Navigation
-            Application.Current!.MainPage = new AppShell();
+            // SỬA LỖI CS0618: Sử dụng cách chuyển trang mới trong .NET 10
+            if (Application.Current?.Windows.Count > 0)
+            {
+                Application.Current.Windows[0].Page = new AppShell();
+            }
         }
     }
 }
