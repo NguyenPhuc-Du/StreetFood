@@ -4,6 +4,8 @@ using CommunityToolkit.Maui.Views;
 using Microsoft.Maui.Storage;
 using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Maps;
+using Microsoft.Maui.Networking;
+using Microsoft.Maui.Media;
 using System.Threading;
 
 namespace App.Views;
@@ -20,6 +22,7 @@ public partial class HomePage : ContentPage
     bool _isAutoPlaying = false;
     bool _manualSelectionBlocksAuto = false;
     Location? _currentUserLocation;
+    CancellationTokenSource? _speechCts;
     Dictionary<int, DateTime> lastPlayed = new();
     const int COOLDOWN_SECONDS = 300;
 
@@ -124,12 +127,7 @@ public partial class HomePage : ContentPage
                     {
                         currentAudioPoiId = nearest.Id;
                         _isAutoPlaying = true;
-
-                        AudioPlayer.Stop();
-                        AudioPlayer.Source = MediaSource.FromUri(nearest.AudioUrl);
-
-                        await Task.Delay(500); // Đợi load nhẹ
-                        AudioPlayer.Play();
+                        await PlayPoiAudioAsync(nearest);
                     }
                 }
                 else
@@ -155,6 +153,7 @@ public partial class HomePage : ContentPage
     void HideCard()
     {
         InfoCard.IsVisible = false;
+        StopOfflineSpeech();
         AudioPlayer?.Stop();
         currentAudioPoiId = -1;
         _manualSelectionBlocksAuto = false;
@@ -179,17 +178,16 @@ public partial class HomePage : ContentPage
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
+        StopOfflineSpeech();
         AudioPlayer?.Stop();
         base.OnDisappearing();
     }
 
-    void OnPlayClicked(object? sender, EventArgs e)
+    async void OnPlayClicked(object? sender, EventArgs e)
     {
-        if (_currentPoi == null || string.IsNullOrWhiteSpace(_currentPoi.AudioUrl)) return;
+        if (_currentPoi == null) return;
 
-        AudioPlayer.Stop();
-        AudioPlayer.Source = MediaSource.FromUri(_currentPoi.AudioUrl);
-        AudioPlayer?.Play();
+        await PlayPoiAudioAsync(_currentPoi);
         currentAudioPoiId = _currentPoi.Id;
         _manualSelectionBlocksAuto = false;
         _isAutoPlaying = false; // phát thủ công
@@ -197,8 +195,38 @@ public partial class HomePage : ContentPage
 
     void OnPauseClicked(object? sender, EventArgs e)
     {
+        StopOfflineSpeech();
         AudioPlayer?.Pause();
         _isAutoPlaying = false; // phát thủ công
+    }
+
+    private async Task PlayPoiAudioAsync(Poi poi)
+    {
+        StopOfflineSpeech();
+        var hasInternet = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+        if (hasInternet && !string.IsNullOrWhiteSpace(poi.AudioUrl))
+        {
+            AudioPlayer.Stop();
+            AudioPlayer.Source = MediaSource.FromUri(poi.AudioUrl);
+            await Task.Delay(300);
+            AudioPlayer.Play();
+            return;
+        }
+
+        var script = !string.IsNullOrWhiteSpace(poi.Description)
+            ? poi.Description
+            : $"{poi.Name}. {poi.Address}";
+
+        _speechCts = new CancellationTokenSource();
+        await TextToSpeech.Default.SpeakAsync(script, new SpeechOptions(), _speechCts.Token);
+    }
+
+    private void StopOfflineSpeech()
+    {
+        if (_speechCts == null) return;
+        _speechCts.Cancel();
+        _speechCts.Dispose();
+        _speechCts = null;
     }
 
     async void OnGetLocationClicked(object? sender, EventArgs e)
@@ -214,8 +242,9 @@ public partial class HomePage : ContentPage
 
     async void OnInfoCardTapped(object? sender, TappedEventArgs e)
     {
-        if (_currentPoi?.Id <= 0) return;
-        await Shell.Current.GoToAsync($"poidetail?poiId={_currentPoi.Id}");
+        var selectedPoiId = _currentPoi?.Id;
+        if (selectedPoiId is null or <= 0) return;
+        await Shell.Current.GoToAsync($"poidetail?poiId={selectedPoiId.Value}");
     }
 
     private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)

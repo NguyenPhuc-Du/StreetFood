@@ -6,6 +6,8 @@ using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Maps;
 using Microsoft.Maui.Storage;
+using Microsoft.Maui.Networking;
+using Microsoft.Maui.Media;
 
 namespace App.Views;
 
@@ -17,6 +19,7 @@ public partial class PoiDetailPage : ContentPage
     private readonly IDispatcherTimer _audioTimer;
     private bool _isSeeking;
     private PoiDetail? _currentDetail;
+    private CancellationTokenSource? _speechCts;
 
     public int PoiId { get; set; }
 
@@ -67,18 +70,19 @@ public partial class PoiDetailPage : ContentPage
 
     private void OnPlayClicked(object? sender, EventArgs e)
     {
-        AudioPlayer?.Play();
-        _audioTimer.Start();
+        _ = PlayDetailAudioAsync();
     }
 
     private void OnPauseClicked(object? sender, EventArgs e)
     {
+        StopOfflineSpeech();
         AudioPlayer?.Pause();
         _audioTimer.Stop();
     }
 
     protected override void OnDisappearing()
     {
+        StopOfflineSpeech();
         _audioTimer.Stop();
         AudioPlayer?.Stop();
         base.OnDisappearing();
@@ -153,6 +157,35 @@ public partial class PoiDetailPage : ContentPage
         await Microsoft.Maui.ApplicationModel.Map.Default.OpenAsync(
             new Location(_currentDetail.Latitude, _currentDetail.Longitude),
             options);
+    }
+
+    private async Task PlayDetailAudioAsync()
+    {
+        if (_currentDetail == null) return;
+
+        StopOfflineSpeech();
+        var hasInternet = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+        if (hasInternet && !string.IsNullOrWhiteSpace(_currentDetail.AudioUrl))
+        {
+            AudioPlayer?.Play();
+            _audioTimer.Start();
+            return;
+        }
+
+        _audioTimer.Stop();
+        var script = !string.IsNullOrWhiteSpace(_currentDetail.Description)
+            ? _currentDetail.Description
+            : $"{_currentDetail.Name}. {_currentDetail.Address}";
+        _speechCts = new CancellationTokenSource();
+        await TextToSpeech.Default.SpeakAsync(script, new SpeechOptions(), _speechCts.Token);
+    }
+
+    private void StopOfflineSpeech()
+    {
+        if (_speechCts == null) return;
+        _speechCts.Cancel();
+        _speechCts.Dispose();
+        _speechCts = null;
     }
 }
 
