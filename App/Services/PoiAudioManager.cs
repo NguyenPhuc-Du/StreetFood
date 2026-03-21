@@ -1,12 +1,9 @@
-﻿namespace App.Services;
-
-public class PoiAudioManager
+﻿public class PoiAudioManager
 {
     int lastPoiId = -1;
-
     DateTime lastPlay = DateTime.MinValue;
 
-    const int COOLDOWN = 30;
+    const int COOLDOWN = 300; // 5 phút
 
     public bool CanPlay(int poiId)
     {
