@@ -1,4 +1,4 @@
-﻿namespace App.Models;
+namespace App.Models;
 
 public class Poi
 {
@@ -8,6 +8,7 @@ public class Poi
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public string? ImageUrl { get; set; }
+    public string? Description { get; set; }
     public string? OpeningHours { get; set; } //
     public string? AudioUrl { get; set; }     //
 }

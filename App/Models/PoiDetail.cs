@@ -8,6 +8,7 @@ public class PoiDetail
     public double Longitude { get; set; }
 
     public string? ImageUrl { get; set; }
+    public string? Description { get; set; }
     public string? Address { get; set; }
     public string? OpeningHours { get; set; }
     public string? Phone { get; set; }
