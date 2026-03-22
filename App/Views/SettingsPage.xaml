@@ -1,0 +1,63 @@
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="App.Views.SettingsPage"
+             NavigationPage.HasNavigationBar="False">
+
+    <ScrollView BackgroundColor="#F2F6F3">
+        <VerticalStackLayout Padding="18,40,18,24" Spacing="14">
+            <Border StrokeThickness="0" BackgroundColor="Transparent" Padding="0,0,0,8">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Cài đặt" FontSize="34" FontAttributes="Bold" TextColor="#0F172A"/>
+                    <Label Text="Tùy chỉnh trải nghiệm phù hợp với bạn" FontSize="13" TextColor="#64748B"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="White" Stroke="#E1EAE2">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Tự động phát audio khi ở gần" FontAttributes="Bold" FontSize="16" TextColor="#0F172A"/>
+                            <Label Text="Tự phát audio khi bạn đi vào phạm vi của quán trên bản đồ."
+                                   FontSize="13"
+                                   TextColor="#64748B"/>
+                        </VerticalStackLayout>
+
+                        <Switch x:Name="AutoAudioSwitch"
+                                IsToggled="True"
+                                OnColor="#2E7D32"
+                                Toggled="OnAutoAudioSwitchToggled"/>
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="White" Stroke="#E1EAE2">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Ngôn ngữ ứng dụng" FontAttributes="Bold" FontSize="16" TextColor="#0F172A"/>
+                    <Label Text="Chọn ngôn ngữ bạn muốn dùng để nhận nội dung phù hợp."
+                           FontSize="13"
+                           TextColor="#64748B"/>
+
+                    <Border StrokeShape="RoundRectangle 16" Padding="12" BackgroundColor="#F8FAF8" Stroke="#DFE7DF">
+                        <VerticalStackLayout Spacing="10">
+                            <RadioButton x:Name="LangViRadio" Content="Tiếng Việt" Value="vi" CheckedChanged="OnLanguageRadioCheckedChanged" TextColor="#0F172A"/>
+                            <RadioButton x:Name="LangEnRadio" Content="English" Value="en" CheckedChanged="OnLanguageRadioCheckedChanged" TextColor="#0F172A"/>
+                            <RadioButton x:Name="LangJaRadio" Content="日本語" Value="ja" CheckedChanged="OnLanguageRadioCheckedChanged" TextColor="#0F172A"/>
+                            <RadioButton x:Name="LangKoRadio" Content="한국어" Value="ko" CheckedChanged="OnLanguageRadioCheckedChanged" TextColor="#0F172A"/>
+                            <RadioButton x:Name="LangZhRadio" Content="中文" Value="zh" CheckedChanged="OnLanguageRadioCheckedChanged" TextColor="#0F172A"/>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="White" Stroke="#E1EAE2">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Gợi ý trải nghiệm" FontAttributes="Bold" FontSize="15" TextColor="#2E7D32"/>
+                    <Label Text="Vào trang gợi ý để xem quán gần nhất và mở nhanh trang chi tiết."
+                           FontSize="12"
+                           TextColor="#64748B"/>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+
