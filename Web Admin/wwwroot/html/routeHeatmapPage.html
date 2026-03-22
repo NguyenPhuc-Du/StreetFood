@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tuyến đi & Heatmap | StreetFood Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <style>
+        #map { height: calc(100vh - 220px); min-height: 420px; border-radius: 12px; z-index: 1; }
+        .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+        .toolbar label { font-size: 14px; color: var(--text-muted); }
+        .legend { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="logo"><i class="fa-solid fa-utensils"></i><span>StreetFood</span></div>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Dashboard</a></li>
+                    <li class="active"><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
+                    <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
+                    <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
+                    <li><a href="restaurantOwnersPage.html"><i class="fa-solid fa-user-slash"></i> Chủ cửa hàng</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <div class="main-panel">
+            <header class="top-header">
+                <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Tìm trên bản đồ..."></div>
+            </header>
+            <div class="page-title-block">
+                <h1>Phân tích tuyến đi & Heatmap</h1>
+                <p>Mật độ lưu lượng và hướng di chuyển giữa các điểm (90 ngày gần nhất).</p>
+            </div>
+            <div class="card-panel">
+                <div class="toolbar">
+                    <button type="button" class="btn-primary" id="btnReload"><i class="fa-solid fa-rotate"></i> Tải dữ liệu</button>
+                    <label><input type="checkbox" id="chkHeat" checked> Heatmap</label>
+                    <label><input type="checkbox" id="chkPaths" checked> Tuyến di chuyển</label>
+                </div>
+                <div id="err" class="err"></div>
+                <div id="map"></div>
+                <p class="legend">Khi chưa có lịch sử di chuyển, bản đồ có thể hiển thị ít hoặc không có điểm.</p>
+            </div>
+        </div>
+    </div>
+    <script src="/config.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="/js/admin-api.js"></script>
+    <script>
+        const errEl = document.getElementById('err');
+        const map = L.map('map').setView([10.76, 106.67], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+        let heatLayer = null;
+        /** FeatureGroup có getBounds(); LayerGroup thì không — tránh lỗi getBounds is not a function */
+        let pathLayer = L.featureGroup().addTo(map);
+
+        function showErr(e) {
+            errEl.textContent = e.message || String(e);
+        }
+
+        function hottestPoint(heatArr) {
+            if (!heatArr || !heatArr.length) return null;
+            let best = heatArr[0];
+            for (let i = 1; i < heatArr.length; i++) {
+                const h = heatArr[i];
+                const w = h.weight != null ? h.weight : 0;
+                const bw = best.weight != null ? best.weight : 0;
+                if (w > bw) best = h;
+            }
+            if (best.lat == null || best.lng == null) return null;
+            return best;
+        }
+
+        function focusMap(heatArr, pathLines) {
+            const hot = hottestPoint(heatArr);
+            if (hot) {
+                map.setView([hot.lat, hot.lng], 16);
+                return;
+            }
+            if (pathLines && pathLines.getBounds && pathLines.getBounds().isValid()) {
+                map.fitBounds(pathLines.getBounds(), { padding: [48, 48] });
+                return;
+            }
+            map.setView([10.76, 106.67], 13);
+        }
+
+        async function load() {
+            errEl.textContent = '';
+            try {
+                const [heat, paths] = await Promise.all([
+                    window.StreetFoodAdmin.getHeatmap(),
+                    window.StreetFoodAdmin.getPaths()
+                ]);
+                if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+                pathLayer.clearLayers();
+
+                const heatArr = heat || [];
+                const pts = heatArr.map(h => [h.lat, h.lng, Math.min(1, (h.weight || 1) / 20)]);
+                if (document.getElementById('chkHeat').checked && pts.length && typeof L.heatLayer === 'function') {
+                    heatLayer = L.heatLayer(pts, { radius: 28, blur: 22, maxZoom: 17 });
+                    map.addLayer(heatLayer);
+                }
+
+                if (document.getElementById('chkPaths').checked && paths && paths.length) {
+                    paths.forEach(p => {
+                        if (p.fromLat == null || p.toLat == null) return;
+                        const latlngs = [[p.fromLat, p.fromLng], [p.toLat, p.toLng]];
+                        const line = L.polyline(latlngs, { color: '#1e3a8a', weight: 3, opacity: 0.75 });
+                        line.bindPopup((p.fromName || 'A') + ' → ' + (p.toName || 'B'));
+                        line.addTo(pathLayer);
+                    });
+                }
+
+                focusMap(heatArr, pathLayer);
+            } catch (e) {
+                showErr(e);
+            }
+        }
+
+        document.getElementById('btnReload').addEventListener('click', load);
+        document.getElementById('chkHeat').addEventListener('change', load);
+        document.getElementById('chkPaths').addEventListener('change', load);
+        load();
+    </script>
+</body>
+</html>

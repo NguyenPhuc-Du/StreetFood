@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chủ cửa hàng | StreetFood Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="logo"><i class="fa-solid fa-utensils"></i><span>StreetFood</span></div>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Dashboard</a></li>
+                    <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
+                    <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
+                    <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
+                    <li class="active"><a href="restaurantOwnersPage.html"><i class="fa-solid fa-user-slash"></i> Chủ cửa hàng</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <div class="main-panel">
+            <header class="top-header">
+                <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Tìm chủ quán..."></div>
+                <label style="font-size:14px;color:var(--text-muted);"><input type="checkbox" id="chkHidden"> Hiện tài khoản đã ẩn</label>
+                <button type="button" class="btn-primary" id="btnReload"><i class="fa-solid fa-rotate"></i> Làm mới</button>
+            </header>
+            <div class="page-title-block">
+                <h1>Quản lý chủ cửa hàng</h1>
+                <p>Ẩn khỏi danh sách thay vì xóa vĩnh viễn.</p>
+            </div>
+            <div class="card-panel">
+                <table class="data-table" id="tbl">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>POI</th>
+                            <th>Ẩn?</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="err" class="err"></div>
+            </div>
+        </div>
+    </div>
+    <script src="/config.js"></script>
+    <script src="/js/admin-api.js"></script>
+    <script>
+        const err = document.getElementById('err');
+        async function load() {
+            err.textContent = '';
+            const inc = document.getElementById('chkHidden').checked;
+            try {
+                const rows = await window.StreetFoodAdmin.listOwners(inc);
+                const tb = document.querySelector('#tbl tbody');
+                tb.innerHTML = (rows || []).map(r => '<tr data-user="' + r.id + '"><td>' + r.id + '</td><td>' + esc(r.username) + '</td><td>' + esc(r.email || '') + '</td><td>' + esc(r.poiName || '—') + '</td><td>' + (r.isHidden ? 'Có' : 'Không') + '</td><td>' + (!r.isHidden ? '<button type="button" class="btn-outline btn-hide">Ẩn</button>' : '') + '</td></tr>').join('') || '<tr><td colspan="6">Không có dữ liệu.</td></tr>';
+
+                tb.querySelectorAll('.btn-hide').forEach(btn => {
+                    btn.onclick = async () => {
+                        const tr = btn.closest('tr');
+                        const uid = parseInt(tr.getAttribute('data-user'), 10);
+                        if (!confirm('Ẩn tài khoản #' + uid + '?')) return;
+                        btn.disabled = true;
+                        try {
+                            await window.StreetFoodAdmin.hideOwner(uid);
+                            await load();
+                        } catch (e) {
+                            err.textContent = e.message || String(e);
+                        }
+                    };
+                });
+            } catch (e) {
+                err.textContent = e.message || String(e);
+            }
+        }
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+        document.getElementById('btnReload').onclick = load;
+        document.getElementById('chkHidden').onchange = load;
+        load();
+    </script>
+</body>
+</html>
