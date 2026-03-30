@@ -1,0 +1,115 @@
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="App.Views.HomePage"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <maps:Map x:Name="MixiMap" IsShowingUser="True" Grid.RowSpan="2"/>
+
+        <toolkit:MediaElement x:Name="AudioPlayer" 
+                              ShouldAutoPlay="False" 
+                              Grid.RowSpan="2"
+                              IsVisible="False" />
+
+        <Grid Grid.Row="0" Padding="16,48,16,10" ZIndex="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border StrokeShape="RoundRectangle 22"
+                    BackgroundColor="White"
+                    Padding="14,8">
+                <Border.Stroke>
+                    <SolidColorBrush Color="#E7ECE8"/>
+                </Border.Stroke>
+                <Border.Shadow>
+                    <Shadow Brush="#101828" Offset="0,4" Radius="16" Opacity="0.15"/>
+                </Border.Shadow>
+                <Grid ColumnDefinitions="Auto,*" VerticalOptions="Center">
+                    <Image Source="ic_search.svg" HeightRequest="18" WidthRequest="18" Margin="2,0,10,0"/>
+                    <Entry Grid.Column="1"
+                           x:Name="SearchEntry"
+                           Placeholder="Tìm quán ăn hoặc POI"
+                           TextChanged="OnSearchTextChanged"
+                           ClearButtonVisibility="WhileEditing"
+                           BackgroundColor="Transparent"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="1"
+                VerticalOptions="End"
+                HorizontalOptions="End"
+                Margin="0,0,20,240"
+                StrokeShape="RoundRectangle 30"
+                BackgroundColor="White"
+                Padding="14,10"
+                ZIndex="10">
+            <Border.Shadow>
+                <Shadow Brush="Black" Offset="0,4" Radius="10" Opacity="0.2"/>
+            </Border.Shadow>
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnGetLocationClicked" />
+            </Border.GestureRecognizers>
+            <HorizontalStackLayout Spacing="8">
+                <Label Text="◎" FontSize="14" TextColor="#2E7D32" />
+                <Label Text="Vị trí của tôi" TextColor="#2E7D32" FontAttributes="Bold" FontSize="13"/>
+            </HorizontalStackLayout>
+        </Border>
+
+        <Border x:Name="InfoCard"
+                IsVisible="False"
+                Grid.RowSpan="2"
+                VerticalOptions="End"
+                Margin="14,0,14,24"
+                Stroke="#E4EAE4"
+                StrokeShape="RoundRectangle 30"
+                BackgroundColor="White">
+            <Border.Shadow>
+                <Shadow Brush="Black" Offset="0,6" Radius="15" Opacity="0.25"/>
+            </Border.Shadow>
+
+            <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" Padding="12" RowSpacing="12" HeightRequest="176">
+                <Border StrokeShape="RoundRectangle 16" StrokeThickness="0" HeightRequest="104" WidthRequest="96" VerticalOptions="Start">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnInfoCardTapped" />
+                    </Border.GestureRecognizers>
+                    <Image x:Name="PlaceImage" Aspect="AspectFill" Source="logo.png"/>
+                </Border>
+
+                <VerticalStackLayout Grid.Column="1" Margin="10,2,2,0" Spacing="4">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnInfoCardTapped" />
+                    </VerticalStackLayout.GestureRecognizers>
+                    <Label x:Name="PlaceName" FontAttributes="Bold" FontSize="18" MaxLines="1" TextColor="#1B1B1B"/>
+                    <HorizontalStackLayout Spacing="6">
+                        <Label x:Name="PlaceStatus" FontSize="12" FontAttributes="Bold" TextColor="#2E7D32"/>
+                        <Label x:Name="PlaceHours" FontSize="12" TextColor="#757575"/>
+                    </HorizontalStackLayout>
+                    <Label x:Name="PlaceAddress" FontSize="12" TextColor="#616161" MaxLines="2"/>
+                </VerticalStackLayout>
+
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Button Grid.Column="0"
+                                 Text="Phát"
+                                 Clicked="OnPlayClicked"
+                                 HeightRequest="44"
+                                 BackgroundColor="#E8F5E9"
+                                 TextColor="#1B5E20"
+                                 FontAttributes="Bold"
+                                 CornerRadius="14"/>
+                    <Button Grid.Column="1"
+                                 Text="Tạm dừng"
+                                 Clicked="OnPauseClicked"
+                                 HeightRequest="44"
+                                 BackgroundColor="#FFEBEE"
+                                 TextColor="#C62828"
+                                 FontAttributes="Bold"
+                                 CornerRadius="14"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>

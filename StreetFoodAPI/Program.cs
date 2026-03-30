@@ -1,12 +1,11 @@
+using Microsoft.EntityFrameworkCore;
+using StreetFood.Infrastructure.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// --- 1. ĐĂNG KÝ SERVICES (DI Container) ---
 
 builder.Services.AddControllers();
-<<<<<<< Updated upstream
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-=======
 
 // Cấu hình Database (PostgreSQL)
 builder.Services.AddDbContext<StreetFoodDBContext>(options =>
@@ -32,20 +31,35 @@ builder.Services.AddCors(options => {
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
->>>>>>> Stashed changes
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+// --- 2. CẤU HÌNH PIPELINE (Middleware) ---
+
+// Kích hoạt giao diện Swagger khi chạy ở môi trường Development
+
 
 app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+// THỨ TỰ QUAN TRỌNG: Cors -> Session -> Auth
+app.UseCors();
+app.UseSession();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+// --- 3. TỰ ĐỘNG CHẠY MIGRATION (Nếu cần) ---
+/*
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<StreetFoodDBContext>();
+    // await db.Database.MigrateAsync(); // Tự động tạo bảng nếu chưa có
+}
+*/
 
 app.Run();

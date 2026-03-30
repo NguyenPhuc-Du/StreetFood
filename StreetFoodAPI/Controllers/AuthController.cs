@@ -1,9 +1,4 @@
-<<<<<<< Updated upstream
-﻿namespace StreetFood.API.Controllers
-{
-    public class AuthController
-    {
-=======
+
 ﻿using Microsoft.AspNetCore.Mvc;
 using StreetFood.API.Models;
 using StreetFood.Infrastructure.Data;
@@ -39,6 +34,6 @@ public class AuthController : ControllerBase
             username = user.username,
             message = "Login thành công"
         });
->>>>>>> Stashed changes
+
     }
 }

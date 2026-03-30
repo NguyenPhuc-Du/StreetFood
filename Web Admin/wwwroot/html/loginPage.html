@@ -1,0 +1,43 @@
+﻿<!doctype html>
+<html>
+<head>
+    <title>Admin Login | Smart Tourism</title>
+    <link rel="stylesheet" href="/css/loginPage.css" />
+</head>
+<body>
+    <div class="wrapper">
+        <div class="logo">
+
+            <h1 style="margin:100px">Management POI</h1>
+
+        </div>
+
+        <div class="card">
+            <h2>Welcome back</h2>
+            <p>Please enter your details to sign in.</p>
+
+            <form action="https://localhost:7207/Account/Login" method="post">
+                <label>Username</label>
+                <input name="username" type="text" placeholder="Username" required />
+                <span asp-validation-for="Username"></span>
+
+                <label>Password</label>
+                <input name="password" type="password" placeholder="••••••••" required />
+                <span asp-validation-for="Password"></span>
+
+                <div class="row">
+                    <div style="display: flex; align-items: center; gap: 5px">
+                        <input type="checkbox" asp-for="RememberMe" />
+                        <label>Remember me</label>
+                    </div>
+                    <a href="#">Forgot password?</a>
+                </div>
+
+                <button type="button" onclick="window.location.href='dashboardPage.html'">
+                    Sign in to Dashboard
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

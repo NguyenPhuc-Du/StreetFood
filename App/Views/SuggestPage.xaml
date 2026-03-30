@@ -1,0 +1,46 @@
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="App.Views.SuggestPage"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*" Padding="18,42,18,14" BackgroundColor="#F2F6F3">
+        <VerticalStackLayout Grid.Row="0" Spacing="4">
+            <Label Text="Đề xuất gần bạn" FontSize="28" FontAttributes="Bold" TextColor="#0F172A"/>
+            <Label x:Name="SubTitleLabel" Text="Đang lấy vị trí..." FontSize="13" TextColor="#64748B"/>
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="1">
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True" VerticalOptions="Center"/>
+
+            <CollectionView x:Name="SuggestionsList"
+                            ItemsSource="{Binding Suggestions}"
+                            SelectionMode="None"
+                            IsVisible="False">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border StrokeShape="RoundRectangle 20"
+                                Padding="12"
+                                BackgroundColor="White"
+                                Margin="0,7"
+                                Stroke="#E1EAE2">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnSuggestionTapped" CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="86,*" ColumnSpacing="12" VerticalOptions="Center">
+                                <Border StrokeThickness="0" StrokeShape="RoundRectangle 16">
+                                    <Image Source="{Binding Poi.ImageUrl}" WidthRequest="86" HeightRequest="86" Aspect="AspectFill"/>
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                    <Label Text="{Binding Poi.Name}" FontAttributes="Bold" FontSize="17" TextColor="#0F172A" LineBreakMode="TailTruncation"/>
+                                    <Label Text="{Binding DistanceText}" FontSize="13" TextColor="#2E7D32" FontAttributes="Bold"/>
+                                    <Label Text="{Binding Poi.Address}" FontSize="12" TextColor="#64748B" LineBreakMode="TailTruncation"/>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </Grid>
+</ContentPage>
+

@@ -1,9 +1,12 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
+    <File Path="prd.md" />
     <File Path="StreetFood.sln" />
   </Folder>
-  <Project Path="App/App.csproj" />
+  <Project Path="App/App.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
   <Project Path="StreetFood.Application/StreetFood.Application.csproj" Id="2a87cb5d-a8c2-4d3c-b36c-d82071682756" />
   <Project Path="StreetFood.Domain/StreetFood.Domain.csproj" Id="95751f9e-d24b-4594-8112-e75811521052" />
   <Project Path="StreetFood.Infrastructure/StreetFood.Infrastructure.csproj" Id="4d29cac2-152c-4cd9-a072-7f9a288881b2" />

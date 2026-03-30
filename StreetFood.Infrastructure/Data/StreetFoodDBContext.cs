@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Microsoft.EntityFrameworkCore;
+using StreetFood.Domain.Entities;
 
 namespace StreetFood.Infrastructure.Data
 {
-    internal class StreetFoodDBContext
+    public class StreetFoodDBContext : DbContext
     {
-<<<<<<< Updated upstream
-=======
+
         public StreetFoodDBContext(DbContextOptions<StreetFoodDBContext> options)
             : base(options)
         {
@@ -37,6 +35,6 @@ namespace StreetFood.Infrastructure.Data
                 entity.Property(e => e.restaurant_owners).HasColumnName("restaurant_owners");
             });
         }
->>>>>>> Stashed changes
+
     }
 }

@@ -21,6 +21,7 @@
 
         if (response.ok) {
             const data = await response.json();
+            console.log("Đăng nhập thành công:", data);
 
             // Lưu role vào máy để các trang sau kiểm tra
             localStorage.setItem('userRole', data.role);
@@ -32,7 +33,7 @@
             } else if (data.role === 'vendor') {
                 // Nhảy ra khỏi thư mục hiện tại và vào Web Vendor
                 window.location.href = 'https://localhost:7240/html/dashboardShopPage.html';
-            } else {
+        } else {
                 alert("Quyền truy cập không hợp lệ: " + data.role);
             }
         }
