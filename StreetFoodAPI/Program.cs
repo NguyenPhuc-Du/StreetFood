@@ -25,7 +25,7 @@ builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
+    options.Cookie.IsEssential = true;||
 });
 
 // CORS: development cho phép mọi localhost (tránh lệch cổng HTTPS/HTTP)
