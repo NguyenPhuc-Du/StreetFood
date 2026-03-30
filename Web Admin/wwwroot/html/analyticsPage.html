@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Tourism Dashboard</title>
+    <link rel="stylesheet" href="/css/analyticsPage.css">
+    <link rel="stylesheet" href="/css/sideBar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <span>SmartTour</span>
+            </div>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Dashboard</a></li>
+
+                    <li><a href="managePOIPage.html"><i class="fa-solid fa-location-dot"></i> Manage POI</a></li>
+
+                    <li><a href="manageShopsPage.html"><i class="fa-solid fa-store"></i> Manage Shops</a></li>
+
+                    <li><a href="#"><i class="fa-solid fa-users"></i> Users</a></li>
+
+                    <li class="active"><a href="analyticsPage.html"><i class="fa-solid fa-chart-simple"></i> Analytics</a></liclass="active">
+                </ul>
+            </nav>
+            <div class="settings">
+                <a href="#"><i class="fa-solid fa-gear"></i> Settings</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                
+                <div class="topbar-right">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" placeholder="Search analytics...">
+                    </div>
+                    <div class="icons">
+                        <i class="fa-regular fa-bell"></i>
+                        <i class="fa-regular fa-circle-user"></i>
+                        <div class="avatar">TA</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <div class="page-header">
+                    <div>
+                        <h1>Tourism Insights Dashboard</h1>
+                        <p>Real-time engagement metrics and spatial analytics across the metropolitan area.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-outline"><i class="fa-regular fa-calendar"></i> Last 7 Days <i class="fa-solid fa-chevron-down"></i></button>
+                        <button class="btn btn-primary"><i class="fa-solid fa-download"></i> Export Data</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="card-top">
+                            <div class="icon-box blue-bg"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="trend up"><i class="fa-solid fa-arrow-trend-up"></i> 12%</span>
+                        </div>
+                        <p class="stat-label">Total Visitors</p>
+                        <h2 class="stat-value">42,891</h2>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-top">
+                            <div class="icon-box purple-bg"><i class="fa-regular fa-clock"></i></div>
+                            <span class="trend up"><i class="fa-solid fa-arrow-trend-up"></i> 4%</span>
+                        </div>
+                        <p class="stat-label">Avg. Stay Duration</p>
+                        <h2 class="stat-value">3.5 Days</h2>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-top">
+                            <div class="icon-box orange-bg"><i class="fa-solid fa-money-bill"></i></div>
+                            <span class="trend down"><i class="fa-solid fa-arrow-trend-down"></i> 2%</span>
+                        </div>
+                        <p class="stat-label">Daily Revenue</p>
+                        <h2 class="stat-value">$158.4k</h2>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-top">
+                            <div class="icon-box green-bg"><i class="fa-regular fa-face-smile"></i></div>
+                            <span class="trend up"><i class="fa-solid fa-arrow-trend-up"></i> 0.5%</span>
+                        </div>
+                        <p class="stat-label">Sentiment Score</p>
+                        <h2 class="stat-value">4.8/5</h2>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="card chart-card flex-2">
+                        <div class="card-header">
+                            <h3>Visitor Volume Trend</h3>
+                            <div class="legend">
+                                <span><span class="dot dark-blue"></span> Current Period</span>
+                                <span><span class="dot light-gray"></span> Last Period</span>
+                            </div>
+                        </div>
+                        <div class="bar-chart-placeholder">
+                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 40%"></div><span>Mon</span></div>
+                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 60%"></div><span>Tue</span></div>
+                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 50%"></div><span>Wed</span></div>
+                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 80%"></div><span>Thu</span></div>
+                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 90%"></div><span>Fri</span></div>
+                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 65%"></div><span>Sat</span></div>
+                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 55%"></div><span>Sun</span></div>
+                        </div>
+                    </div>
+
+                    <div class="card chart-card flex-1">
+                        <h3>Visitor Origin</h3>
+                        <div class="donut-chart-container">
+                            <div class="donut-chart">
+                                <div class="donut-inner">
+                                    <h2>64%</h2>
+                                    <p>DOMESTIC</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="donut-legend">
+                            <div class="legend-item"><span><span class="dot dark-blue"></span> Domestic</span> <b>64.2%</b></div>
+                            <div class="legend-item"><span><span class="dot light-blue"></span> International</span> <b>28.5%</b></div>
+                            <div class="legend-item"><span><span class="dot light-gray"></span> Regional</span> <b>7.3%</b></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-row">
+                    <div class="card table-card flex-1">
+                        <div class="card-header">
+                            <h3>Shop Engagement Statistics</h3>
+                            <a href="#" class="view-all">View All</a>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>BUSINESS NAME</th>
+                                    <th>FOOTFALL</th>
+                                    <th>CONVERSION</th>
+                                    <th>TREND</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><div class="biz-name"><i class="fa-solid fa-utensils"></i> The Golden Bistro</div></td>
+                                    <td>1,240</td>
+                                    <td>18.2%</td>
+                                    <td class="trend up"><i class="fa-solid fa-arrow-up"></i> 4.2%</td>
+                                </tr>
+                                <tr>
+                                    <td><div class="biz-name"><i class="fa-solid fa-bag-shopping"></i> Artisanal Gifts Co.</div></td>
+                                    <td>892</td>
+                                    <td>24.5%</td>
+                                    <td class="trend up"><i class="fa-solid fa-arrow-up"></i> 8.1%</td>
+                                </tr>
+                                <tr>
+                                    <td><div class="biz-name"><i class="fa-solid fa-mug-hot"></i> Urban Roast Cafe</div></td>
+                                    <td>2,105</td>
+                                    <td>12.8%</td>
+                                    <td class="trend down"><i class="fa-solid fa-arrow-down"></i> 2.4%</td>
+                                </tr>
+                                <tr>
+                                    <td><div class="biz-name"><i class="fa-solid fa-bus"></i> City Tour Hub</div></td>
+                                    <td>654</td>
+                                    <td>35.2%</td>
+                                    <td class="trend up"><i class="fa-solid fa-arrow-up"></i> 1.5%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="card map-card flex-1">
+                        <div class="card-header map-header">
+                            <div>
+                                <h3>Spatial Traffic Heatmap</h3>
+                                <p>Real-time concentration in the Historical District</p>
+                            </div>
+                            <div class="toggle-btn">
+                                <button class="active">FOOTFALL</button>
+                                <button>SALES</button>
+                            </div>
+                        </div>
+                        <div class="map-placeholder">
+                            <div class="alert-badge">
+                                <i class="fa-solid fa-fire"></i> Peak Alert: Old Town Square
+                                <span class="density">HIGH DENSITY</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</body>
+</html>

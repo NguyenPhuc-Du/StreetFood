@@ -1,4 +1,6 @@
-﻿namespace StreetFood.API.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace StreetFood.API.Models
 {
     public class userAccounts
     {

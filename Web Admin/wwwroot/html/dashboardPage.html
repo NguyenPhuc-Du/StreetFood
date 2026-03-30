@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/dashboardPage.css">
     <link rel="stylesheet" href="/css/sidebar.css">
     <style>
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; padding: 0 28px 28px; }
@@ -30,6 +31,9 @@
                     <li><a href="restaurantOwnersPage.html"><i class="fa-solid fa-user-slash"></i> Chủ cửa hàng</a></li>
                 </ul>
             </nav>
+            <div class="settings">
+                <a href="#"><i class="fa-solid fa-gear"></i> Settings</a>
+            </div>
         </aside>
         <div class="main-panel">
             <header class="top-header">
@@ -53,6 +57,7 @@
                 <a href="pendingScriptsPage.html" class="secondary"><i class="fa-solid fa-check-double"></i> Phê duyệt</a>
             </div>
         </div>
+        </main>
     </div>
     <script src="/config.js"></script>
     <script src="/js/admin-api.js"></script>
