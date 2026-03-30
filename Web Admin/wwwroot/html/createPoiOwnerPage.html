@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo POI & tài khoản chủ quán | StreetFood Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <style>
+        .steps { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .step-pill { padding: 8px 14px; border-radius: 999px; background: #f1f5f9; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        .step-pill.on { background: var(--accent-bg); color: var(--primary-blue); }
+        .form-grid { display: grid; gap: 14px; max-width: 560px; }
+        .form-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #334155; }
+        .form-grid input, .form-grid textarea { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; }
+        .form-grid textarea { min-height: 100px; resize: vertical; }
+        .wizard-panel { display: none; }
+        .wizard-panel.active { display: block; }
+        .nav-row { display: flex; gap: 12px; margin-top: 20px; }
+        .hint { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="logo"><i class="fa-solid fa-utensils"></i><span>StreetFood</span></div>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Dashboard</a></li>
+                    <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
+                    <li class="active"><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
+                    <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
+                    <li><a href="restaurantOwnersPage.html"><i class="fa-solid fa-user-slash"></i> Chủ cửa hàng</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <div class="main-panel">
+            <header class="top-header">
+                <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Tìm..."></div>
+            </header>
+            <div class="page-title-block">
+                <h1>Tạo tài khoản chủ quán & POI</h1>
+                <p>Bước 1: tài khoản → Bước 2: thông tin cửa hàng → Bước 3: script (tuỳ chọn). Có thể bổ sung script sau khi chủ quán gửi yêu cầu.</p>
+            </div>
+            <div class="card-panel">
+                <div class="steps">
+                    <span class="step-pill on" id="sp1">1 — Tài khoản</span>
+                    <span class="step-pill" id="sp2">2 — Cửa hàng</span>
+                    <span class="step-pill" id="sp3">3 — Script</span>
+                </div>
+
+                <div class="wizard-panel active" id="w1">
+                    <div class="form-grid">
+                        <label>Username chủ quán<input type="text" id="ownerUsername" placeholder="vd: quan_pho_owner" autocomplete="off"></label>
+                        <label>Mật khẩu<input type="password" id="ownerPassword" placeholder="••••••••"></label>
+                        <label>Email (tuỳ chọn)<input type="email" id="ownerEmail" placeholder="owner@email.com"></label>
+                    </div>
+                    <div class="nav-row">
+                        <button type="button" class="btn-primary" id="to2">Tiếp theo</button>
+                    </div>
+                </div>
+
+                <div class="wizard-panel" id="w2">
+                    <div class="form-grid">
+                        <label>Tên POI / cửa hàng<input type="text" id="poiName" placeholder="Quán phở ABC"></label>
+                        <label>Mô tả ngắn (tiếng Việt)<textarea id="poiDescription" placeholder="Giới thiệu cho khách..."></textarea></label>
+                        <label>Địa chỉ<input type="text" id="address" placeholder="Số nhà, đường, quận..."></label>
+                        <label>URL ảnh cửa hàng<input type="url" id="imageUrl" placeholder="https://..."></label>
+                        <label>Giờ mở cửa<input type="text" id="openingHours" placeholder="vd: 08:00 - 22:00"></label>
+                        <label>Số điện thoại<input type="text" id="phone" placeholder="090..."></label>
+                        <label>Vĩ độ<input type="number" step="any" id="lat" value="10.7549"></label>
+                        <label>Kinh độ<input type="number" step="any" id="lng" value="106.6666"></label>
+                        <label>Bán kính (m)<input type="number" id="radius" value="80"></label>
+                    </div>
+                    <div class="nav-row">
+                        <button type="button" class="btn-outline" id="back1">Quay lại</button>
+                        <button type="button" class="btn-primary" id="to3">Tiếp theo</button>
+                    </div>
+                </div>
+
+                <div class="wizard-panel" id="w3">
+                    <div class="form-grid">
+                        <label>Script kể chuyện (tiếng Việt)<textarea id="initialScript" placeholder="Có thể để trống và bổ sung sau..."></textarea></label>
+                    </div>
+                    <p class="hint">Để trống nếu muốn nhập sau; khi có nội dung, hãy phê duyệt ở mục Phê duyệt script.</p>
+                    <div class="nav-row">
+                        <button type="button" class="btn-outline" id="back2">Quay lại</button>
+                        <button type="button" class="btn-primary" id="submitAll"><i class="fa-solid fa-check"></i> Hoàn tất</button>
+                    </div>
+                </div>
+
+                <div id="msg" class="err" style="color:#047857;margin-top:16px;"></div>
+                <div id="err" class="err"></div>
+            </div>
+        </div>
+    </div>
+    <script src="/config.js"></script>
+    <script src="/js/admin-api.js"></script>
+    <script>
+        const sp = [document.getElementById('sp1'), document.getElementById('sp2'), document.getElementById('sp3')];
+        const panels = [document.getElementById('w1'), document.getElementById('w2'), document.getElementById('w3')];
+        function goStep(n) {
+            panels.forEach((p, i) => { p.classList.toggle('active', i === n - 1); });
+            sp.forEach((s, i) => { s.classList.toggle('on', i < n); });
+        }
+        document.getElementById('to2').onclick = () => {
+            if (!document.getElementById('ownerUsername').value.trim() || !document.getElementById('ownerPassword').value)
+                return alert('Nhập username và mật khẩu.');
+            goStep(2);
+        };
+        document.getElementById('back1').onclick = () => goStep(1);
+        document.getElementById('to3').onclick = () => {
+            if (!document.getElementById('poiName').value.trim()) return alert('Nhập tên POI.');
+            goStep(3);
+        };
+        document.getElementById('back2').onclick = () => goStep(2);
+
+        document.getElementById('submitAll').onclick = async () => {
+            const err = document.getElementById('err');
+            const msg = document.getElementById('msg');
+            err.textContent = '';
+            msg.textContent = '';
+            const body = {
+                ownerUsername: document.getElementById('ownerUsername').value.trim(),
+                ownerPassword: document.getElementById('ownerPassword').value,
+                ownerEmail: document.getElementById('ownerEmail').value.trim() || null,
+                poiName: document.getElementById('poiName').value.trim(),
+                poiDescription: document.getElementById('poiDescription').value.trim() || null,
+                latitude: parseFloat(document.getElementById('lat').value),
+                longitude: parseFloat(document.getElementById('lng').value),
+                radius: parseInt(document.getElementById('radius').value, 10) || 50,
+                address: document.getElementById('address').value.trim() || null,
+                imageUrl: document.getElementById('imageUrl').value.trim() || null,
+                openingHours: document.getElementById('openingHours').value.trim() || null,
+                phone: document.getElementById('phone').value.trim() || null,
+                initialScript: document.getElementById('initialScript').value.trim() || null
+            };
+            try {
+                const r = await window.StreetFoodAdmin.createPoiWithOwner(body);
+                msg.textContent = 'Đã tạo. userId=' + r.userId + ', poiId=' + r.poiId + ', scriptState=' + r.scriptState;
+                if (r.audio && r.audio.message) msg.textContent += ' | TTS: ' + r.audio.message;
+            } catch (e) {
+                err.textContent = e.message || String(e);
+            }
+        };
+    </script>
+</body>
+</html>

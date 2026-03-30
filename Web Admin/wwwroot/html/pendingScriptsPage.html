@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phê duyệt script | StreetFood Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="logo"><i class="fa-solid fa-utensils"></i><span>StreetFood</span></div>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Dashboard</a></li>
+                    <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
+                    <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
+                    <li class="active"><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
+                    <li><a href="restaurantOwnersPage.html"><i class="fa-solid fa-user-slash"></i> Chủ cửa hàng</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <div class="main-panel">
+            <header class="top-header">
+                <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Tìm..."></div>
+                <button type="button" class="btn-primary" id="btnReload"><i class="fa-solid fa-rotate"></i> Làm mới</button>
+            </header>
+            <div class="page-title-block">
+                <h1>Phê duyệt script & POI chờ vendor</h1>
+                <p>Sau khi phê duyệt, hệ thống đồng bộ nội dung đa ngôn ngữ và tạo bản âm thanh tương ứng.</p>
+            </div>
+            <div class="card-panel">
+                <h3 style="margin-top:0;font-size:16px;">POI chờ script từ vendor</h3>
+                <table class="data-table" id="tblAwait">
+                    <thead><tr><th>POI</th><th>Chủ quán</th><th>Trạng thái</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="card-panel">
+                <h3 style="margin-top:0;font-size:16px;">Yêu cầu script chờ duyệt</h3>
+                <table class="data-table" id="tblPending">
+                    <thead><tr><th>ID</th><th>POI</th><th>Script</th><th>Gửi lúc</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div id="err" class="err"></div>
+            </div>
+            <div class="card-panel">
+                <h3 style="margin-top:0;font-size:16px;">Tạo lại âm thanh</h3>
+                <p style="font-size:14px;color:var(--text-muted);margin:0 0 12px;">Dùng khi cần sinh lại file đọc theo nội dung hiện tại (nhập mã POI).</p>
+                <input type="number" id="regenPoiId" placeholder="POI Id" style="padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0;max-width:140px;">
+                <button type="button" class="btn-primary" id="btnRegenAudio" style="margin-left:8px;">Tạo lại MP3</button>
+                <div id="regenMsg" style="margin-top:12px;font-size:14px;"></div>
+            </div>
+        </div>
+    </div>
+    <script src="/config.js"></script>
+    <script src="/js/admin-api.js"></script>
+    <script>
+        const err = document.getElementById('err');
+        async function load() {
+            err.textContent = '';
+            try {
+                const [awaiting, pending] = await Promise.all([
+                    window.StreetFoodAdmin.getAwaitingPois(),
+                    window.StreetFoodAdmin.getPendingScripts()
+                ]);
+                const tbA = document.querySelector('#tblAwait tbody');
+                function stateLabel(s) {
+                    if (s === 'full_audio') return 'Đủ âm thanh (5 ngôn ngữ)';
+                    if (s === 'has_audio') return 'Đã có âm thanh';
+                    if (s === 'pending_review') return 'Chờ duyệt script';
+                    if (s === 'approved') return 'Đã duyệt';
+                    if (s === 'awaiting_vendor') return 'Chờ script từ quán';
+                    return s || '—';
+                }
+                function stateClass(s) {
+                    if (s === 'full_audio' || s === 'has_audio') return 'badge-ok';
+                    if (s === 'pending_review') return 'badge-warn';
+                    return 'badge-warn';
+                }
+                tbA.innerHTML = (awaiting || []).map(a => '<tr><td>' + escapeHtml(a.poiName) + '</td><td>' + escapeHtml(a.ownerUsername) + '</td><td><span class="badge ' + stateClass(a.state) + '">' + escapeHtml(stateLabel(a.state)) + '</span>' + (a.audioCount > 0 ? ' <span style="font-size:12px;color:var(--text-muted);">(' + a.audioCount + ')</span>' : '') + '</td></tr>').join('') || '<tr><td colspan="3">Không có bản ghi.</td></tr>';
+
+                const tbP = document.querySelector('#tblPending tbody');
+                tbP.innerHTML = (pending || []).map(p => '<tr data-id="' + p.id + '"><td>' + p.id + '</td><td>' + escapeHtml(p.poiName) + '</td><td style="max-width:320px;white-space:pre-wrap;">' + escapeHtml((p.newScript || '').slice(0, 400)) + '</td><td>' + (p.createdAt ? new Date(p.createdAt).toLocaleString() : '') + '</td><td><button type="button" class="btn-primary btn-approve">Phê duyệt</button></td></tr>').join('') || '<tr><td colspan="5">Không có yêu cầu pending.</td></tr>';
+
+                tbP.querySelectorAll('.btn-approve').forEach(btn => {
+                    btn.onclick = async () => {
+                        const tr = btn.closest('tr');
+                        const id = parseInt(tr.getAttribute('data-id'), 10);
+                        btn.disabled = true;
+                        try {
+                            const res = await window.StreetFoodAdmin.approveScript(id);
+                            await load();
+                            if (res && res.audio && res.audio.message)
+                                alert('Phê duyệt xong.\n\nTTS: ' + res.audio.message);
+                        } catch (e) {
+                            err.textContent = e.message || String(e);
+                        }
+                        btn.disabled = false;
+                    };
+                });
+            } catch (e) {
+                err.textContent = e.message || String(e);
+            }
+        }
+        function escapeHtml(s) {
+            if (!s) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+        document.getElementById('btnReload').onclick = load;
+        document.getElementById('btnRegenAudio').onclick = async () => {
+            const id = parseInt(document.getElementById('regenPoiId').value, 10);
+            const regenMsg = document.getElementById('regenMsg');
+            regenMsg.textContent = '';
+            if (!id) { regenMsg.style.color = '#b91c1c'; regenMsg.textContent = 'Nhập POI Id.'; return; }
+            try {
+                const r = await window.StreetFoodAdmin.regenerateAudio(id);
+                regenMsg.style.color = '#047857';
+                regenMsg.textContent = r.message || JSON.stringify(r);
+            } catch (e) {
+                regenMsg.style.color = '#b91c1c';
+                regenMsg.textContent = e.message || String(e);
+            }
+        };
+        load();
+    </script>
+</body>
+</html>

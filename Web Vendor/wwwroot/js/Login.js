@@ -23,19 +23,14 @@
             const data = await response.json();
             console.log("Đăng nhập thành công:", data);
 
-            // Lưu role vào máy để các trang sau kiểm tra
+            // Lưu role vào localStorage
             localStorage.setItem('userRole', data.role);
 
-            // Điều hướng dựa trên role từ Database Neon
-            if (data.role === 'admin') {
-                // Nhảy ra khỏi thư mục hiện tại và vào Web Admin
-                window.location.href = 'https://localhost:7238/html/dashboardPage.html';
-            } else if (data.role === 'vendor') {
-                // Nhảy ra khỏi thư mục hiện tại và vào Web Vendor
-                window.location.href = 'https://localhost:7240/html/dashboardShopPage.html';
+            // Chuyển sang trang Dashboard
+            window.location.href = '/html/dashboardShopPage.html';
         } else {
-                alert("Quyền truy cập không hợp lệ: " + data.role);
-            }
+            const errorText = await response.text();
+            alert("Đăng nhập thất bại: " + errorText);
         }
     } catch (error) {
         console.error("Lỗi kết nối API:", error);

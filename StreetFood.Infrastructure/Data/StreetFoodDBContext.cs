@@ -5,7 +5,6 @@ namespace StreetFood.Infrastructure.Data
 {
     public class StreetFoodDBContext : DbContext
     {
-
         public StreetFoodDBContext(DbContextOptions<StreetFoodDBContext> options)
             : base(options)
         {
@@ -27,14 +26,10 @@ namespace StreetFood.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<UserAccount>(entity => {
-                entity.ToTable("users");
-                entity.Property(e => e.username).HasColumnName("username");
-                entity.Property(e => e.password).HasColumnName("password");
-                entity.Property(e => e.role).HasColumnName("role");
-                entity.Property(e => e.restaurant_owners).HasColumnName("restaurant_owners");
-            });
-        }
+            
+            modelBuilder.Entity<UserAccount>().ToTable("users");
 
+            
+        }
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StreetFood.API.Services;
 using StreetFood.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,9 +8,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+builder.Services.AddHttpClient<AzureTranslatorClient>();
+builder.Services.AddScoped<AzureSpeechTtsService>();
+
 // Cấu hình Database (PostgreSQL)
 builder.Services.AddDbContext<StreetFoodDBContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Cấu hình Swagger/OpenAPI (Để có giao diện test tại /swagger)
 builder.Services.AddEndpointsApiExplorer();
@@ -24,12 +28,31 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// Cấu hình CORS (Cho phép Frontend gọi API)
-builder.Services.AddCors(options => {
+// CORS: development cho phép mọi localhost (tránh lệch cổng HTTPS/HTTP)
+builder.Services.AddCors(options =>
+{
     options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin =>
+                    origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("https://localhost:", StringComparison.OrdinalIgnoreCase))
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+        else
+        {
+            policy.WithOrigins(
+                    "http://localhost:5191",
+                    "http://localhost:5238",
+                    "https://localhost:7238",
+                    "http://localhost:5288",
+                    "https://localhost:7288")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+    });
 });
 
 var app = builder.Build();
@@ -53,13 +76,16 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// --- 3. TỰ ĐỘNG CHẠY MIGRATION (Nếu cần) ---
-/*
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<StreetFoodDBContext>();
-    // await db.Database.MigrateAsync(); // Tự động tạo bảng nếu chưa có
-}
-*/
+// --- 3. Cơ sở dữ liệu (script SQL trong Infrastructure/Migrations, không dùng EF MigrateAsync) ---
+// Database:ApplySqlScriptsOnStartup = true → chạy V1…V11 theo đúng thứ tự số (DbInitializer).
+// Sau khi DB đã tạo xong, đặt lại false để lần chạy sau không lỗi trùng bảng.
+
+//if (app.Configuration.GetValue("Database:ApplySqlScriptsOnStartup", false))
+//{
+//    using var scope = app.Services.CreateScope();
+//    var db = scope.ServiceProvider.GetRequiredService<StreetFoodDBContext>();
+//    await DbInitializer.InitializeAsync(db);
+//    Console.WriteLine("[StreetFood] Đã chạy xong script SQL khởi tạo. Nên tắt Database:ApplySqlScriptsOnStartup nếu không tạo lại DB.");
+//}
 
 app.Run();
