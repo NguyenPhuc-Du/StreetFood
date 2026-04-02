@@ -25,6 +25,7 @@ public class VendorScriptController : ControllerBase
     [HttpPost("submit-script")]
     public async Task<IActionResult> SubmitScript([FromBody] SubmitScriptBody body)
     {
+        if (body.PoiId <= 0) return BadRequest("POIId không hợp lệ.");
         if (string.IsNullOrWhiteSpace(body.ScriptText))
             return BadRequest("Script trống.");
 

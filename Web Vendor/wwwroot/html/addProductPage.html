@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add/Edit Product</title>
+    <title>Thêm / Chỉnh sửa món ăn</title>
     <link rel="stylesheet" href="/css/addProductPage.css">
 </head>
 <body>
@@ -11,49 +11,82 @@
         <header class="modal-header">
             <div class="logo-section">
                 <span class="logo-icon">🛒</span>
-                <span class="logo-text">Shop Manager</span>
+                <span class="logo-text">Quản lý quán</span>
             </div>
             <button class="close-btn">&times;</button>
         </header>
 
         <main class="modal-content">
             <div class="form-title">
-                <h1>Add/Edit Product</h1>
-                <p>Update your inventory details and keep your shop up to date.</p>
+                <h1>Thêm / Chỉnh sửa món ăn</h1>
+                <p>Cập nhật thông tin món ăn để quán luôn được hiển thị đúng.</p>
             </div>
 
-            <form class="product-form">
+            <form class="product-form" id="foodForm">
+                <input type="hidden" id="poiIdInput" />
                 <div class="form-group">
-                    <label>PRODUCT NAME</label>
-                    <input type="text" placeholder="e.g. Handmade Ceramic Vase">
+                    <label>TÊN MÓN</label>
+                    <input id="foodName" type="text" placeholder="Ví dụ: Bánh mì / Phở / Cà phê..." required>
                 </div>
 
                 <div class="form-group">
-                    <label>PRICE</label>
+                    <label>GIÁ</label>
                     <div class="input-with-icon">
                         <span class="currency-icon">💵</span>
-                        <input type="number" placeholder="0.00" step="0.01">
+                        <input id="foodPrice" type="number" placeholder="0" min="1" step="1" required>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>DESCRIPTION</label>
-                    <textarea placeholder="Describe the materials, dimensions, and unique features of your product..."></textarea>
+                    <label>MÔ TẢ</label>
+                    <textarea id="foodDescription" placeholder="Mô tả món ăn..."></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label>PRODUCT IMAGE</label>
+                    <label>ẢNH MÓN ĂN</label>
                     <div class="upload-area">
                         <div class="upload-icon">☁️</div>
-                        <p><strong>Click to upload</strong> or drag and drop</p>
-                        <span>PNG, JPG or WEBP (Max. 5MB)</span>
+                        <p><strong>Nhấp để chọn ảnh</strong> hoặc kéo thả</p>
+                        <span>PNG, JPG hoặc WEBP (tối đa 5MB)</span>
                         <input type="file" hidden id="fileInput">
+                    </div>
+                    <div style="margin-top:10px;">
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">ImageUrl (demo: dùng link trực tiếp)</div>
+                        <input id="foodImageUrl" type="text" placeholder="https://example.com/image.jpg" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0;" />
                     </div>
                 </div>
 
-                <button type="button" class="submit-btn" onclick="window.location.href='manageProductsPage.html'">Save Product</button>
+                <button type="submit" class="submit-btn">Lưu món ăn</button>
             </form>
         </main>
     </div>
+
+    <script src="/config.js"></script>
+    <script src="/js/logout.js"></script>
+    <script src="/js/vendor-api.js"></script>
+    <script>
+        (async function () {
+            const poi = await window.VendorAPI.getDefaultPoi();
+            document.getElementById('poiIdInput').value = poi.PoiId ?? poi.poiId;
+
+            document.getElementById('foodForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                try {
+                    const poiId = parseInt(document.getElementById('poiIdInput').value, 10);
+                    const price = Number(document.getElementById('foodPrice').value);
+                    if (!Number.isFinite(poiId) || poiId <= 0) throw new Error('POIId không hợp lệ.');
+                    if (!Number.isFinite(price) || price <= 0) throw new Error('Giá món ăn phải lớn hơn 0.');
+                    const name = document.getElementById('foodName').value;
+                    const description = document.getElementById('foodDescription').value;
+                    const imageUrl = document.getElementById('foodImageUrl').value;
+
+                    await window.VendorAPI.createFood(poiId, name, description, price, imageUrl);
+                    window.location.href = 'manageProductsPage.html';
+                } catch (err) {
+                    alert(err?.message || String(err));
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

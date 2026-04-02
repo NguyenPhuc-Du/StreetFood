@@ -1,12 +1,47 @@
+(function () {
+    const passwordInput = document.getElementById('txtPassword');
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    const eyeOpenIcon = document.getElementById('eyeOpenIcon');
+    const eyeClosedIcon = document.getElementById('eyeClosedIcon');
+
+    if (!passwordInput || !toggleBtn) return;
+
+    function syncToggleIcon() {
+        const isPasswordHidden = passwordInput.type === 'password';
+        if (eyeOpenIcon && eyeClosedIcon) {
+            eyeOpenIcon.classList.toggle('hidden', !isPasswordHidden);
+            eyeClosedIcon.classList.toggle('hidden', isPasswordHidden);
+        }
+        toggleBtn.setAttribute('aria-label', isPasswordHidden ? 'Show password' : 'Hide password');
+    }
+
+    function syncToggleButtonVisibility() {
+        // Only show toggle when user has typed something.
+        toggleBtn.style.display = passwordInput.value ? 'inline-flex' : 'none';
+    }
+
+    toggleBtn.addEventListener('click', () => {
+        passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+        syncToggleIcon();
+    });
+
+    passwordInput.addEventListener('input', () => {
+        syncToggleButtonVisibility();
+    });
+
+    // Initial state
+    syncToggleButtonVisibility();
+    syncToggleIcon();
+})();
+
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault(); // Ngăn trang web load lại
+    e.preventDefault();
 
     const username = document.getElementById('txtUsername').value;
     const password = document.getElementById('txtPassword').value;
 
-    console.log("Đang thử đăng nhập với:", username);
-
     function setCookie(name, value) {
+        // Shared across ports on localhost because cookies are host-based, not port-based.
         document.cookie = name + '=' + encodeURIComponent(value || '') + '; path=/; SameSite=Lax';
     }
 
@@ -53,10 +88,11 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
             alert('Role không hợp lệ: ' + role);
         } else {
             const errorText = await response.text();
-            alert("Đăng nhập thất bại: " + errorText);
+            alert('Đăng nhập thất bại: ' + errorText);
         }
     } catch (error) {
-        console.error("Lỗi kết nối API:", error);
-        alert("Không thể kết nối đến máy chủ API. Hãy chắc chắn API đang chạy!");
+        console.error('Lỗi kết nối API:', error);
+        alert('Không thể kết nối đến máy chủ API. Hãy chắc chắn StreetFoodAPI đang chạy!');
     }
 });
+

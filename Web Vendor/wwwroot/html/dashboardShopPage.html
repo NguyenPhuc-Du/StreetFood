@@ -1,113 +1,263 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShopAdmin Dashboard</title>
-    <link rel="stylesheet" href="/css/dashboardShopPage.css">
-    <link rel="stylesheet" href="/css/sideBar.css">
+    <title>Quản lý quán - Thông tin cửa hàng</title>
+    <link rel="stylesheet" href="/css/vendorPro.css?v=20260402a">
 </head>
 <body>
-    <div class="container">
+    <div class="layout">
         <aside class="sidebar">
-            <div class="logo">
-                <span class="logo-icon">🛒</span>
-                <h2>Mixi</h2>
+            <div class="brand">
+                <div class="brand-icon">🍜</div>
+                <div>
+                    <div style="font-weight:800;">StreetFood Vendor</div>
+                    <div class="muted" style="font-size:12px;">Quản lý cửa hàng</div>
+                </div>
             </div>
             <nav class="menu">
-                <a href="dashboardShopPage.html" class="active">
-                    <span>📊</span> Overview
-                </a>
-
-                <a href="manageProductsPage.html">
-                    <span>📦</span> Products
-                </a>
-
-                <a href="statisticsShopsPage.html">
-                    <span>📈</span> Statistics
-                </a>
-
-                <a href="#">
-                    <span>👤</span> Profile
-                </a>
+                <a class="active" href="dashboardShopPage.html">Thông tin cửa hàng</a>
+                <a href="manageProductsPage.html">Quản lý món ăn</a>
+                <a href="requestScriptPage.html">Yêu cầu âm thanh</a>
             </nav>
-            <div class="user-profile">
-                <div class="avatar"></div>
-                <div class="user-info">
-                    <strong>Alex Rivera</strong>
-                    <span>Shop Owner</span>
-                </div>
+            <div class="sidebar-footer">
+                <a class="btn-logout" href="#" onclick="window.VendorLogout?.(); return false;">Đăng xuất</a>
             </div>
         </aside>
 
-        <main class="main-content">
-            <header class="top-header">
-                <span>Dashboard Overview</span>
-                <div class="header-actions">
-                    <button class="notif-btn">🔔</button>
-                    <a href="loginPage.html" class="sign-out-btn" style="text-decoration: none;">
-                        🚪 Sign Out
-                    </a>
+        <main class="content">
+            <div class="topbar">
+                <div class="title">
+                    <h1>Thông tin cửa hàng</h1>
+                    <p id="subtitle">Đang tải dữ liệu từ hệ thống...</p>
                 </div>
-            </header>
+            </div>
 
-            <section class="welcome">
-                <h1>Welcome back, Alex</h1>
-                <p>Here's a summary of your shop's performance today.</p>
-            </section>
+            <div class="stack">
+                <div class="card stack" style="padding:12px;">
+                    <div class="field" style="margin-bottom:0;">
+                        <label>Ảnh cửa hàng</label>
+                        <img id="shopImagePreview" alt="Ảnh cửa hàng"
+                             style="width:100%;height:320px;object-fit:contain;border-radius:12px;background:#ffffff;border:1px solid var(--line);" />
+                    </div>
+                </div>
 
-            <section class="stats-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <p class="label">TODAY VIEWS</p>
-                            <h3>1,284</h3>
+                <div class="card stack" id="shopDetailsCard">
+                    <div class="field">
+                        <label>Tên cửa hàng</label>
+                        <input id="storeNameInput" type="text" readonly>
+                    </div>
+
+                    <input id="storeImageInput" type="hidden" />
+                    <input id="shopImageFileInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+                    <div class="field">
+                        <label>Ảnh cửa hàng (URL/ảnh đã chọn)</label>
+                        <div class="image-url-row">
+                            <input id="storeImageDisplayInput" type="text" placeholder="Chưa chọn ảnh" readonly />
+                            <button id="btnPickImage" class="btn btn-outline" type="button" disabled>Chọn ảnh</button>
                         </div>
-                        <div class="icon-box eye">👁️</div>
                     </div>
-                    <p class="trend up">↗ +12.5% from yesterday</p>
-                </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <p class="label">QR SCANS</p>
-                            <h3>432</h3>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label>Giờ mở cửa</label>
+                            <input id="openingHoursInput" type="text" placeholder="07:00 - 22:00" readonly>
                         </div>
-                        <div class="icon-box qr">📱</div>
-                    </div>
-                    <p class="trend up">↗ +5.2% from yesterday</p>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <p class="label">TOTAL PRODUCTS</p>
-                            <h3>156</h3>
+                        <div class="field">
+                            <label>Số điện thoại</label>
+                            <input id="phoneInput" type="text" placeholder="090xxxxxxx" readonly>
                         </div>
-                        <div class="icon-box box">📋</div>
                     </div>
-                    <p class="trend neutral">— Stable performance</p>
-                </div>
-            </section>
 
-            <section class="chart-container">
-                <div class="chart-header">
-                    <div>
-                        <h3>Views over time</h3>
-                        <p>Visitor traffic for the last 7 days</p>
-                    </div>
-                    <div class="time-filters">
-                        <button class="active">Week</button>
-                        <button>Month</button>
-                        <button>Year</button>
-                    </div>
+                    <button id="saveBtn" class="btn btn-save-blue" type="button" disabled style="display:none;">
+                        Lưu thông tin cửa hàng
+                    </button>
+                    <p class="muted" id="saveMsg" style="display:block;">Chưa có thay đổi.</p>
+                    <button id="editToggleBtn" class="btn btn-primary" type="button">Thay đổi thông tin</button>
                 </div>
-                <div class="chart-placeholder">
-                    <div class="fake-chart"></div>
-                </div>
-            </section>
+            </div>
         </main>
     </div>
+
+    <script src="/config.js"></script>
+    <script src="/js/logout.js"></script>
+    <script src="/js/vendor-api.js?v=20260402a"></script>
+    <script>
+        (async function () {
+            const subtitle = document.getElementById('subtitle');
+            const editToggleBtn = document.getElementById('editToggleBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const saveMsg = document.getElementById('saveMsg');
+
+            const shopImagePreview = document.getElementById('shopImagePreview');
+
+            const storeNameInput = document.getElementById('storeNameInput');
+            const storeImageInput = document.getElementById('storeImageInput');
+            const openingHoursInput = document.getElementById('openingHoursInput');
+            const phoneInput = document.getElementById('phoneInput');
+            const storeImageDisplayInput = document.getElementById('storeImageDisplayInput');
+            const btnPickImage = document.getElementById('btnPickImage');
+            const shopImageFileInput = document.getElementById('shopImageFileInput');
+
+            let selectedImageName = '';
+
+            let poiId = null;
+            let editMode = false;
+
+            function setEditMode(enabled) {
+                editMode = enabled;
+                if (editToggleBtn) {
+                    editToggleBtn.textContent = enabled ? 'Hủy chỉnh sửa' : 'Thay đổi thông tin';
+                }
+
+                const readonly = !enabled;
+                if (openingHoursInput) openingHoursInput.readOnly = readonly;
+                if (phoneInput) phoneInput.readOnly = readonly;
+                if (btnPickImage) btnPickImage.disabled = !enabled;
+
+                if (saveBtn) {
+                    saveBtn.style.display = enabled ? 'flex' : 'none';
+                    saveBtn.disabled = !enabled;
+                }
+
+                if (enabled && saveMsg) {
+                    saveMsg.textContent = 'Sẵn sàng để lưu thay đổi.';
+                }
+            }
+
+            function shortenImageUrl(url) {
+                if (!url) return '';
+                try {
+                    const u = new URL(url);
+                    const last = (u.pathname || '').split('/').filter(Boolean).pop();
+                    return last || u.hostname;
+                } catch {
+                    // When user pastes a non-absolute url (demo), just trim length.
+                    const s = String(url);
+                    return s.length > 40 ? s.slice(0, 18) + '...' + s.slice(-14) : s;
+                }
+            }
+
+            function setImageUrl(url) {
+                const safe = (url ?? '').toString().trim();
+                if (storeImageInput) storeImageInput.value = safe;
+                if (storeImageDisplayInput) storeImageDisplayInput.value = selectedImageName || shortenImageUrl(safe) || 'Chưa chọn ảnh';
+                if (shopImagePreview) shopImagePreview.src = safe || '';
+            }
+
+            try {
+                const poi = await window.VendorAPI.getDefaultPoi();
+                poiId = poi.poiId ?? poi.PoiId;
+                poiId = Number(poiId);
+                if (!Number.isFinite(poiId) || poiId <= 0) {
+                    throw new Error('POIId không hợp lệ.');
+                }
+
+                const poiName = poi.poiName ?? poi.PoiName ?? '';
+                const address = poi.address ?? poi.Address ?? '';
+                const imageUrl = poi.imageUrl ?? poi.ImageUrl ?? '';
+                const opening = poi.openingHours ?? poi.OpeningHours ?? '';
+                const phone = poi.phone ?? poi.Phone ?? '';
+
+                if (subtitle) subtitle.textContent = (poiName || 'Cửa hàng') + (address ? ' • ' + address : '');
+
+                if (storeNameInput) storeNameInput.value = poiName;
+                selectedImageName = '';
+                setImageUrl(imageUrl);
+                if (openingHoursInput) openingHoursInput.value = opening;
+                if (phoneInput) phoneInput.value = phone;
+
+                if (editToggleBtn) {
+                    editToggleBtn.onclick = () => setEditMode(!editMode);
+                }
+
+                if (btnPickImage) {
+                    btnPickImage.onclick = () => {
+                        if (!editMode) return;
+                        if (shopImageFileInput) shopImageFileInput.click();
+                    };
+                }
+
+                if (shopImageFileInput) {
+                    shopImageFileInput.onchange = () => {
+                        const file = shopImageFileInput.files && shopImageFileInput.files[0];
+                        if (!file) return;
+
+                        const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+                        const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+                        const ext = (file.name || '').toLowerCase();
+                        const isAllowedByType = allowed.includes(file.type);
+                        const isAllowedByExt = ext.endsWith('.png') || ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.webp');
+
+                        if (!isAllowedByType && !isAllowedByExt) {
+                            alert('Chỉ hỗ trợ PNG/JPG/WEBP.');
+                            return;
+                        }
+                        if (file.size > maxSizeBytes) {
+                            alert('Dung lượng ảnh tối đa 5MB.');
+                            return;
+                        }
+
+                        selectedImageName = file.name;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            setImageUrl(reader.result);
+                        };
+                        reader.onerror = () => {
+                            alert('Không đọc được file ảnh. Vui lòng thử lại.');
+                        };
+                        reader.readAsDataURL(file);
+                    };
+                }
+
+                if (saveBtn) {
+                    saveBtn.onclick = async function () {
+                        if (!poiId) return;
+                        saveBtn.disabled = true;
+                        if (saveMsg) saveMsg.textContent = 'Đang lưu...';
+                        try {
+                            // Validate opening hours format: "HH:mm - HH:mm"
+                            const rawHours = (openingHoursInput?.value ?? '').toString().trim();
+                            const m = rawHours.match(/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
+                            if (!m) {
+                                saveMsg.textContent = 'Giờ mở cửa phải đúng dạng HH:mm - HH:mm (ví dụ: 07:00 - 22:00).';
+                                saveBtn.disabled = false;
+                                return;
+                            }
+                            const from = m[1];
+                            const to = m[2];
+                            const toMinutes = (t) => {
+                                const [hh, mm] = t.split(':').map(Number);
+                                return hh * 60 + mm;
+                            };
+                            if (toMinutes(from) >= toMinutes(to)) {
+                                saveMsg.textContent = 'Giờ mở cửa: giờ bắt đầu phải nhỏ hơn giờ kết thúc.';
+                                saveBtn.disabled = false;
+                                return;
+                            }
+
+                            await window.VendorAPI.updateShopDetails(
+                                poiId,
+                                openingHoursInput?.value ?? '',
+                                phoneInput?.value ?? '',
+                                storeImageInput?.value ?? ''
+                            );
+                            if (saveMsg) saveMsg.textContent = 'Lưu thành công.';
+                            setEditMode(false);
+                        } catch (err) {
+                            if (saveMsg) saveMsg.textContent = err?.message || String(err);
+                            saveBtn.disabled = false;
+                        }
+                    };
+                }
+
+                setEditMode(false);
+            } catch (err) {
+                if (subtitle) subtitle.textContent = err?.message || String(err);
+                if (saveMsg) saveMsg.textContent = 'Không thể tải thông tin cửa hàng.';
+            }
+        })();
+    </script>
 </body>
 </html>

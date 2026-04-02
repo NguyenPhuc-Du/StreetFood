@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yêu cầu âm thanh</title>
+    <link rel="stylesheet" href="/css/vendorPro.css?v=20260402a">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">🍜</div>
+                <div>
+                    <div style="font-weight:800;">StreetFood Vendor</div>
+                    <div class="muted" style="font-size:12px;">Quản lý cửa hàng</div>
+                </div>
+            </div>
+            <nav class="menu">
+                <a href="dashboardShopPage.html">Thông tin cửa hàng</a>
+                <a href="manageProductsPage.html">Quản lý món ăn</a>
+                <a class="active" href="requestScriptPage.html">Yêu cầu âm thanh</a>
+            </nav>
+            <div class="sidebar-footer">
+                <a class="btn-logout" href="#" onclick="window.VendorLogout?.(); return false;">Đăng xuất</a>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="topbar">
+                <div class="title">
+                    <h1>Gửi yêu cầu kịch bản tạo âm thanh</h1>
+                    <p>Gửi nội dung mới để admin phê duyệt và tạo lại âm thanh.</p>
+                </div>
+            </div>
+
+            <div class="card stack">
+                <div class="field">
+                    <label>POI</label>
+                    <select id="poiSelect"></select>
+                </div>
+                <div class="field">
+                    <label>Ngôn ngữ</label>
+                    <select id="languageSelect">
+                        <option value="vi" selected>Tiếng Việt (vi)</option>
+                        <option value="en">Tiếng Anh (en)</option>
+                        <option value="cn">Tiếng Trung (cn)</option>
+                        <option value="ja">Tiếng Nhật (ja)</option>
+                        <option value="ko">Tiếng Hàn (ko)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Nội dung kịch bản mới</label>
+                    <textarea id="scriptText" placeholder="Nhập nội dung kịch bản để tạo âm thanh mới..." required></textarea>
+                </div>
+                <button id="sendBtn" class="btn btn-primary" type="button">Gửi yêu cầu</button>
+                <p class="muted" id="msg"></p>
+            </div>
+        </main>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="/js/logout.js"></script>
+    <script src="/js/vendor-api.js?v=20260402a"></script>
+    <script>
+        (async function () {
+            const poiSelect = document.getElementById('poiSelect');
+            const msg = document.getElementById('msg');
+            try {
+                const pois = await window.VendorAPI.listPois();
+                poiSelect.innerHTML = (pois || []).map(p => {
+                    const id = p.poiId ?? p.PoiId;
+                    const name = p.poiName ?? p.PoiName ?? ('POI ' + id);
+                    return '<option value="' + id + '">' + name + '</option>';
+                }).join('') || '<option value="">(không có POI)</option>';
+            } catch (err) {
+                msg.textContent = err?.message || String(err);
+                return;
+            }
+
+            document.getElementById('sendBtn').onclick = async function () {
+                msg.textContent = '';
+                const poiId = parseInt(poiSelect.value, 10);
+                const lang = document.getElementById('languageSelect').value;
+                const text = document.getElementById('scriptText').value.trim();
+                if (!text) {
+                    msg.textContent = 'Nội dung kịch bản là bắt buộc.';
+                    return;
+                }
+                try {
+                    msg.textContent = 'Đang gửi yêu cầu...';
+                    await window.VendorAPI.submitScript(poiId, text, lang);
+                    msg.textContent = 'Gửi yêu cầu thành công. Đang chờ admin phê duyệt.';
+                    document.getElementById('scriptText').value = '';
+                } catch (err) {
+                    msg.textContent = err?.message || String(err);
+                }
+            };
+        })();
+    </script>
+</body>
+</html>
+

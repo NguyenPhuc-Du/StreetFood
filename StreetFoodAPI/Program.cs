@@ -25,7 +25,7 @@ builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;||
+    options.Cookie.IsEssential = true;
 });
 
 // CORS: development cho phép mọi localhost (tránh lệch cổng HTTPS/HTTP)
@@ -46,7 +46,9 @@ builder.Services.AddCors(options =>
             policy.WithOrigins(
                     "http://localhost:5191",
                     "http://localhost:5238",
+                    "http://localhost:5240",
                     "https://localhost:7238",
+                    "https://localhost:7240",
                     "http://localhost:5288",
                     "https://localhost:7288")
                 .AllowAnyHeader()
@@ -77,15 +79,15 @@ app.UseAuthorization();
 app.MapControllers();
 
 // --- 3. Cơ sở dữ liệu (script SQL trong Infrastructure/Migrations, không dùng EF MigrateAsync) ---
-// Database:ApplySqlScriptsOnStartup = true → chạy V1…V11 theo đúng thứ tự số (DbInitializer).
-// Sau khi DB đã tạo xong, đặt lại false để lần chạy sau không lỗi trùng bảng.
+// Database:ApplySqlScriptsOnStartup = true -> DbInitializer chỉ chạy các file .sql chưa có trong schema_migrations.
+// Có thể giữ true trong môi trường dev nếu muốn auto-apply migration mới khi startup.
 
 //if (app.Configuration.GetValue("Database:ApplySqlScriptsOnStartup", false))
 //{
 //    using var scope = app.Services.CreateScope();
 //    var db = scope.ServiceProvider.GetRequiredService<StreetFoodDBContext>();
 //    await DbInitializer.InitializeAsync(db);
-//    Console.WriteLine("[StreetFood] Đã chạy xong script SQL khởi tạo. Nên tắt Database:ApplySqlScriptsOnStartup nếu không tạo lại DB.");
+//    Console.WriteLine("[StreetFood] Đã xử lý migration SQL (chỉ chạy file mới).");
 //}
 
 app.Run();

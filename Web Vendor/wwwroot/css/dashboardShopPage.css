@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --primary-orange: #ff5c1a;
     --bg-light: #f8fafc;
     --text-dark: #1e293b;
@@ -46,6 +46,32 @@ body {
     background: white;
     border-radius: 6px;
     cursor: pointer;
+}
+
+/* Current HTML uses `sign-out-btn` class (keep backward compatible with `signout-btn`) */
+.sign-out-btn {
+    padding: 8px 14px;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.btn-primary {
+    background: var(--primary-orange) !important;
+    border: 0;
+    color: #fff !important;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .welcome h1 {
