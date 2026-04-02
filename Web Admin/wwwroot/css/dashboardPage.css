@@ -1,9 +1,9 @@
-﻿/* RESET & BASE STYLES */
+/* RESET & BASE STYLES */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
 body {

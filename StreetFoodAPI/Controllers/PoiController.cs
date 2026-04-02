@@ -82,12 +82,27 @@ public class PoiController : ControllerBase
 
             if (detail == null) return NotFound();
 
-            var foodsSql = @"
-                SELECT Id, PoiId, Name, Description, Price, ImageUrl
-                FROM Foods
-                WHERE PoiId = @PoiId";
+            List<FoodDto> foods;
+            try
+            {
+                var foodsSql = @"
+                    SELECT Id, PoiId, Name, Description, Price, ImageUrl
+                    FROM Foods
+                    WHERE PoiId = @PoiId
+                      AND COALESCE(IsHidden, FALSE) = FALSE";
 
-            var foods = (await conn.QueryAsync<FoodDto>(foodsSql, new { PoiId = id })).ToList();
+                foods = (await conn.QueryAsync<FoodDto>(foodsSql, new { PoiId = id })).ToList();
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42703")
+            {
+                // Migration drift safety: column missing => fallback to showing all foods.
+                var foodsSql = @"
+                    SELECT Id, PoiId, Name, Description, Price, ImageUrl
+                    FROM Foods
+                    WHERE PoiId = @PoiId";
+
+                foods = (await conn.QueryAsync<FoodDto>(foodsSql, new { PoiId = id })).ToList();
+            }
             detail.Foods = foods;
 
             return Ok(detail);

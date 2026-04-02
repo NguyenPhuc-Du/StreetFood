@@ -23,4 +23,7 @@ app.UseStaticFiles();
 app.UseAuthorization();
 app.MapControllers();
 
+// Shared login page is hosted on Web Admin.
+app.MapGet("/", () => Results.Redirect("https://localhost:7238/html/loginPage.html"));
+
 app.Run();

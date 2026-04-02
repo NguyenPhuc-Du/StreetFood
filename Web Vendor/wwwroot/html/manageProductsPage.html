@@ -1,97 +1,224 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Management</title>
-    <link rel="stylesheet" href="/css/manageProductsPage.css">
-    <link rel="stylesheet" href="/css/sideBar.css">
+    <title>Quản lý món ăn</title>
+    <link rel="stylesheet" href="/css/vendorPro.css?v=20260402a">
 </head>
 <body>
-    <div class="dashboard-container">
-        
+    <div class="layout">
         <aside class="sidebar">
-            <div class="logo">
-                <span class="logo-icon">🛒</span>
-                <h2>Mixi</h2>
+            <div class="brand">
+                <div class="brand-icon">🍜</div>
+                <div>
+                    <div style="font-weight:800;">StreetFood Vendor</div>
+                    <div class="muted" style="font-size:12px;">Quản lý cửa hàng</div>
+                </div>
             </div>
             <nav class="menu">
-                <a href="dashboardShopPage.html"><span>📊</span> Overview</a>
-                <a href="manageProductsPage.html" class="active"><span>📦</span> Products</a>
-                <a href="statisticsShopsPage.html"><span>📈</span> Statistics</a>
-                <a href="#"><span>👤</span> Profile</a>
+                <a href="dashboardShopPage.html">Thông tin cửa hàng</a>
+                <a class="active" href="manageProductsPage.html">Quản lý món ăn</a>
+                <a href="requestScriptPage.html">Yêu cầu âm thanh</a>
             </nav>
-            <div class="user-profile">
-                <div class="avatar"></div>
-                <div class="user-info">
-                    <strong>Alex Rivera</strong>
-                    <span>Shop Owner</span>
-                </div>
+            <div class="sidebar-footer">
+                <a class="btn-logout" href="#" onclick="window.VendorLogout?.(); return false;">Đăng xuất</a>
             </div>
         </aside>
 
         <main class="content">
-            <header class="content-header">
-                <div class="header-title">
-                    <h1>Product Management</h1>
-                    <p>Total 124 active products in your inventory</p>
+            <div class="topbar">
+                <div class="title">
+                    <h1>Quản lý món ăn</h1>
+                    <p id="subtitle">Đang tải danh sách món...</p>
                 </div>
-                 
-                <button class="add-btn" type="button" onclick="window.location.href='addProductPage.html'">
-                    + Add New Product
-                </button>
-            </header>
-
-            <div class="filters">
-                <button class="filter-btn active">All Items</button>
-                <button class="filter-btn">Electronics</button>
-                <button class="filter-btn">Home & Living</button>
-                <button class="filter-btn">Apparel</button>
+                <button class="btn btn-primary" id="btnOpenCreate" type="button">+ Thêm món</button>
             </div>
 
-            <div class="product-grid">
-                <div class="product-card">
-                    <div class="image-container">
-                        <img src="https://via.placeholder.com/200" alt="Headphones">
-                        <span class="badge in-stock">IN STOCK</span>
-                    </div>
-                    <div class="product-info">
-                        <h3>Elite Wireless Headphones</h3>
-                        <p class="price">$199.00</p>
-                        <p class="stock-count">📦 42 units remaining</p>
-                        <div class="card-actions">
-                            <button class="edit-btn">Edit</button>
-                            <button class="delete-btn">Delete</button>
-                        </div>
-                    </div>
-                </div>
+            <div class="products" id="productGrid"></div>
 
-                <div class="product-card">
-                    <div class="image-container">
-                        <img src="https://via.placeholder.com/200" alt="Camera">
-                        <span class="badge out-stock">OUT OF STOCK</span>
+            <div class="card" style="margin-top:14px;">
+                <div style="font-weight:700;margin-bottom:10px;" id="formTitle">Tạo món ăn mới</div>
+                <div class="field">
+                    <label>Tên món</label>
+                    <input id="foodNameInput" type="text" placeholder="Bánh mì / Phở / Cà phê...">
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label>Giá</label>
+                        <input id="foodPriceInput" type="number" min="1" step="1" placeholder="35000">
                     </div>
-                    <div class="product-info">
-                        <h3>Nexus Pro Controller</h3>
-                        <p class="price">$69.99</p>
-                        <p class="stock-count">📦 0 units remaining</p>
-                        <div class="card-actions">
-                            <button class="edit-btn">Edit</button>
-                            <button class="delete-btn">Delete</button>
-                        </div>
+                    <div class="field">
+                        <label>URL ảnh</label>
+                        <input id="foodImageInput" type="text" placeholder="https://...">
                     </div>
                 </div>
-            </div>
-
-            <div class="pagination">
-                <p>Showing 1 to 8 of 124 products</p>
-                <div class="page-numbers">
-                    <button class="page-btn active">1</button>
-                    <button class="page-btn">2</button>
-                    <button class="page-btn">3</button>
+                <div class="field">
+                    <label>Mô tả</label>
+                    <textarea id="foodDescInput" placeholder="Mô tả món ăn..."></textarea>
                 </div>
+                <div class="actions">
+                    <button class="btn btn-primary" id="btnSaveFood" type="button">Lưu</button>
+                    <button class="btn" id="btnCancelEdit" type="button" style="border:1px solid var(--line);background:#fff;">Hủy</button>
+                </div>
+                <p id="formMsg" class="muted" style="margin-top:10px;"></p>
             </div>
         </main>
     </div>
+
+    <script src="/config.js"></script>
+    <script src="/js/logout.js"></script>
+    <script src="/js/vendor-api.js?v=20260402a"></script>
+    <script>
+        (async function () {
+            let currentPoiId = null;
+            let foodsCache = [];
+            let editingId = null;
+
+            const subtitle = document.getElementById('subtitle');
+            const grid = document.getElementById('productGrid');
+            const formTitle = document.getElementById('formTitle');
+            const formMsg = document.getElementById('formMsg');
+            const nameInput = document.getElementById('foodNameInput');
+            const priceInput = document.getElementById('foodPriceInput');
+            const imageInput = document.getElementById('foodImageInput');
+            const descInput = document.getElementById('foodDescInput');
+
+            function esc(s) {
+                if (s === null || s === undefined) return '';
+                return String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+            }
+
+            function resetForm() {
+                editingId = null;
+                formTitle.textContent = 'Tạo món ăn mới';
+                nameInput.value = '';
+                priceInput.value = '';
+                imageInput.value = '';
+                descInput.value = '';
+                formMsg.textContent = '';
+            }
+
+            function fillForm(f) {
+                editingId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
+                formTitle.textContent = 'Chỉnh sửa món #' + editingId;
+                nameInput.value = f.name ?? f.Name ?? '';
+                priceInput.value = (f.price ?? f.Price ?? 0);
+                imageInput.value = f.imageUrl ?? f.ImageUrl ?? '';
+                descInput.value = f.description ?? f.Description ?? '';
+            }
+
+            async function reloadFoods() {
+                try {
+                    foodsCache = await window.VendorAPI.listFoods(currentPoiId);
+                    const count = (foodsCache || []).length;
+                    subtitle.textContent = count > 0 ? ('Đã tải ' + count + ' món ăn.') : 'Chưa có món ăn.';
+
+                    grid.innerHTML = (foodsCache || []).map(f => {
+                        const id = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
+                        const name = f.name ?? f.Name ?? '';
+                        const price = f.price ?? f.Price ?? 0;
+                        const image = (f.imageUrl ?? f.ImageUrl) || 'https://via.placeholder.com/360x220?text=Mon+an';
+                        const desc = f.description ?? f.Description ?? '';
+                        return '' +
+                            '<div class="product-card">' +
+                            '  <img class="product-image clickable" data-action="edit" data-food-id="' + id + '" src="' + esc(image) + '" alt="food">' +
+                            '  <div class="product-image-actions">' +
+                            '    <button type="button" class="btn btn-danger" data-action="hide" data-food-id="' + id + '">Ẩn món ăn</button>' +
+                            '  </div>' +
+                            '  <div class="product-body">' +
+                            '    <div class="product-title">' + esc(name) + '</div>' +
+                            '    <div class="product-price">' + Number(price).toLocaleString() + ' VND</div>' +
+                            '    <div class="product-desc">' + esc(desc).slice(0, 100) + '</div>' +
+                            '  </div>' +
+                            '</div>';
+                    }).join('') || '<div class="card muted">Chưa có món ăn.</div>';
+                } catch (err) {
+                    subtitle.textContent = err?.message || String(err);
+                    grid.innerHTML = '';
+                }
+            }
+
+            try {
+                const poi = await window.VendorAPI.getDefaultPoi();
+                currentPoiId = poi.poiId ?? poi.PoiId;
+                currentPoiId = Number(currentPoiId);
+                if (!Number.isFinite(currentPoiId) || currentPoiId <= 0) {
+                    throw new Error('POIId không hợp lệ.');
+                }
+                subtitle.textContent = (poi.poiName ?? poi.PoiName ?? 'Store') + ' • POI ' + currentPoiId;
+                await reloadFoods();
+            } catch (err) {
+                subtitle.textContent = err?.message || String(err);
+                return;
+            }
+
+            function editFood(id) {
+                const foodId = Number(id);
+                const f = foodsCache.find(x => Number(x.foodId ?? x.FoodId ?? x.id ?? x.Id) === foodId);
+                if (!f) return;
+                fillForm(f);
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }
+
+            async function hideFood(id) {
+                const foodId = Number(id);
+                if (!confirm('Ẩn món ăn này?')) return;
+                try {
+                    await window.VendorAPI.deleteFood(foodId);
+                    await reloadFoods();
+                } catch (err) {
+                    alert(err?.message || String(err));
+                }
+            }
+
+            grid.addEventListener('click', (ev) => {
+                const target = ev.target?.closest?.('[data-action][data-food-id]');
+                if (!target) return;
+                const action = target.dataset.action;
+                const id = target.dataset.foodId;
+                if (action === 'edit') return editFood(id);
+                if (action === 'hide') return hideFood(id);
+            });
+
+            document.getElementById('btnOpenCreate').onclick = function () {
+                resetForm();
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            };
+
+            document.getElementById('btnCancelEdit').onclick = function () { resetForm(); };
+
+            document.getElementById('btnSaveFood').onclick = async function () {
+                const name = nameInput.value.trim();
+                const priceRaw = (priceInput.value ?? '').toString().trim();
+                const price = Number(priceRaw);
+                const image = imageInput.value.trim();
+                const desc = descInput.value.trim();
+
+                if (!name) { formMsg.textContent = 'Tên món là bắt buộc.'; return; }
+                if (!Number.isFinite(price) || price <= 0) { formMsg.textContent = 'Giá phải lớn hơn 0.'; return; }
+                if (!Number.isFinite(currentPoiId) || currentPoiId <= 0) { formMsg.textContent = 'POIId không hợp lệ.'; return; }
+
+                try {
+                    formMsg.textContent = 'Đang lưu...';
+                    if (editingId !== null) {
+                        const foodId = Number(editingId);
+                        if (!Number.isFinite(foodId) || foodId <= 0) {
+                            formMsg.textContent = 'FoodId không hợp lệ.';
+                            return;
+                        }
+                        await window.VendorAPI.updateFood(foodId, currentPoiId, name, desc, price, image);
+                    } else {
+                        await window.VendorAPI.createFood(currentPoiId, name, desc, price, image);
+                    }
+                    resetForm();
+                    formMsg.textContent = 'Đã lưu.';
+                    await reloadFoods();
+                } catch (err) {
+                    formMsg.textContent = err?.message || String(err);
+                }
+            };
+        })();
+    </script>
 </body>
 </html>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tạo POI & tài khoản chủ quán | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260402a">
     <style>
         .steps { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         .step-pill { padding: 8px 14px; border-radius: 999px; background: #f1f5f9; font-size: 13px; font-weight: 600; color: var(--text-muted); }
@@ -26,7 +26,7 @@
             <div class="logo"><i class="fa-solid fa-utensils"></i><span>StreetFood</span></div>
             <nav class="nav-menu">
                 <ul>
-                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Dashboard</a></li>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li>
                     <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
                     <li class="active"><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
                     <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
@@ -36,7 +36,12 @@
         </aside>
         <div class="main-panel">
             <header class="top-header">
-                <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Tìm..."></div>
+                <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Tìm nhanh..."></div>
+                <div class="header-actions">
+                    <a class="btn-logout-admin" href="loginPage.html" onclick="window.AdminLogout?.(); return false;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+                    </a>
+                </div>
             </header>
             <div class="page-title-block">
                 <h1>Tạo tài khoản chủ quán & POI</h1>
@@ -96,6 +101,7 @@
     </div>
     <script src="/config.js"></script>
     <script src="/js/admin-api.js"></script>
+    <script src="/js/logout.js?v=20260402a"></script>
     <script>
         const sp = [document.getElementById('sp1'), document.getElementById('sp2'), document.getElementById('sp3')];
         const panels = [document.getElementById('w1'), document.getElementById('w2'), document.getElementById('w3')];

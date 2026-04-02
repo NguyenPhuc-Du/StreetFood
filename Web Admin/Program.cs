@@ -19,6 +19,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet("/", () => Results.Redirect("/html/dashboardPage.html"));
+app.MapGet("/", () => Results.Redirect("/html/loginPage.html"));
 
 app.Run();

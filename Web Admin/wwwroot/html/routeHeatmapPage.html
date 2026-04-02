@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tuyến đi & Heatmap | StreetFood Admin</title>
+    <title>Tuyến đi & Bản đồ nhiệt | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-    <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260402a">
     <style>
         #map { height: calc(100vh - 220px); min-height: 420px; border-radius: 12px; z-index: 1; }
         .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
         .toolbar label { font-size: 14px; color: var(--text-muted); }
+        .toggle-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; border-radius: 999px; padding: 8px 12px; background: #fff; color: #334155; cursor: pointer; }
+        .toggle-chip.active { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+        .toggle-chip input { accent-color: #2563eb; }
         .legend { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
     </style>
 </head>
@@ -20,7 +23,7 @@
             <div class="logo"><i class="fa-solid fa-utensils"></i><span>StreetFood</span></div>
             <nav class="nav-menu">
                 <ul>
-                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Dashboard</a></li>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li>
                     <li class="active"><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
                     <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
                     <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
@@ -31,6 +34,11 @@
         <div class="main-panel">
             <header class="top-header">
                 <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Tìm trên bản đồ..."></div>
+                <div class="header-actions">
+                    <a class="btn-logout-admin" href="loginPage.html" onclick="window.AdminLogout?.(); return false;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+                    </a>
+                </div>
             </header>
             <div class="page-title-block">
                 <h1>Phân tích tuyến đi & Heatmap</h1>
@@ -39,8 +47,8 @@
             <div class="card-panel">
                 <div class="toolbar">
                     <button type="button" class="btn-primary" id="btnReload"><i class="fa-solid fa-rotate"></i> Tải dữ liệu</button>
-                    <label><input type="checkbox" id="chkHeat" checked> Heatmap</label>
-                    <label><input type="checkbox" id="chkPaths" checked> Tuyến di chuyển</label>
+                    <label class="toggle-chip active" id="chipHeat"><input type="checkbox" id="chkHeat" checked> Heatmap</label>
+                    <label class="toggle-chip active" id="chipPaths"><input type="checkbox" id="chkPaths" checked> Tuyến di chuyển</label>
                 </div>
                 <div id="err" class="err"></div>
                 <div id="map"></div>
@@ -52,6 +60,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="/js/admin-api.js"></script>
+    <script src="/js/logout.js?v=20260402a"></script>
     <script>
         const errEl = document.getElementById('err');
         const map = L.map('map').setView([10.76, 106.67], 13);
@@ -124,8 +133,15 @@
         }
 
         document.getElementById('btnReload').addEventListener('click', load);
-        document.getElementById('chkHeat').addEventListener('change', load);
-        document.getElementById('chkPaths').addEventListener('change', load);
+        function syncToggleChip() {
+            const heatOn = document.getElementById('chkHeat').checked;
+            const pathsOn = document.getElementById('chkPaths').checked;
+            document.getElementById('chipHeat').classList.toggle('active', heatOn);
+            document.getElementById('chipPaths').classList.toggle('active', pathsOn);
+        }
+        document.getElementById('chkHeat').addEventListener('change', () => { syncToggleChip(); load(); });
+        document.getElementById('chkPaths').addEventListener('change', () => { syncToggleChip(); load(); });
+        syncToggleChip();
         load();
     </script>
 </body>

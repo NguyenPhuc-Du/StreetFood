@@ -1,4 +1,4 @@
--- Dữ liệu mẫu (schema V1): chỉ chèn khi chưa có dòng nào — phục vụ demo heatmap / tuyến trên bản đồ admin.
+ -- Dữ liệu mẫu (schema V1): chỉ chèn khi chưa có dòng nào — phục vụ demo heatmap / tuyến trên bản đồ admin.
 -- Tọa độ gần khu vực POI mẫu (Quận 5, TP.HCM).
 
 INSERT INTO location_logs (deviceid, latitude, longitude, createdat)

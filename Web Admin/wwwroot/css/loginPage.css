@@ -1,6 +1,8 @@
-﻿body {
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
+body {
     margin: 0;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: "Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
     background: linear-gradient(to right, #f0f2f5, #e6e9f0);
     display: flex;
     justify-content: center;
@@ -63,6 +65,40 @@ input[type="username"] {
     margin-top: 5px;
     border-radius: 8px;
     border: 1px solid #ddd;
+}
+
+.password-field {
+    position: relative;
+}
+
+.password-field input {
+    padding-right: 48px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    width: 38px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #334155;
+}
+
+.password-toggle svg {
+    width: 18px;
+    height: 18px;
+}
+
+.hidden {
+    display: none;
 }
 
 input[type="checkbox"] {

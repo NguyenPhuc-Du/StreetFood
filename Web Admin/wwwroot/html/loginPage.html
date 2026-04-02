@@ -1,43 +1,61 @@
-﻿<!doctype html>
-<html>
+<!doctype html>
+<html lang="vi">
 <head>
-    <title>Admin Login | Smart Tourism</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng nhập | StreetFood</title>
     <link rel="stylesheet" href="/css/loginPage.css" />
 </head>
 <body>
     <div class="wrapper">
         <div class="logo">
-
-            <h1 style="margin:100px">Management POI</h1>
-
+            <div class="icon">🍜</div>
+            <h1>Quản trị hệ thống</h1>
+            <p>Cổng quản lý StreetFood</p>
         </div>
 
         <div class="card">
-            <h2>Welcome back</h2>
-            <p>Please enter your details to sign in.</p>
+            <h2>Chào mừng quay lại</h2>
+            <p>Vui lòng nhập thông tin để đăng nhập.</p>
 
-            <form action="https://localhost:7207/Account/Login" method="post">
-                <label>Username</label>
-                <input name="username" type="text" placeholder="Username" required />
+            <form id="loginForm" method="post" action="#">
+                <label>Tên đăng nhập</label>
+                <input id="txtUsername" name="username" type="text" placeholder="Tên đăng nhập" autocomplete="username" required />
                 <span asp-validation-for="Username"></span>
 
-                <label>Password</label>
-                <input name="password" type="password" placeholder="••••••••" required />
+                <label>Mật khẩu</label>
+                <div class="password-field">
+                    <input id="txtPassword" name="password" type="password" placeholder="********" autocomplete="current-password" required />
+                    <button type="button" id="togglePasswordBtn" class="password-toggle" aria-label="Show password" title="Show/Hide password" style="display:none;">
+                        <svg id="eyeOpenIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg id="eyeClosedIcon" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.7 21.7 0 0 1 5.06-6.94"></path>
+                            <path d="M1 1l22 22"></path>
+                            <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.7 21.7 0 0 1-3.2 4.25"></path>
+                            <path d="M14.12 14.12a3 3 0 0 1-4.24-4.24"></path>
+                        </svg>
+                    </button>
+                </div>
                 <span asp-validation-for="Password"></span>
 
                 <div class="row">
                     <div style="display: flex; align-items: center; gap: 5px">
                         <input type="checkbox" asp-for="RememberMe" />
-                        <label>Remember me</label>
+                        <label>Ghi nhớ đăng nhập</label>
                     </div>
-                    <a href="#">Forgot password?</a>
+                    <a href="#">Quên mật khẩu?</a>
                 </div>
 
-                <button type="button" onclick="window.location.href='dashboardPage.html'">
-                    Sign in to Dashboard
+                <button type="submit">
+                    Đăng nhập
                 </button>
             </form>
         </div>
     </div>
 </body>
+    <script src="/config.js"></script>
+    <script src="/js/Login.js"></script>
 </html>
