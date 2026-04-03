@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý món ăn</title>
-    <link rel="stylesheet" href="/css/vendorPro.css?v=20260402a">
+    <link rel="stylesheet" href="/css/vendorPro.css?v=20260403b">
 </head>
 <body>
     <div class="layout">
@@ -45,13 +45,22 @@
                 </div>
                 <div class="grid-2">
                     <div class="field">
-                        <label>Giá</label>
+                        <label>Giá (VNĐ)</label>
                         <input id="foodPriceInput" type="number" min="1" step="1" placeholder="35000">
                     </div>
                     <div class="field">
-                        <label>URL ảnh</label>
-                        <input id="foodImageInput" type="text" placeholder="https://...">
+                        <label>Ảnh món (chọn từ máy)</label>
+                        <input id="foodImageUrlHidden" type="hidden" value="" />
+                        <input id="foodImageFileInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+                        <div class="image-url-row">
+                            <input id="foodImageLabel" type="text" placeholder="Chưa chọn ảnh" readonly />
+                            <button id="btnPickFoodImage" class="btn btn-outline" type="button">Chọn ảnh</button>
+                        </div>
                     </div>
+                </div>
+                <div class="field" style="margin-top:8px;">
+                    <label>Xem trước</label>
+                    <img id="foodImagePreview" alt="Ảnh món" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:#fff;display:none;" />
                 </div>
                 <div class="field">
                     <label>Mô tả</label>
@@ -68,7 +77,7 @@
 
     <script src="/config.js"></script>
     <script src="/js/logout.js"></script>
-    <script src="/js/vendor-api.js?v=20260402a"></script>
+    <script src="/js/vendor-api.js?v=20260403b"></script>
     <script>
         (async function () {
             let currentPoiId = null;
@@ -81,12 +90,42 @@
             const formMsg = document.getElementById('formMsg');
             const nameInput = document.getElementById('foodNameInput');
             const priceInput = document.getElementById('foodPriceInput');
-            const imageInput = document.getElementById('foodImageInput');
+            const foodImageUrlHidden = document.getElementById('foodImageUrlHidden');
+            const foodImageFileInput = document.getElementById('foodImageFileInput');
+            const foodImageLabel = document.getElementById('foodImageLabel');
+            const btnPickFoodImage = document.getElementById('btnPickFoodImage');
+            const foodImagePreview = document.getElementById('foodImagePreview');
             const descInput = document.getElementById('foodDescInput');
+            let pendingFoodFile = null;
+            let foodPreviewBlob = '';
 
             function esc(s) {
                 if (s === null || s === undefined) return '';
                 return String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+            }
+
+            function clearFoodPreviewBlob() {
+                if (foodPreviewBlob) {
+                    try { URL.revokeObjectURL(foodPreviewBlob); } catch (e) { /* ignore */ }
+                    foodPreviewBlob = '';
+                }
+            }
+
+            function setFoodImageUi(url, labelText) {
+                pendingFoodFile = null;
+                clearFoodPreviewBlob();
+                const u = (url || '').toString().trim();
+                if (foodImageUrlHidden) foodImageUrlHidden.value = u;
+                if (foodImageLabel) foodImageLabel.value = labelText || (u ? 'Ảnh đã lưu' : 'Chưa chọn ảnh');
+                if (foodImagePreview) {
+                    if (u) {
+                        foodImagePreview.src = u;
+                        foodImagePreview.style.display = 'block';
+                    } else {
+                        foodImagePreview.removeAttribute('src');
+                        foodImagePreview.style.display = 'none';
+                    }
+                }
             }
 
             function resetForm() {
@@ -94,9 +133,9 @@
                 formTitle.textContent = 'Tạo món ăn mới';
                 nameInput.value = '';
                 priceInput.value = '';
-                imageInput.value = '';
                 descInput.value = '';
                 formMsg.textContent = '';
+                setFoodImageUi('', '');
             }
 
             function fillForm(f) {
@@ -104,7 +143,8 @@
                 formTitle.textContent = 'Chỉnh sửa món #' + editingId;
                 nameInput.value = f.name ?? f.Name ?? '';
                 priceInput.value = (f.price ?? f.Price ?? 0);
-                imageInput.value = f.imageUrl ?? f.ImageUrl ?? '';
+                const img = (f.imageUrl ?? f.ImageUrl ?? '').trim();
+                setFoodImageUi(img, img ? 'Ảnh hiện tại trên hệ thống' : 'Chưa có ảnh');
                 descInput.value = f.description ?? f.Description ?? '';
             }
 
@@ -188,11 +228,44 @@
 
             document.getElementById('btnCancelEdit').onclick = function () { resetForm(); };
 
+            if (btnPickFoodImage) {
+                btnPickFoodImage.onclick = function () {
+                    if (foodImageFileInput) foodImageFileInput.click();
+                };
+            }
+            if (foodImageFileInput) {
+                foodImageFileInput.onchange = function () {
+                    const file = foodImageFileInput.files && foodImageFileInput.files[0];
+                    if (!file) return;
+                    const maxSizeBytes = 5 * 1024 * 1024;
+                    const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+                    const ext = (file.name || '').toLowerCase();
+                    const okType = allowed.includes(file.type);
+                    const okExt = ext.endsWith('.png') || ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.webp');
+                    if (!okType && !okExt) {
+                        alert('Chỉ hỗ trợ PNG/JPG/WEBP.');
+                        return;
+                    }
+                    if (file.size > maxSizeBytes) {
+                        alert('Dung lượng ảnh tối đa 5MB.');
+                        return;
+                    }
+                    pendingFoodFile = file;
+                    clearFoodPreviewBlob();
+                    foodPreviewBlob = URL.createObjectURL(file);
+                    if (foodImagePreview) {
+                        foodImagePreview.src = foodPreviewBlob;
+                        foodImagePreview.style.display = 'block';
+                    }
+                    if (foodImageLabel) foodImageLabel.value = file.name;
+                    foodImageFileInput.value = '';
+                };
+            }
+
             document.getElementById('btnSaveFood').onclick = async function () {
                 const name = nameInput.value.trim();
                 const priceRaw = (priceInput.value ?? '').toString().trim();
                 const price = Number(priceRaw);
-                const image = imageInput.value.trim();
                 const desc = descInput.value.trim();
 
                 if (!name) { formMsg.textContent = 'Tên món là bắt buộc.'; return; }
@@ -200,6 +273,14 @@
                 if (!Number.isFinite(currentPoiId) || currentPoiId <= 0) { formMsg.textContent = 'POIId không hợp lệ.'; return; }
 
                 try {
+                    let imageUrl = (foodImageUrlHidden?.value || '').trim();
+                    if (pendingFoodFile) {
+                        formMsg.textContent = 'Đang tải ảnh lên máy chủ...';
+                        imageUrl = await window.VendorAPI.uploadShopImage(pendingFoodFile);
+                        pendingFoodFile = null;
+                        clearFoodPreviewBlob();
+                    }
+
                     formMsg.textContent = 'Đang lưu...';
                     if (editingId !== null) {
                         const foodId = Number(editingId);
@@ -207,9 +288,9 @@
                             formMsg.textContent = 'FoodId không hợp lệ.';
                             return;
                         }
-                        await window.VendorAPI.updateFood(foodId, currentPoiId, name, desc, price, image);
+                        await window.VendorAPI.updateFood(foodId, currentPoiId, name, desc, price, imageUrl);
                     } else {
-                        await window.VendorAPI.createFood(currentPoiId, name, desc, price, image);
+                        await window.VendorAPI.createFood(currentPoiId, name, desc, price, imageUrl);
                     }
                     resetForm();
                     formMsg.textContent = 'Đã lưu.';

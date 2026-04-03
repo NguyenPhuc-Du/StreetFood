@@ -79,14 +79,50 @@
         return await vendorFetch('/api/vendor/pois/list', getCreds());
     }
 
-    async function updateShopDetails(poiId, OpeningHours, Phone, ImageUrl) {
+    async function uploadShopImage(file) {
+        const creds = getCreds();
+        if (typeof window.STREETFOOD_API !== 'string' || !window.STREETFOOD_API) {
+            throw new Error('Thiếu cấu hình STREETFOOD_API.');
+        }
+        const fd = new FormData();
+        fd.append('username', creds.Username);
+        fd.append('password', creds.Password);
+        fd.append('file', file);
+
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutMs = 60000;
+        const t = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+        let res;
+        try {
+            res = await fetch(window.STREETFOOD_API + '/api/vendor/media/upload', {
+                method: 'POST',
+                body: fd,
+                signal: controller ? controller.signal : undefined
+            });
+        } catch (e) {
+            throw new Error(e && (e.name === 'AbortError') ? 'Hết thời gian khi tải ảnh lên.' : 'Không thể kết nối API tải ảnh.');
+        } finally {
+            if (t) clearTimeout(t);
+        }
+
+        const text = await res.text();
+        if (!res.ok) throw new Error(text || res.statusText);
+        const data = text ? JSON.parse(text) : {};
+        const url = data.url || data.Url;
+        if (!url) throw new Error('API không trả về URL ảnh.');
+        return url;
+    }
+
+    async function updateShopDetails(poiId, OpeningHours, Phone, Email, ImageUrl) {
         const creds = getCreds();
         return await vendorFetch('/api/vendor/shop/update-details', {
             ...creds,
             PoiId: poiId,
             ImageUrl: ImageUrl || '',
             OpeningHours: OpeningHours,
-            Phone: Phone
+            Phone: Phone,
+            Email: Email || ''
         });
     }
 
@@ -145,6 +181,7 @@
         currentPoiId: null,
         listPois,
         getDefaultPoi,
+        uploadShopImage,
         updateShopDetails,
         listFoods,
         createFood,

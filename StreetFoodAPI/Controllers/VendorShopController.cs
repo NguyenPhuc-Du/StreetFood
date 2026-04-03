@@ -1,6 +1,7 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using StreetFood.API.Services;
 
 namespace StreetFood.API.Controllers;
 
@@ -17,21 +18,8 @@ public class VendorShopController : ControllerBase
         _logger = logger;
     }
 
-    private async Task<int?> GetVendorUserId(string username, string password)
-    {
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            return null;
-
-        await using var conn = new NpgsqlConnection(_connStr);
-        return await conn.QueryFirstOrDefaultAsync<int?>(@"
-            SELECT id
-            FROM users
-            WHERE username = @U
-              AND password = @P
-              AND role = 'vendor'
-              AND COALESCE(ishidden, FALSE) = FALSE",
-            new { U = username, P = password });
-    }
+    private Task<int?> GetVendorUserId(string username, string password) =>
+        VendorAuthHelper.GetVendorUserId(_connStr, username, password);
 
     private async Task<bool> VendorOwnsPoi(int vendorUserId, int poiId)
     {
@@ -55,6 +43,7 @@ public class VendorShopController : ControllerBase
         string? ImageUrl,
         string? OpeningHours,
         string? Phone,
+        string? Email,
         string ScriptSubmissionState);
 
     public record UpdateShopDetailsBody(
@@ -63,7 +52,8 @@ public class VendorShopController : ControllerBase
         int PoiId,
         string? ImageUrl,
         string? OpeningHours,
-        string? Phone);
+        string? Phone,
+        string? Email);
 
     public record ListFoodsBody(string Username, string Password, int PoiId);
 
@@ -116,11 +106,13 @@ public class VendorShopController : ControllerBase
                     p.ImageUrl AS ImageUrl,
                     d.OpeningHours,
                     d.Phone,
+                    usr.email AS Email,
                     COALESCE(p.scriptsubmissionstate, 'awaiting_vendor') AS ScriptSubmissionState
                 FROM restaurant_owners o
                 INNER JOIN POIs p ON o.poiid = p.Id
                 INNER JOIN POI_Translations t ON t.PoiId = p.Id AND t.LanguageCode = 'vi'
                 LEFT JOIN Restaurant_Details d ON d.PoiId = p.Id
+                INNER JOIN users usr ON usr.id = o.userid
                 WHERE o.userid = @U
                 ORDER BY p.Id DESC",
                 new { U = userId.Value });
@@ -142,6 +134,15 @@ public class VendorShopController : ControllerBase
         if (userId == null) return Unauthorized("Sai tài khoản hoặc tài khoản đã bị ẩn.");
         if (!await VendorOwnsPoi(userId.Value, body.PoiId)) return BadRequest("Bạn không quản lý POI này.");
 
+        if (!VendorFieldValidation.IsValidOpeningHours(body.OpeningHours))
+            return BadRequest("Giờ mở cửa phải đúng dạng HH:mm - HH:mm (ví dụ 07:00 - 22:00) và giờ mở phải trước giờ đóng.");
+        if (!VendorFieldValidation.IsValidPhone(body.Phone))
+            return BadRequest("Số điện thoại không đúng định dạng VN (vd: 0912345678 hoặc +84912345678).");
+        if (!VendorFieldValidation.IsValidEmail(body.Email))
+            return BadRequest("Email không đúng định dạng.");
+        if (!string.IsNullOrWhiteSpace(body.ImageUrl) && body.ImageUrl.TrimStart().StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("Không lưu ảnh dạng base64. Hãy tải ảnh từ máy lên máy chủ (Chọn ảnh).");
+
         try
         {
             await using var conn = new NpgsqlConnection(_connStr);
@@ -155,6 +156,19 @@ public class VendorShopController : ControllerBase
                     ImageUrl = body.ImageUrl ?? ""
                 });
 
+            var phone = VendorFieldValidation.NormalizePhone(body.Phone);
+            var email = (body.Email ?? "").Trim();
+
+            await conn.ExecuteAsync(@"
+                UPDATE users
+                SET email = @Email
+                WHERE id = @UserId",
+                new
+                {
+                    UserId = userId.Value,
+                    Email = string.IsNullOrEmpty(email) ? (string?)null : email
+                });
+
             await conn.ExecuteAsync(@"
                 INSERT INTO Restaurant_Details (PoiId, OpeningHours, Phone)
                 VALUES (@PoiId, @OpeningHours, @Phone)
@@ -164,8 +178,8 @@ public class VendorShopController : ControllerBase
                 new
                 {
                     PoiId = body.PoiId,
-                    OpeningHours = body.OpeningHours ?? "",
-                    Phone = body.Phone ?? ""
+                    OpeningHours = (body.OpeningHours ?? "").Trim(),
+                    Phone = phone
                 });
             return Ok(new { message = "Đã cập nhật thông tin cửa hàng." });
         }
@@ -239,6 +253,8 @@ public class VendorShopController : ControllerBase
         if (userId == null) return Unauthorized("Sai tài khoản hoặc tài khoản đã bị ẩn.");
         if (!await VendorOwnsPoi(userId.Value, body.PoiId)) return BadRequest("Bạn không quản lý POI này.");
         if (string.IsNullOrWhiteSpace(body.Name)) return BadRequest("Cần tên món ăn.");
+        if (!string.IsNullOrWhiteSpace(body.ImageUrl) && body.ImageUrl.TrimStart().StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("Không gửi ảnh base64. Hãy chọn ảnh từ máy để tải lên.");
 
         try
         {
@@ -274,6 +290,8 @@ public class VendorShopController : ControllerBase
         if (userId == null) return Unauthorized("Sai tài khoản hoặc tài khoản đã bị ẩn.");
 
         if (string.IsNullOrWhiteSpace(body.Name)) return BadRequest("Cần tên món ăn.");
+        if (!string.IsNullOrWhiteSpace(body.ImageUrl) && body.ImageUrl.TrimStart().StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("Không gửi ảnh base64. Hãy chọn ảnh từ máy để tải lên.");
 
         try
         {

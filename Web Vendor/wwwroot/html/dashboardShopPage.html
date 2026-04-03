@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý quán - Thông tin cửa hàng</title>
-    <link rel="stylesheet" href="/css/vendorPro.css?v=20260402a">
+    <link rel="stylesheet" href="/css/vendorPro.css?v=20260403b">
 </head>
 <body>
     <div class="layout">
@@ -52,22 +52,29 @@
                     <input id="storeImageInput" type="hidden" />
                     <input id="shopImageFileInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none;" />
                     <div class="field">
-                        <label>Ảnh cửa hàng (URL/ảnh đã chọn)</label>
+                        <label>Ảnh cửa hàng (chọn từ máy tính)</label>
                         <div class="image-url-row">
-                            <input id="storeImageDisplayInput" type="text" placeholder="Chưa chọn ảnh" readonly />
+                            <input id="storeImageDisplayInput" type="text" placeholder="Chưa chọn ảnh mới" readonly />
                             <button id="btnPickImage" class="btn btn-outline" type="button" disabled>Chọn ảnh</button>
                         </div>
+                        <p class="muted" style="font-size:12px;margin-top:6px;">Chỉ tải file JPG, PNG hoặc WEBP (tối đa 5MB). Không nhập URL.</p>
                     </div>
 
                     <div class="grid-2">
                         <div class="field">
                             <label>Giờ mở cửa</label>
-                            <input id="openingHoursInput" type="text" placeholder="07:00 - 22:00" readonly>
+                            <input id="openingHoursInput" type="text" placeholder="07:00 - 22:00" readonly
+                                   title="Định dạng: HH:mm - HH:mm" autocomplete="off">
                         </div>
                         <div class="field">
                             <label>Số điện thoại</label>
-                            <input id="phoneInput" type="text" placeholder="090xxxxxxx" readonly>
+                            <input id="phoneInput" type="tel" inputmode="numeric" placeholder="0912345678 hoặc +84912345678" readonly
+                                   title="Số di động VN: 0xxxxxxxxx hoặc +84xxxxxxxxx" autocomplete="tel">
                         </div>
+                    </div>
+                    <div class="field">
+                        <label>Email (tài khoản đăng nhập)</label>
+                        <input id="emailInput" type="email" inputmode="email" placeholder="ten@gmail.com" readonly autocomplete="email">
                     </div>
 
                     <button id="saveBtn" class="btn btn-save-blue" type="button" disabled style="display:none;">
@@ -82,7 +89,7 @@
 
     <script src="/config.js"></script>
     <script src="/js/logout.js"></script>
-    <script src="/js/vendor-api.js?v=20260402a"></script>
+    <script src="/js/vendor-api.js?v=20260403b"></script>
     <script>
         (async function () {
             const subtitle = document.getElementById('subtitle');
@@ -96,16 +103,64 @@
             const storeImageInput = document.getElementById('storeImageInput');
             const openingHoursInput = document.getElementById('openingHoursInput');
             const phoneInput = document.getElementById('phoneInput');
+            const emailInput = document.getElementById('emailInput');
             const storeImageDisplayInput = document.getElementById('storeImageDisplayInput');
             const btnPickImage = document.getElementById('btnPickImage');
             const shopImageFileInput = document.getElementById('shopImageFileInput');
 
-            let selectedImageName = '';
+            let serverImageUrl = '';
+            let pendingFile = null;
+            let previewBlobUrl = '';
+            let snapshot = { openingHours: '', phone: '', email: '', imageUrl: '' };
 
             let poiId = null;
             let editMode = false;
 
-            function setEditMode(enabled) {
+            function shortenImageUrl(url) {
+                if (!url) return '';
+                try {
+                    const u = new URL(url);
+                    const last = (u.pathname || '').split('/').filter(Boolean).pop();
+                    return last || u.hostname;
+                } catch {
+                    const s = String(url);
+                    return s.length > 40 ? s.slice(0, 18) + '...' + s.slice(-14) : s;
+                }
+            }
+
+            function setImageRow(url, displayLabel) {
+                serverImageUrl = (url || '').toString().trim();
+                if (storeImageInput) storeImageInput.value = serverImageUrl;
+                if (storeImageDisplayInput) storeImageDisplayInput.value = displayLabel || (serverImageUrl ? shortenImageUrl(serverImageUrl) : 'Chưa có ảnh trên hệ thống');
+                if (shopImagePreview) shopImagePreview.src = serverImageUrl || '';
+            }
+
+            function clearPreviewBlob() {
+                if (previewBlobUrl) {
+                    try { URL.revokeObjectURL(previewBlobUrl); } catch (e) { /* ignore */ }
+                    previewBlobUrl = '';
+                }
+            }
+
+            function setEditMode(enabled, restoreFromSnapshot) {
+                if (enabled) {
+                    snapshot = {
+                        openingHours: openingHoursInput ? openingHoursInput.value : '',
+                        phone: phoneInput ? phoneInput.value : '',
+                        email: emailInput ? emailInput.value : '',
+                        imageUrl: serverImageUrl
+                    };
+                    pendingFile = null;
+                } else if (editMode && restoreFromSnapshot) {
+                    if (openingHoursInput) openingHoursInput.value = snapshot.openingHours;
+                    if (phoneInput) phoneInput.value = snapshot.phone;
+                    if (emailInput) emailInput.value = snapshot.email;
+                    pendingFile = null;
+                    clearPreviewBlob();
+                    serverImageUrl = snapshot.imageUrl;
+                    setImageRow(serverImageUrl, serverImageUrl ? shortenImageUrl(serverImageUrl) : 'Chưa có ảnh trên hệ thống');
+                }
+
                 editMode = enabled;
                 if (editToggleBtn) {
                     editToggleBtn.textContent = enabled ? 'Hủy chỉnh sửa' : 'Thay đổi thông tin';
@@ -114,6 +169,7 @@
                 const readonly = !enabled;
                 if (openingHoursInput) openingHoursInput.readOnly = readonly;
                 if (phoneInput) phoneInput.readOnly = readonly;
+                if (emailInput) emailInput.readOnly = readonly;
                 if (btnPickImage) btnPickImage.disabled = !enabled;
 
                 if (saveBtn) {
@@ -126,24 +182,15 @@
                 }
             }
 
-            function shortenImageUrl(url) {
-                if (!url) return '';
-                try {
-                    const u = new URL(url);
-                    const last = (u.pathname || '').split('/').filter(Boolean).pop();
-                    return last || u.hostname;
-                } catch {
-                    // When user pastes a non-absolute url (demo), just trim length.
-                    const s = String(url);
-                    return s.length > 40 ? s.slice(0, 18) + '...' + s.slice(-14) : s;
-                }
+            function isValidVnPhone(s) {
+                const t = (s || '').trim().replace(/\s+/g, '').replace(/-/g, '');
+                if (!t) return true;
+                return /^(?:\+84|0)(3|5|7|8|9)[0-9]{8}$/.test(t);
             }
 
-            function setImageUrl(url) {
-                const safe = (url ?? '').toString().trim();
-                if (storeImageInput) storeImageInput.value = safe;
-                if (storeImageDisplayInput) storeImageDisplayInput.value = selectedImageName || shortenImageUrl(safe) || 'Chưa chọn ảnh';
-                if (shopImagePreview) shopImagePreview.src = safe || '';
+            function isValidEmail(s) {
+                if (!s || !String(s).trim()) return true;
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s).trim());
             }
 
             try {
@@ -159,17 +206,22 @@
                 const imageUrl = poi.imageUrl ?? poi.ImageUrl ?? '';
                 const opening = poi.openingHours ?? poi.OpeningHours ?? '';
                 const phone = poi.phone ?? poi.Phone ?? '';
+                const email = poi.email ?? poi.Email ?? '';
 
                 if (subtitle) subtitle.textContent = (poiName || 'Cửa hàng') + (address ? ' • ' + address : '');
 
                 if (storeNameInput) storeNameInput.value = poiName;
-                selectedImageName = '';
-                setImageUrl(imageUrl);
                 if (openingHoursInput) openingHoursInput.value = opening;
                 if (phoneInput) phoneInput.value = phone;
+                if (emailInput) emailInput.value = email;
+                pendingFile = null;
+                setImageRow(imageUrl, imageUrl ? shortenImageUrl(imageUrl) : 'Chưa có ảnh trên hệ thống');
 
                 if (editToggleBtn) {
-                    editToggleBtn.onclick = () => setEditMode(!editMode);
+                    editToggleBtn.onclick = () => {
+                        const next = !editMode;
+                        setEditMode(next, next === false && editMode === true);
+                    };
                 }
 
                 if (btnPickImage) {
@@ -184,7 +236,7 @@
                         const file = shopImageFileInput.files && shopImageFileInput.files[0];
                         if (!file) return;
 
-                        const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+                        const maxSizeBytes = 5 * 1024 * 1024;
                         const allowed = ['image/png', 'image/jpeg', 'image/webp'];
                         const ext = (file.name || '').toLowerCase();
                         const isAllowedByType = allowed.includes(file.type);
@@ -199,15 +251,12 @@
                             return;
                         }
 
-                        selectedImageName = file.name;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                            setImageUrl(reader.result);
-                        };
-                        reader.onerror = () => {
-                            alert('Không đọc được file ảnh. Vui lòng thử lại.');
-                        };
-                        reader.readAsDataURL(file);
+                        pendingFile = file;
+                        clearPreviewBlob();
+                        previewBlobUrl = URL.createObjectURL(file);
+                        if (shopImagePreview) shopImagePreview.src = previewBlobUrl;
+                        if (storeImageDisplayInput) storeImageDisplayInput.value = file.name;
+                        shopImageFileInput.value = '';
                     };
                 }
 
@@ -217,7 +266,6 @@
                         saveBtn.disabled = true;
                         if (saveMsg) saveMsg.textContent = 'Đang lưu...';
                         try {
-                            // Validate opening hours format: "HH:mm - HH:mm"
                             const rawHours = (openingHoursInput?.value ?? '').toString().trim();
                             const m = rawHours.match(/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
                             if (!m) {
@@ -237,14 +285,39 @@
                                 return;
                             }
 
+                            const phoneRaw = (phoneInput?.value ?? '').trim();
+                            if (!isValidVnPhone(phoneRaw)) {
+                                saveMsg.textContent = 'Số điện thoại không đúng (VD: 0912345678 hoặc +84912345678).';
+                                saveBtn.disabled = false;
+                                return;
+                            }
+                            const emailRaw = (emailInput?.value ?? '').trim();
+                            if (!isValidEmail(emailRaw)) {
+                                saveMsg.textContent = 'Email không đúng định dạng.';
+                                saveBtn.disabled = false;
+                                return;
+                            }
+
+                            let imageUrlFinal = serverImageUrl;
+                            if (pendingFile) {
+                                if (saveMsg) saveMsg.textContent = 'Đang tải ảnh lên máy chủ...';
+                                imageUrlFinal = await window.VendorAPI.uploadShopImage(pendingFile);
+                                pendingFile = null;
+                                clearPreviewBlob();
+                            }
+
+                            if (saveMsg) saveMsg.textContent = 'Đang lưu thông tin...';
                             await window.VendorAPI.updateShopDetails(
                                 poiId,
                                 openingHoursInput?.value ?? '',
                                 phoneInput?.value ?? '',
-                                storeImageInput?.value ?? ''
+                                emailRaw,
+                                imageUrlFinal
                             );
+                            serverImageUrl = imageUrlFinal;
+                            setImageRow(serverImageUrl, serverImageUrl ? shortenImageUrl(serverImageUrl) : 'Chưa có ảnh trên hệ thống');
                             if (saveMsg) saveMsg.textContent = 'Lưu thành công.';
-                            setEditMode(false);
+                            setEditMode(false, false);
                         } catch (err) {
                             if (saveMsg) saveMsg.textContent = err?.message || String(err);
                             saveBtn.disabled = false;
@@ -252,7 +325,7 @@
                     };
                 }
 
-                setEditMode(false);
+                setEditMode(false, false);
             } catch (err) {
                 if (subtitle) subtitle.textContent = err?.message || String(err);
                 if (saveMsg) saveMsg.textContent = 'Không thể tải thông tin cửa hàng.';
