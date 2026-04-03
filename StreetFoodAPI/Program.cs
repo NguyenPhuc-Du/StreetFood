@@ -7,6 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 // --- 1. ĐĂNG KÝ SERVICES (DI Container) ---
 
 builder.Services.AddControllers();
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 5_242_880;
+});
 
 builder.Services.AddHttpClient<AzureTranslatorClient>();
 builder.Services.AddScoped<AzureSpeechTtsService>();
@@ -78,10 +82,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// --- 3. Cơ sở dữ liệu (script SQL trong Infrastructure/Migrations, không dùng EF MigrateAsync) ---
-// Database:ApplySqlScriptsOnStartup = true -> DbInitializer chỉ chạy các file .sql chưa có trong schema_migrations.
-// Có thể giữ true trong môi trường dev nếu muốn auto-apply migration mới khi startup.
-
 //if (app.Configuration.GetValue("Database:ApplySqlScriptsOnStartup", false))
 //{
 //    using var scope = app.Services.CreateScope();
@@ -90,4 +90,4 @@ app.MapControllers();
 //    Console.WriteLine("[StreetFood] Đã xử lý migration SQL (chỉ chạy file mới).");
 //}
 
-app.Run();
+await app.RunAsync();

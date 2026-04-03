@@ -8,11 +8,13 @@
 
     function syncToggleIcon() {
         const isPasswordHidden = passwordInput.type === 'password';
+        // Mật khẩu đang ẩn (dạng •••): icon mắt mở = bấm để hiện. Đang hiện chữ: icon gạch = bấm để ẩn.
         if (eyeOpenIcon && eyeClosedIcon) {
             eyeOpenIcon.classList.toggle('hidden', !isPasswordHidden);
             eyeClosedIcon.classList.toggle('hidden', isPasswordHidden);
         }
-        toggleBtn.setAttribute('aria-label', isPasswordHidden ? 'Show password' : 'Hide password');
+        toggleBtn.setAttribute('aria-label', isPasswordHidden ? 'Hiện mật khẩu' : 'Ẩn mật khẩu');
+        toggleBtn.setAttribute('title', isPasswordHidden ? 'Hiện mật khẩu' : 'Ẩn mật khẩu');
     }
 
     function syncToggleButtonVisibility() {
