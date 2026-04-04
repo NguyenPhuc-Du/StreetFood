@@ -1,4 +1,5 @@
 using CommunityToolkit.Maui;
+using ZXing.Net.Maui.Controls;
 #if ANDROID
 using Android.Gms.Maps;
 #endif
@@ -12,6 +13,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
+            .UseBarcodeReader()
             .UseMauiMaps()
             .UseMauiCommunityToolkitMediaElement(true)
             .ConfigureFonts(fonts =>

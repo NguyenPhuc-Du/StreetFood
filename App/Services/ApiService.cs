@@ -2,7 +2,6 @@ using App.Models;
 using System.Globalization;
 using System.Net.Http.Headers;
 using Microsoft.Maui.Storage;
-using Microsoft.Maui.Networking;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -10,8 +9,12 @@ namespace App.Services;
 
 public class ApiService
 {
-    private readonly HttpClient client = new();
-    private readonly string apiUrl = "http://192.168.1.11:5246/api/poi";
+    /// <summary>Một instance dùng chung để tái sử dụng kết nối HTTP và cache.</summary>
+    public static ApiService Instance { get; } = new();
+
+    private readonly HttpClient client = new() { Timeout = TimeSpan.FromSeconds(45) };
+
+    static string ApiPoiUrl => $"{ApiConfig.GetBaseUrl()}/api/poi";
     private const string LanguageKey = "appLanguage";
     private static readonly LocalCacheService _cache = new();
     private static bool _cacheInitialized;
@@ -28,7 +31,7 @@ public class ApiService
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
+                var request = new HttpRequestMessage(HttpMethod.Get, ApiPoiUrl);
                 request.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue(preferredLanguage));
 
                 var response = await client.SendAsync(request);
@@ -55,7 +58,7 @@ public class ApiService
         {
             try
             {
-                var url = $"{apiUrl}/{poiId}";
+                var url = $"{ApiPoiUrl}/{poiId}";
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue(preferredLanguage));
 
@@ -81,15 +84,12 @@ public class ApiService
         try
         {
             var log = new { DeviceId = deviceId, Latitude = lat, Longitude = lng };
-            await client.PostAsJsonAsync($"{apiUrl}/log", log);
+            await client.PostAsJsonAsync($"{ApiPoiUrl}/log", log);
         }
         catch { }
     }
 
-    private static bool IsOnline()
-    {
-        return Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
-    }
+    private static bool IsOnline() => NetworkReachability.HasUsableConnection;
 
     private static async Task EnsureCacheInitializedAsync()
     {

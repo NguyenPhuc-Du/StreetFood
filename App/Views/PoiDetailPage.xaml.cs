@@ -6,7 +6,6 @@ using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Maps;
 using Microsoft.Maui.Storage;
-using Microsoft.Maui.Networking;
 using Microsoft.Maui.Media;
 
 namespace App.Views;
@@ -15,7 +14,7 @@ namespace App.Views;
 public partial class PoiDetailPage : ContentPage
 {
     const string PinnedPoiKey = "pinnedPoiId";
-    private readonly ApiService _api = new();
+    private readonly ApiService _api = ApiService.Instance;
     private readonly IDispatcherTimer _audioTimer;
     private bool _isSeeking;
     private PoiDetail? _currentDetail;
@@ -164,7 +163,7 @@ public partial class PoiDetailPage : ContentPage
         if (_currentDetail == null) return;
 
         StopOfflineSpeech();
-        var hasInternet = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+        var hasInternet = NetworkReachability.HasUsableConnection;
         if (hasInternet && !string.IsNullOrWhiteSpace(_currentDetail.AudioUrl))
         {
             AudioPlayer?.Play();

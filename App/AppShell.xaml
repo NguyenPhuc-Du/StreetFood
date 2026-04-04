@@ -5,7 +5,7 @@
     x:Class="App.AppShell"
     Shell.NavBarIsVisible="False"
     Shell.BackgroundColor="White"
-    Shell.ForegroundColor="#2f7f34">
+    Shell.ForegroundColor="{StaticResource Primary}">
 
     <TabBar>
         <Tab Title="Bản đồ" Icon="ic_map.svg">

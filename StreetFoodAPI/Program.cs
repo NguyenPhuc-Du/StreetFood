@@ -68,7 +68,9 @@ var app = builder.Build();
 // Kích hoạt giao diện Swagger khi chạy ở môi trường Development
 
 
-app.UseHttpsRedirection();
+// App MAUI gọi http://IP-LAN:5191 — redirect HTTPS thường đẩy sang cổng 443 và làm lỗi kết nối trên điện thoại.
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
@@ -81,6 +83,9 @@ app.UseSession();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Kiểm tra nhanh từ trình duyệt điện thoại: http://[IP-PC]:5191/api/health
+app.MapGet("/api/health", () => Results.Text("ok", "text/plain"));
 
 //if (app.Configuration.GetValue("Database:ApplySqlScriptsOnStartup", false))
 //{

@@ -4,7 +4,6 @@ using CommunityToolkit.Maui.Views;
 using Microsoft.Maui.Storage;
 using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Maps;
-using Microsoft.Maui.Networking;
 using Microsoft.Maui.Media;
 using System.Threading;
 
@@ -13,7 +12,7 @@ namespace App.Views;
 public partial class HomePage : ContentPage
 {
     const string PinnedPoiKey = "pinnedPoiId";
-    ApiService api = new();
+    readonly ApiService api = ApiService.Instance;
     List<Poi> poiList = new();
     List<Poi> filteredPoiList = new();
     CancellationTokenSource? _cts;
@@ -60,7 +59,7 @@ public partial class HomePage : ContentPage
         {
             while (!_cts.Token.IsCancellationRequested)
             {
-                var loc = await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Best), _cts.Token);
+                var loc = await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Medium), _cts.Token);
                 if (loc != null)
                 {
                     _currentUserLocation = loc;
@@ -203,7 +202,7 @@ public partial class HomePage : ContentPage
     private async Task PlayPoiAudioAsync(Poi poi)
     {
         StopOfflineSpeech();
-        var hasInternet = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+        var hasInternet = NetworkReachability.HasUsableConnection;
         if (hasInternet && !string.IsNullOrWhiteSpace(poi.AudioUrl))
         {
             AudioPlayer.Stop();
@@ -303,9 +302,9 @@ public partial class HomePage : ContentPage
             {
                 Center = poiLocation,
                 Radius = Distance.FromMeters(50),
-                StrokeColor = Color.FromArgb("#E53935"),
+                StrokeColor = Color.FromArgb("#2E7D32"),
                 StrokeWidth = 2,
-                FillColor = Color.FromRgba(229, 57, 53, 45)
+                FillColor = Color.FromRgba(46, 125, 50, 40)
             });
         }
     }

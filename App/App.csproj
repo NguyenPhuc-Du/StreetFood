@@ -83,9 +83,9 @@
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
 
-		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Splash\splash.png" Color="#FFFFFF" BaseSize="512,256" />
-		
+		<!-- Splash MAUI/iOS/Windows: nền app + icon (thay splash .NET mặc định) -->
+		<MauiSplashScreen Include="Resources\AppIcon\appicon.svg" Color="#F5FAF6" BaseSize="256,256" />
+
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
 		
@@ -107,14 +107,11 @@
 		<PackageReference Include="Microsoft.Maui.Controls.Maps" Version="10.0.50" />
 		<PackageReference Include="Plugin.Maui.Audio" Version="4.0.0" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+		<PackageReference Include="ZXing.Net.Maui.Controls" Version="0.7.4" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <Folder Include="Presenters\" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <MauiImage Include="Resources\Splash\splash.png" />
 	</ItemGroup>
 
 	<ItemGroup>
