@@ -4,18 +4,18 @@
              x:Class="App.Views.PoiDetailPage"
              NavigationPage.HasNavigationBar="False">
 
-    <Grid RowDefinitions="64,*" BackgroundColor="#F2F6F3">
-        <Grid Grid.Row="0" Padding="18,12" BackgroundColor="#F2F6F3">
+    <Grid RowDefinitions="64,*" BackgroundColor="{StaticResource PageBackground}">
+        <Grid Grid.Row="0" Padding="18,12" BackgroundColor="{StaticResource PageBackground}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <Border StrokeShape="RoundRectangle 14" Stroke="#DCE5DE" BackgroundColor="White" Padding="0" HeightRequest="42" WidthRequest="42" VerticalOptions="Center">
+            <Border StrokeShape="RoundRectangle 14" Stroke="{StaticResource BorderSubtle}" BackgroundColor="{StaticResource SurfaceCard}" Padding="0" HeightRequest="42" WidthRequest="42" VerticalOptions="Center">
                 <Button Text="←" Clicked="OnBackClicked"
                         BackgroundColor="Transparent"
-                        TextColor="#1B5E20"
+                        TextColor="{StaticResource Primary}"
                         FontSize="18"
                         Padding="0"
                         CornerRadius="12"/>
@@ -26,7 +26,7 @@
                    FontAttributes="Bold"
                    HorizontalTextAlignment="Center"
                    VerticalTextAlignment="Center"
-                   TextColor="#2f7f34"
+                   TextColor="{StaticResource Primary}"
                    FontSize="18"/>
 
             <Border Grid.Column="2" WidthRequest="42" Opacity="0"/>
@@ -44,65 +44,65 @@
                            Source="logo.png"/>
                 </Border>
 
-                <Label x:Name="PlaceName" FontAttributes="Bold" FontSize="30" TextColor="#0F172A"/>
+                <Label x:Name="PlaceName" FontAttributes="Bold" FontSize="30" TextColor="{StaticResource TextPrimary}"/>
 
-                <Border StrokeShape="RoundRectangle 20" Padding="14" BackgroundColor="White" Stroke="#E1EAE2">
+                <Border StrokeShape="RoundRectangle 20" Padding="14" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
                     <VerticalStackLayout Spacing="6">
-                        <Label x:Name="PlaceAddress" FontSize="14" TextColor="#334155" />
-                        <Label x:Name="PlacePhone" FontSize="14" TextColor="#334155" />
-                        <Label x:Name="PlaceHours" FontSize="14" TextColor="#334155" />
+                        <Label x:Name="PlaceAddress" FontSize="14" TextColor="{StaticResource TextSecondary}" />
+                        <Label x:Name="PlacePhone" FontSize="14" TextColor="{StaticResource TextSecondary}" />
+                        <Label x:Name="PlaceHours" FontSize="14" TextColor="{StaticResource TextSecondary}" />
                     </VerticalStackLayout>
                 </Border>
 
-                <Label Text="Các món ăn" FontSize="22" FontAttributes="Bold" TextColor="#0F172A"/>
+                <Label Text="Các món ăn" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}"/>
 
                 <CollectionView ItemsSource="{Binding Foods}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Border StrokeShape="RoundRectangle 16" Padding="12" BackgroundColor="White" Stroke="#E3E8E4" Margin="0,0,0,10">
+                            <Border StrokeShape="RoundRectangle 16" Padding="12" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}" Margin="0,0,0,10">
                                 <Grid ColumnDefinitions="84,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12">
                                     <Border Grid.RowSpan="3" StrokeThickness="0" StrokeShape="RoundRectangle 14">
                                         <Image Source="{Binding ImageUrl}" Aspect="AspectFill" HeightRequest="84" WidthRequest="84"/>
                                     </Border>
-                                    <Label Grid.Column="1" Text="{Binding Name}" FontAttributes="Bold" FontSize="15" TextColor="#111827"/>
-                                    <Label Grid.Column="1" Grid.Row="1" Text="{Binding Description}" FontSize="12" TextColor="#64748B" LineBreakMode="TailTruncation"/>
+                                    <Label Grid.Column="1" Text="{Binding Name}" FontAttributes="Bold" FontSize="15" TextColor="{StaticResource TextPrimary}"/>
+                                    <Label Grid.Column="1" Grid.Row="1" Text="{Binding Description}" FontSize="12" TextColor="{StaticResource TextMuted}" LineBreakMode="TailTruncation"/>
                                     <Label Grid.Column="1" Grid.Row="2"
                                            Text="{Binding Price, StringFormat='{0:N0} VND'}"
                                            FontAttributes="Bold"
                                            FontSize="15"
-                                           TextColor="#2E7D32"/>
+                                           TextColor="{StaticResource Primary}"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
-                <Border StrokeShape="RoundRectangle 20" Padding="14" BackgroundColor="White" Stroke="#E1EAE2">
+                <Border StrokeShape="RoundRectangle 20" Padding="14" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
                     <VerticalStackLayout Spacing="10">
-                        <Label Text="Audio cửa hàng" FontAttributes="Bold" FontSize="17" TextColor="#0F172A"/>
+                        <Label Text="Audio cửa hàng" FontAttributes="Bold" FontSize="17" TextColor="{StaticResource TextPrimary}"/>
 
                         <toolkit:MediaElement x:Name="AudioPlayer"
                                                ShouldAutoPlay="False"
                                                IsVisible="False"/>
 
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center">
-                            <Label x:Name="CurrentTimeLabel" Text="00:00" FontSize="12" TextColor="#64748B"/>
+                            <Label x:Name="CurrentTimeLabel" Text="00:00" FontSize="12" TextColor="{StaticResource TextMuted}"/>
                             <Slider Grid.Column="1"
                                     x:Name="AudioProgressSlider"
                                     Minimum="0"
                                     Maximum="1"
                                     Value="0"
                                     ValueChanged="OnAudioProgressSliderValueChanged"
-                                    ThumbColor="#2E7D32"
-                                    MinimumTrackColor="#2E7D32"
-                                    MaximumTrackColor="#D6E2D8"/>
-                            <Label Grid.Column="2" x:Name="TotalTimeLabel" Text="00:00" FontSize="12" TextColor="#64748B"/>
+                                    ThumbColor="{StaticResource Primary}"
+                                    MinimumTrackColor="{StaticResource Primary}"
+                                    MaximumTrackColor="{StaticResource Gray200}"/>
+                            <Label Grid.Column="2" x:Name="TotalTimeLabel" Text="00:00" FontSize="12" TextColor="{StaticResource TextMuted}"/>
                         </Grid>
 
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                             <Button Grid.Column="0"
                                     Text="Phát"
-                                    BackgroundColor="#2E7D32"
+                                    BackgroundColor="{StaticResource Primary}"
                                     TextColor="White"
                                     CornerRadius="14"
                                     HorizontalOptions="Fill"
@@ -110,8 +110,8 @@
                                     Clicked="OnPlayClicked"/>
                             <Button Grid.Column="1"
                                     Text="Tạm dừng"
-                                    BackgroundColor="#E8F5E9"
-                                    TextColor="#2E7D32"
+                                    BackgroundColor="{StaticResource Secondary}"
+                                    TextColor="{StaticResource SecondaryDarkText}"
                                     CornerRadius="14"
                                     HorizontalOptions="Fill"
                                     Padding="18,10"
@@ -122,7 +122,7 @@
 
                 <Button x:Name="NavigateButton"
                         Text="Đi đến quán"
-                        BackgroundColor="#2E7D32"
+                        BackgroundColor="{StaticResource Primary}"
                         TextColor="White"
                         FontAttributes="Bold"
                         HeightRequest="48"

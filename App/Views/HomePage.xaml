@@ -19,10 +19,10 @@
             </Grid.ColumnDefinitions>
 
             <Border StrokeShape="RoundRectangle 22"
-                    BackgroundColor="White"
+                    BackgroundColor="{StaticResource SurfaceCard}"
                     Padding="14,8">
                 <Border.Stroke>
-                    <SolidColorBrush Color="#E7ECE8"/>
+                    <SolidColorBrush Color="{StaticResource BorderSubtle}"/>
                 </Border.Stroke>
                 <Border.Shadow>
                     <Shadow Brush="#101828" Offset="0,4" Radius="16" Opacity="0.15"/>
@@ -34,7 +34,9 @@
                            Placeholder="Tìm quán ăn hoặc POI"
                            TextChanged="OnSearchTextChanged"
                            ClearButtonVisibility="WhileEditing"
-                           BackgroundColor="Transparent"/>
+                           BackgroundColor="Transparent"
+                           TextColor="{StaticResource TextPrimary}"
+                           PlaceholderColor="{StaticResource TextMuted}"/>
                 </Grid>
             </Border>
         </Grid>
@@ -44,7 +46,7 @@
                 HorizontalOptions="End"
                 Margin="0,0,20,240"
                 StrokeShape="RoundRectangle 30"
-                BackgroundColor="White"
+                BackgroundColor="{StaticResource SurfaceCard}"
                 Padding="14,10"
                 ZIndex="10">
             <Border.Shadow>
@@ -54,8 +56,8 @@
                 <TapGestureRecognizer Tapped="OnGetLocationClicked" />
             </Border.GestureRecognizers>
             <HorizontalStackLayout Spacing="8">
-                <Label Text="◎" FontSize="14" TextColor="#2E7D32" />
-                <Label Text="Vị trí của tôi" TextColor="#2E7D32" FontAttributes="Bold" FontSize="13"/>
+                <Label Text="◎" FontSize="14" TextColor="{StaticResource Primary}" />
+                <Label Text="Vị trí của tôi" TextColor="{StaticResource Primary}" FontAttributes="Bold" FontSize="13"/>
             </HorizontalStackLayout>
         </Border>
 
@@ -64,9 +66,9 @@
                 Grid.RowSpan="2"
                 VerticalOptions="End"
                 Margin="14,0,14,24"
-                Stroke="#E4EAE4"
+                Stroke="{StaticResource BorderSubtle}"
                 StrokeShape="RoundRectangle 30"
-                BackgroundColor="White">
+                BackgroundColor="{StaticResource SurfaceCard}">
             <Border.Shadow>
                 <Shadow Brush="Black" Offset="0,6" Radius="15" Opacity="0.25"/>
             </Border.Shadow>
@@ -83,12 +85,12 @@
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnInfoCardTapped" />
                     </VerticalStackLayout.GestureRecognizers>
-                    <Label x:Name="PlaceName" FontAttributes="Bold" FontSize="18" MaxLines="1" TextColor="#1B1B1B"/>
+                    <Label x:Name="PlaceName" FontAttributes="Bold" FontSize="18" MaxLines="1" TextColor="{StaticResource TextPrimary}"/>
                     <HorizontalStackLayout Spacing="6">
-                        <Label x:Name="PlaceStatus" FontSize="12" FontAttributes="Bold" TextColor="#2E7D32"/>
-                        <Label x:Name="PlaceHours" FontSize="12" TextColor="#757575"/>
+                        <Label x:Name="PlaceStatus" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource Primary}"/>
+                        <Label x:Name="PlaceHours" FontSize="12" TextColor="{StaticResource TextSecondary}"/>
                     </HorizontalStackLayout>
-                    <Label x:Name="PlaceAddress" FontSize="12" TextColor="#616161" MaxLines="2"/>
+                    <Label x:Name="PlaceAddress" FontSize="12" TextColor="{StaticResource TextSecondary}" MaxLines="2"/>
                 </VerticalStackLayout>
 
                 <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,*" ColumnSpacing="12">
@@ -96,16 +98,16 @@
                                  Text="Phát"
                                  Clicked="OnPlayClicked"
                                  HeightRequest="44"
-                                 BackgroundColor="#E8F5E9"
-                                 TextColor="#1B5E20"
+                                 BackgroundColor="{StaticResource Secondary}"
+                                 TextColor="{StaticResource SecondaryDarkText}"
                                  FontAttributes="Bold"
                                  CornerRadius="14"/>
                     <Button Grid.Column="1"
                                  Text="Tạm dừng"
                                  Clicked="OnPauseClicked"
                                  HeightRequest="44"
-                                 BackgroundColor="#FFEBEE"
-                                 TextColor="#C62828"
+                                 BackgroundColor="{StaticResource Gray100}"
+                                 TextColor="#B71C1C"
                                  FontAttributes="Bold"
                                  CornerRadius="14"/>
                 </Grid>

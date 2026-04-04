@@ -3,38 +3,91 @@
              x:Class="App.Views.SuggestPage"
              NavigationPage.HasNavigationBar="False">
 
-    <Grid RowDefinitions="Auto,*" Padding="18,42,18,14" BackgroundColor="#F2F6F3">
-        <VerticalStackLayout Grid.Row="0" Spacing="4">
-            <Label Text="Đề xuất gần bạn" FontSize="28" FontAttributes="Bold" TextColor="#0F172A"/>
-            <Label x:Name="SubTitleLabel" Text="Đang lấy vị trí..." FontSize="13" TextColor="#64748B"/>
+    <Grid RowDefinitions="Auto,*" Padding="0,0,0,8" BackgroundColor="{StaticResource PageBackground}">
+        <VerticalStackLayout Grid.Row="0" Padding="22,44,22,12" Spacing="10">
+            <Border StrokeThickness="0"
+                    BackgroundColor="{StaticResource Secondary}"
+                    StrokeShape="RoundRectangle 14"
+                    Padding="12,6"
+                    HorizontalOptions="Start">
+                <Label Text="Gợi ý theo vị trí"
+                       FontSize="12"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource SecondaryDarkText}"/>
+            </Border>
+            <Label Text="Đề xuất gần bạn"
+                   FontSize="30"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource TextPrimary}"/>
+            <Label x:Name="SubTitleLabel"
+                   Text="Đang lấy vị trí..."
+                   FontSize="14"
+                   TextColor="{StaticResource TextMuted}"
+                   LineBreakMode="WordWrap"/>
         </VerticalStackLayout>
 
-        <Grid Grid.Row="1">
-            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="True" IsVisible="True" VerticalOptions="Center"/>
+        <Grid Grid.Row="1" Padding="18,0,18,12">
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               IsRunning="True"
+                               IsVisible="True"
+                               VerticalOptions="Center"
+                               Color="{StaticResource Primary}"/>
 
             <CollectionView x:Name="SuggestionsList"
                             ItemsSource="{Binding Suggestions}"
                             SelectionMode="None"
-                            IsVisible="False">
+                            IsVisible="False"
+                            ItemSizingStrategy="MeasureFirstItem">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Border StrokeShape="RoundRectangle 20"
-                                Padding="12"
-                                BackgroundColor="White"
-                                Margin="0,7"
-                                Stroke="#E1EAE2">
+                        <Border Margin="0,0,0,14"
+                                StrokeShape="RoundRectangle 22"
+                                BackgroundColor="{StaticResource SurfaceCard}"
+                                Padding="14"
+                                Stroke="Transparent"
+                                StrokeThickness="0">
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Tapped="OnSuggestionTapped" CommandParameter="{Binding .}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="86,*" ColumnSpacing="12" VerticalOptions="Center">
-                                <Border StrokeThickness="0" StrokeShape="RoundRectangle 16">
-                                    <Image Source="{Binding Poi.ImageUrl}" WidthRequest="86" HeightRequest="86" Aspect="AspectFill"/>
+                            <Border.Shadow>
+                                <Shadow Brush="#1B5E20" Offset="0,6" Radius="18" Opacity="0.12"/>
+                            </Border.Shadow>
+                            <Grid ColumnDefinitions="88,*" ColumnSpacing="14">
+                                <Border Stroke="Transparent"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 18"
+                                        WidthRequest="88"
+                                        HeightRequest="88"
+                                        VerticalOptions="Start"
+                                        BackgroundColor="{StaticResource Gray100}">
+                                    <Image Source="{Binding Poi.ImageUrl}"
+                                           WidthRequest="88"
+                                           HeightRequest="88"
+                                           Aspect="AspectFill"/>
                                 </Border>
-                                <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
-                                    <Label Text="{Binding Poi.Name}" FontAttributes="Bold" FontSize="17" TextColor="#0F172A" LineBreakMode="TailTruncation"/>
-                                    <Label Text="{Binding DistanceText}" FontSize="13" TextColor="#2E7D32" FontAttributes="Bold"/>
-                                    <Label Text="{Binding Poi.Address}" FontSize="12" TextColor="#64748B" LineBreakMode="TailTruncation"/>
-                                </VerticalStackLayout>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                        <Label Text="{Binding Poi.Name}"
+                                               FontAttributes="Bold"
+                                               FontSize="18"
+                                               TextColor="{StaticResource TextPrimary}"
+                                               LineBreakMode="TailTruncation"/>
+                                        <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                                            <Border StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 10"
+                                                    BackgroundColor="{StaticResource Secondary}"
+                                                    Padding="10,4">
+                                                <Label Text="{Binding DistanceText}"
+                                                       FontSize="13"
+                                                       FontAttributes="Bold"
+                                                       TextColor="{StaticResource PrimaryDarkText}"/>
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                        <Label Text="{Binding Poi.Address}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource TextSecondary}"
+                                               LineBreakMode="TailTruncation"
+                                               MaxLines="2"/>
+                                    </VerticalStackLayout>
                             </Grid>
                         </Border>
                     </DataTemplate>
@@ -43,4 +96,3 @@
         </Grid>
     </Grid>
 </ContentPage>
-

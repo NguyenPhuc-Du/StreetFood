@@ -7,7 +7,7 @@ namespace StreetFood.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public partial class AuthController : ControllerBase
 {
     private readonly string _connStr;
     private readonly ILogger<AuthController> _logger;

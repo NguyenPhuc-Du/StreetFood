@@ -21,11 +21,8 @@ namespace App.Views
 
             await Task.Delay(300);
 
-            // SỬA LỖI CS0618: Sử dụng cách chuyển trang mới trong .NET 10
-            if (Application.Current?.Windows.Count > 0)
-            {
-                Application.Current.Windows[0].Page = new AppShell();
-            }
+            // Không gán Window.Page = AppShell (crash Android). Splash là modal trên Shell.
+            await Navigation.PopModalAsync();
         }
     }
 }

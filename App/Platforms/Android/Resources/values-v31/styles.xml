@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- Android 12+: splash mặc định — dùng icon app + nền xanh nhạt thay vì branding .NET -->
+	<style name="MainTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorAccent</item>
+		<item name="android:statusBarColor">@color/colorPrimaryDark</item>
+		<item name="android:navigationBarColor">@android:color/white</item>
+		<item name="android:windowBackground">@color/window_background</item>
+		<item name="android:windowSplashScreenBackground">@color/window_background</item>
+		<item name="android:windowSplashScreenAnimatedIcon">@mipmap/appicon</item>
+	</style>
+</resources>

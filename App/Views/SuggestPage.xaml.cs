@@ -1,6 +1,5 @@
 using App.Models;
 using App.Services;
-using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Maps;
 using System.Collections.ObjectModel;
 
@@ -8,7 +7,7 @@ namespace App.Views;
 
 public partial class SuggestPage : ContentPage
 {
-    private readonly ApiService _api = new();
+    private readonly ApiService _api = ApiService.Instance;
 
     public ObservableCollection<SuggestionItem> Suggestions { get; } = new();
 
@@ -42,15 +41,52 @@ public partial class SuggestPage : ContentPage
 
         try
         {
-            var loc = await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Best));
+            var geoReq = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
+            var locTask = Geolocation.Default.GetLocationAsync(geoReq);
+            var poisTask = _api.GetPois();
+
+            List<Poi> pois = new();
+            Location? loc = null;
+            try
+            {
+                await Task.WhenAll(locTask, poisTask);
+                pois = await poisTask;
+                loc = await locTask;
+            }
+            catch
+            {
+                try
+                {
+                    if (poisTask.IsCompletedSuccessfully)
+                        pois = poisTask.Result;
+                    else
+                        pois = await poisTask;
+                }
+                catch
+                {
+                    pois = new List<Poi>();
+                }
+
+                try
+                {
+                    if (locTask.IsCompletedSuccessfully)
+                        loc = locTask.Result;
+                    else if (!locTask.IsFaulted)
+                        loc = await locTask;
+                }
+                catch
+                {
+                    loc = null;
+                }
+            }
+
             if (loc == null)
             {
                 SubTitleLabel.Text = "Không lấy được vị trí.";
                 return;
             }
 
-            var pois = await _api.GetPois();
-            if (pois == null || pois.Count == 0)
+            if (pois.Count == 0)
             {
                 SubTitleLabel.Text = "Không có dữ liệu quán ăn.";
                 return;
@@ -90,9 +126,7 @@ public partial class SuggestPage : ContentPage
     {
         var selected = e.Parameter as SuggestionItem;
         if (selected?.Poi?.Id != null)
-        {
             await Shell.Current.GoToAsync($"poidetail?poiId={selected.Poi.Id}");
-        }
     }
 
     public class SuggestionItem
@@ -102,4 +136,3 @@ public partial class SuggestPage : ContentPage
         public string DistanceText { get; set; } = "";
     }
 }
-

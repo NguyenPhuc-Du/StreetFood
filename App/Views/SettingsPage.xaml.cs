@@ -37,6 +37,14 @@ public partial class SettingsPage : ContentPage
         _isInitializing = false;
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        _isInitializing = true;
+        AutoAudioSwitch.IsToggled = Preferences.Default.Get(AutoAudioKey, true);
+        _isInitializing = false;
+    }
+
     private void OnAutoAudioSwitchToggled(object? sender, ToggledEventArgs e)
     {
         Preferences.Default.Set(AutoAudioKey, e.Value);
@@ -57,4 +65,3 @@ public partial class SettingsPage : ContentPage
         await DisplayAlertAsync("Đã lưu", "Ngôn ngữ đã được cập nhật cho dữ liệu hiển thị mới.", "OK");
     }
 }
-
