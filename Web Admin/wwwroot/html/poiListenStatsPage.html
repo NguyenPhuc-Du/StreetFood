@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thời lượng nghe | StreetFood Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
+    <style>
+        .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+        .toolbar label { font-size: 14px; color: var(--text-muted); margin-right: 6px; }
+        .toolbar select { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        .err { color: #b91c1c; margin-bottom: 12px; font-size: 14px; }
+        table.data-table { width: 100%; border-collapse: collapse; }
+        table.data-table th, table.data-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        table.data-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+        table.data-table tbody tr:hover { background: #f8fafc; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="logo"><i class="fa-solid fa-utensils"></i><span>StreetFood</span></div>
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li>
+                    <li class="active"><a href="poiListenStatsPage.html"><i class="fa-solid fa-headphones"></i> Thời lượng nghe</a></li>
+                    <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
+                    <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
+                    <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
+                    <li><a href="restaurantOwnersPage.html"><i class="fa-solid fa-user-slash"></i> Chủ cửa hàng</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <div class="main-panel">
+            <header class="top-header">
+                <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Tìm..."></div>
+                <div class="header-actions">
+                    <a class="btn-logout-admin" href="loginPage.html" onclick="window.AdminLogout?.(); return false;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+                    </a>
+                </div>
+            </header>
+            <div class="page-title-block">
+                <h1>Thời lượng nghe audio theo POI</h1>
+                <p>Dữ liệu do app gửi về sau mỗi lần nghe (stream). Chọn khoảng ngày để lọc.</p>
+            </div>
+            <div class="card-panel">
+                <div class="toolbar">
+                    <label for="daysSel">Khoảng thời gian</label>
+                    <select id="daysSel">
+                        <option value="30">30 ngày</option>
+                        <option value="90">90 ngày</option>
+                        <option value="365" selected>365 ngày</option>
+                    </select>
+                    <button type="button" class="btn-primary" id="btnReload"><i class="fa-solid fa-rotate"></i> Làm mới</button>
+                </div>
+                <div id="err" class="err"></div>
+                <table class="data-table" id="tbl">
+                    <thead>
+                        <tr>
+                            <th>POI</th>
+                            <th class="num">Số lần gửi mẫu</th>
+                            <th class="num">TB (giây)</th>
+                            <th class="num">TB (mm:ss)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="/config.js"></script>
+    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/logout.js?v=20260406c"></script>
+    <script>
+        function fmtMmSs(sec) {
+            if (sec == null || !isFinite(sec)) return '—';
+            var s = Math.round(Number(sec));
+            var m = Math.floor(s / 60);
+            s = s % 60;
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+        async function load() {
+            var err = document.getElementById('err');
+            err.textContent = '';
+            var days = parseInt(document.getElementById('daysSel').value, 10) || 365;
+            var rows;
+            try {
+                rows = await window.StreetFoodAdmin.getPoiListenStats(days);
+            } catch (e) {
+                err.textContent = e.message || String(e);
+                return;
+            }
+            var tb = document.querySelector('#tbl tbody');
+            var list = rows || [];
+            if (!list.length) {
+                tb.innerHTML = '<tr><td colspan="4">Chưa có dữ liệu (app sẽ gửi sau khi người dùng nghe audio ≥ 3 giây).</td></tr>';
+                return;
+            }
+            tb.innerHTML = list.map(function (r) {
+                var name = r.poiName || r.PoiName || ('POI ' + (r.poiId || r.PoiId));
+                var samples = r.listenSamples ?? r.ListenSamples ?? 0;
+                var avg = r.avgDurationSeconds ?? r.AvgDurationSeconds;
+                var avgDisp = samples > 0 && avg != null ? Number(avg).toFixed(1) : '—';
+                return '<tr><td>' + escapeHtml(name) + '</td><td class="num">' + samples + '</td><td class="num">' + avgDisp + '</td><td class="num">' + fmtMmSs(avg) + '</td></tr>';
+            }).join('');
+        }
+        function escapeHtml(s) {
+            if (!s) return '';
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+        document.getElementById('btnReload').onclick = load;
+        document.getElementById('daysSel').onchange = load;
+        load();
+    </script>
+</body>
+</html>

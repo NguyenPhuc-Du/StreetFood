@@ -12,7 +12,15 @@ var defaultFiles = new DefaultFilesOptions();
 defaultFiles.DefaultFileNames.Clear();
 defaultFiles.DefaultFileNames.Add("index.html");
 app.UseDefaultFiles(defaultFiles);
-app.UseStaticFiles();
+
+var staticFiles = new StaticFileOptions();
+staticFiles.OnPrepareResponse = ctx =>
+{
+    var n = ctx.File.Name;
+    if (n.EndsWith(".html", StringComparison.OrdinalIgnoreCase) || n.EndsWith(".js", StringComparison.OrdinalIgnoreCase))
+        ctx.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+};
+app.UseStaticFiles(staticFiles);
 
 app.UseHttpsRedirection();
 app.UseAuthorization();

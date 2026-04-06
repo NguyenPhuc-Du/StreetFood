@@ -177,6 +177,47 @@
         });
     }
 
+    async function submitAudioBundle(poiId, files) {
+        const creds = getCreds();
+        if (typeof window.STREETFOOD_API !== 'string' || !window.STREETFOOD_API) {
+            throw new Error('Thiếu cấu hình STREETFOOD_API.');
+        }
+        const fd = new FormData();
+        fd.append('username', creds.Username);
+        fd.append('password', creds.Password);
+        fd.append('poiId', String(poiId));
+        fd.append('audio_vi', files.vi);
+        fd.append('audio_en', files.en);
+        fd.append('audio_cn', files.cn);
+        fd.append('audio_ja', files.ja);
+        fd.append('audio_ko', files.ko);
+
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutMs = 120000;
+        const t = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+        let res;
+        try {
+            res = await fetch(window.STREETFOOD_API + '/api/vendor/submit-audio-bundle', {
+                method: 'POST',
+                body: fd,
+                signal: controller ? controller.signal : undefined
+            });
+        } catch (e) {
+            throw new Error(e && (e.name === 'AbortError') ? 'Hết thời gian khi tải file lên.' : 'Không thể kết nối API.');
+        } finally {
+            if (t) clearTimeout(t);
+        }
+
+        const text = await res.text();
+        if (!res.ok) throw new Error(text || res.statusText);
+        try {
+            return text ? JSON.parse(text) : null;
+        } catch {
+            return text;
+        }
+    }
+
     window.VendorAPI = {
         currentPoiId: null,
         listPois,
@@ -187,7 +228,8 @@
         createFood,
         updateFood,
         deleteFood,
-        submitScript
+        submitScript,
+        submitAudioBundle
     };
 })();
 

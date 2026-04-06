@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/sidebar.css?v=20260402a">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
     <style>
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; padding: 0 28px 28px; }
         .stat-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
@@ -25,6 +25,7 @@
             <nav class="nav-menu">
                 <ul>
                     <li class="active"><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li>
+                    <li><a href="poiListenStatsPage.html"><i class="fa-solid fa-headphones"></i> Thời lượng nghe</a></li>
                     <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
                     <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
                     <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
@@ -55,15 +56,15 @@
             </div>
             <div class="quick-links">
                 <a href="routeHeatmapPage.html"><i class="fa-solid fa-map"></i> Heatmap & tuyến</a>
+                <a href="poiListenStatsPage.html" class="secondary"><i class="fa-solid fa-headphones"></i> Thời lượng nghe</a>
                 <a href="createPoiOwnerPage.html" class="secondary"><i class="fa-solid fa-plus"></i> Tạo POI</a>
                 <a href="pendingScriptsPage.html" class="secondary"><i class="fa-solid fa-check-double"></i> Phê duyệt</a>
             </div>
         </div>
-        </main>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js"></script>
-    <script src="/js/logout.js?v=20260402a"></script>
+    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/logout.js?v=20260406c"></script>
     <script>
         (async function () {
             const err = document.getElementById('dashErr');

@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
@@ -120,6 +121,40 @@ public class AdminController : ControllerBase
         }
     }
 
+    /// <summary>Trung bình thời lượng nghe audio (giây) và số mẫu theo từng POI.</summary>
+    [HttpGet("analytics/poi-audio-listen")]
+    public async Task<IActionResult> GetPoiAudioListenStats([FromQuery] int days = 365)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        days = Math.Clamp(days, 1, 730);
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var rows = await conn.QueryAsync<PoiAudioListenStatsDto>(@"
+                SELECT
+                    p.id AS PoiId,
+                    t.name AS PoiName,
+                    COUNT(e.id)::bigint AS ListenSamples,
+                    CASE WHEN COUNT(e.id) > 0
+                        THEN ROUND(AVG(e.duration_seconds)::numeric, 1)::float8
+                        ELSE NULL::float8
+                    END AS AvgDurationSeconds
+                FROM pois p
+                LEFT JOIN poi_translations t ON p.id = t.poiid AND t.languagecode = 'vi'
+                LEFT JOIN poi_audio_listen_events e
+                    ON e.poi_id = p.id AND e.created_at > NOW() - (CAST(@Days AS integer) * INTERVAL '1 day')
+                GROUP BY p.id, t.name
+                ORDER BY ListenSamples DESC, p.id",
+                new { Days = days });
+            return Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "poi-audio-listen stats");
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpGet("analytics/paths")]
     public async Task<IActionResult> GetMovementPaths()
     {
@@ -153,6 +188,133 @@ public class AdminController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "paths");
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>Top cặp POI A→B theo số lần ghi nhận (tuyến trong khu vực quán).</summary>
+    [HttpGet("analytics/popular-paths")]
+    public async Task<IActionResult> GetPopularPaths([FromQuery] int top = 5)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        top = Math.Clamp(top, 1, 20);
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var rows = await conn.QueryAsync<PopularPathDto>(@"
+                SELECT
+                    m.FromPoiId,
+                    m.ToPoiId,
+                    COUNT(*)::int AS TripCount,
+                    MIN(pf.Latitude) AS FromLat,
+                    MIN(pf.Longitude) AS FromLng,
+                    MIN(pt.Latitude) AS ToLat,
+                    MIN(pt.Longitude) AS ToLng,
+                    MIN(tf.Name) AS FromName,
+                    MIN(tt.Name) AS ToName
+                FROM Movement_Paths m
+                INNER JOIN POIs pf ON m.FromPoiId = pf.Id
+                INNER JOIN POIs pt ON m.ToPoiId = pt.Id
+                LEFT JOIN POI_Translations tf ON pf.Id = tf.PoiId AND tf.LanguageCode = 'vi'
+                LEFT JOIN POI_Translations tt ON pt.Id = tt.PoiId AND tt.LanguageCode = 'vi'
+                WHERE m.CreatedAt > NOW() - INTERVAL '90 days'
+                GROUP BY m.FromPoiId, m.ToPoiId
+                ORDER BY TripCount DESC
+                LIMIT @Top", new { Top = top });
+            return Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "popular-paths");
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>Tuyến nối tối đa 5 POI (chuỗi cạnh phổ biến nhất).</summary>
+    [HttpGet("analytics/popular-route-chains")]
+    public async Task<IActionResult> GetPopularRouteChains([FromQuery] int topRoutes = 5, [FromQuery] int maxPoisPerRoute = 5)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        topRoutes = Math.Clamp(topRoutes, 1, 10);
+        maxPoisPerRoute = Math.Clamp(maxPoisPerRoute, 2, 5);
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var edges = (await conn.QueryAsync<(int From, int To, int C)>(@"
+                SELECT m.frompoiid AS From, m.topoiid AS To, COUNT(*)::int AS C
+                FROM movement_paths m
+                WHERE m.createdat > NOW() - INTERVAL '90 days'
+                GROUP BY m.frompoiid, m.topoiid
+                ORDER BY C DESC
+                LIMIT 80")).ToList();
+
+            if (edges.Count == 0)
+                return Ok(Array.Empty<PopularRouteChainDto>());
+
+            var bestNext = new Dictionary<int, (int To, int C)>();
+            foreach (var e in edges)
+            {
+                if (!bestNext.TryGetValue(e.From, out var cur) || e.C > cur.C)
+                    bestNext[e.From] = (e.To, e.C);
+            }
+
+            var seenFingerprints = new HashSet<string>();
+            var chains = new List<(List<int> Ids, int Score)>();
+
+            foreach (var seed in edges.OrderByDescending(x => x.C))
+            {
+                if (chains.Count >= topRoutes) break;
+
+                var chain = new List<int> { seed.From, seed.To };
+                var visited = new HashSet<int> { seed.From, seed.To };
+                var cur = seed.To;
+                var score = seed.C;
+
+                while (chain.Count < maxPoisPerRoute && bestNext.TryGetValue(cur, out var nx))
+                {
+                    if (visited.Contains(nx.To)) break;
+                    chain.Add(nx.To);
+                    visited.Add(nx.To);
+                    score = Math.Min(score, nx.C);
+                    cur = nx.To;
+                }
+
+                var fp = string.Join("-", chain);
+                if (chain.Count < 2 || seenFingerprints.Contains(fp)) continue;
+                seenFingerprints.Add(fp);
+                chains.Add((chain, score));
+            }
+
+            var allIds = chains.SelectMany(c => c.Ids).Distinct().ToList();
+            if (allIds.Count == 0)
+                return Ok(Array.Empty<PopularRouteChainDto>());
+
+            var pois = (await conn.QueryAsync<(int Id, double Lat, double Lng, string? Name)>(@"
+                SELECT p.id AS Id, p.latitude AS Lat, p.longitude AS Lng, t.name AS Name
+                FROM pois p
+                LEFT JOIN poi_translations t ON p.id = t.poiid AND t.languagecode = 'vi'
+                WHERE p.id = ANY(@Ids)", new { Ids = allIds.ToArray() })).ToDictionary(x => x.Id);
+
+            var result = new List<PopularRouteChainDto>();
+            foreach (var (ids, score) in chains.Take(topRoutes))
+            {
+                var pts = new List<RouteChainPointDto>();
+                foreach (var id in ids)
+                {
+                    if (!pois.TryGetValue(id, out var row)) continue;
+                    pts.Add(new RouteChainPointDto(id, row.Lat, row.Lng, row.Name));
+                }
+
+                if (pts.Count < 2) continue;
+                var names = string.Join(" → ", pts.Select(p => p.Name ?? ("POI " + p.PoiId)));
+                result.Add(new PopularRouteChainDto(score, names, pts));
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "popular-route-chains");
             return BadRequest(ex.Message);
         }
     }
@@ -361,6 +523,36 @@ public class AdminController : ControllerBase
             string langCode = req.LanguageCode ?? "vi";
             string script = req.NewScript ?? "";
 
+            if (TryParseVendorAudioBundle(script, out var bundleUrls))
+            {
+                foreach (var lang in AllLangs)
+                {
+                    var url = bundleUrls![lang];
+                    await conn.ExecuteAsync(@"
+                        INSERT INTO restaurant_audio (poiid, languagecode, audiourl)
+                        VALUES (@PoiId, @Lang, @Url)
+                        ON CONFLICT (poiid, languagecode) DO UPDATE SET audiourl = EXCLUDED.audiourl",
+                        new { PoiId = poiId, Lang = lang, Url = url }, tx);
+                }
+
+                await conn.ExecuteAsync(
+                    "UPDATE Script_Change_Requests SET Status = 'approved' WHERE Id = @Id",
+                    new { Id = id }, tx);
+
+                await conn.ExecuteAsync(
+                    "UPDATE POIs SET ScriptSubmissionState = 'approved' WHERE Id = @Id",
+                    new { Id = poiId }, tx);
+
+                await tx.CommitAsync();
+
+                return Ok(new
+                {
+                    poiId,
+                    message = "Đã phê duyệt gói âm thanh: cập nhật restaurant_audio (5 ngôn ngữ). Không chạy Azure TTS.",
+                    audio = new AudioGenerationResult(true, 5, "Gói file vendor — không dùng TTS.")
+                });
+            }
+
             var sourceLang = string.IsNullOrEmpty(langCode) ? "vi" : langCode;
             var translated = await _translator.TranslateToLanguagesAsync(script.Trim(), sourceLang, AllLangs);
 
@@ -405,6 +597,39 @@ public class AdminController : ControllerBase
             await tx.RollbackAsync();
             _logger.LogError(ex, "ApproveScript");
             return BadRequest(ex.Message);
+        }
+    }
+
+    private static bool TryParseVendorAudioBundle(string? raw, out Dictionary<string, string>? urls)
+    {
+        urls = null;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        var t = raw.Trim();
+        if (!t.StartsWith('{')) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(t);
+            var root = doc.RootElement;
+            if (root.GetProperty("type").GetString() != "vendor_audio_bundle")
+                return false;
+            var urlsEl = root.GetProperty("urls");
+            var dict = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var lang in AllLangs)
+            {
+                if (!urlsEl.TryGetProperty(lang, out var el))
+                    return false;
+                var u = el.GetString();
+                if (string.IsNullOrWhiteSpace(u))
+                    return false;
+                dict[lang] = u.Trim();
+            }
+
+            urls = dict;
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 

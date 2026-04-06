@@ -68,48 +68,95 @@
                 Margin="14,0,14,24"
                 Stroke="{StaticResource BorderSubtle}"
                 StrokeShape="RoundRectangle 30"
-                BackgroundColor="{StaticResource SurfaceCard}">
+                BackgroundColor="{StaticResource SurfaceCard}"
+                ZIndex="100">
             <Border.Shadow>
                 <Shadow Brush="Black" Offset="0,6" Radius="15" Opacity="0.25"/>
             </Border.Shadow>
 
-            <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" Padding="12" RowSpacing="12" HeightRequest="176">
-                <Border StrokeShape="RoundRectangle 16" StrokeThickness="0" HeightRequest="104" WidthRequest="96" VerticalOptions="Start">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnInfoCardTapped" />
-                    </Border.GestureRecognizers>
-                    <Image x:Name="PlaceImage" Aspect="AspectFill" Source="logo.png"/>
-                </Border>
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="0">
+                <!-- Vùng kéo: Pointer hoạt động ổn định trên Android hơn Pan/Swipe một mình -->
+                <Grid Grid.Row="0"
+                      RowDefinitions="Auto,Auto"
+                      Padding="12,12,12,8"
+                      RowSpacing="10"
+                      BackgroundColor="Transparent">
+                    <Grid.GestureRecognizers>
+                        <PointerGestureRecognizer PointerPressed="OnInfoCardPointerPressed"
+                                                  PointerReleased="OnInfoCardPointerReleased"/>
+                        <PanGestureRecognizer PanUpdated="OnInfoCardPanUpdated"/>
+                        <SwipeGestureRecognizer Direction="Down" Swiped="OnInfoCardSwipedDown"/>
+                    </Grid.GestureRecognizers>
 
-                <VerticalStackLayout Grid.Column="1" Margin="10,2,2,0" Spacing="4">
-                    <VerticalStackLayout.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnInfoCardTapped" />
-                    </VerticalStackLayout.GestureRecognizers>
-                    <Label x:Name="PlaceName" FontAttributes="Bold" FontSize="18" MaxLines="1" TextColor="{StaticResource TextPrimary}"/>
-                    <HorizontalStackLayout Spacing="6">
-                        <Label x:Name="PlaceStatus" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource Primary}"/>
-                        <Label x:Name="PlaceHours" FontSize="12" TextColor="{StaticResource TextSecondary}"/>
-                    </HorizontalStackLayout>
-                    <Label x:Name="PlaceAddress" FontSize="12" TextColor="{StaticResource TextSecondary}" MaxLines="2"/>
-                </VerticalStackLayout>
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                        <VerticalStackLayout Spacing="6" VerticalOptions="Center">
+                            <BoxView HeightRequest="5"
+                                     WidthRequest="44"
+                                     CornerRadius="3"
+                                     HorizontalOptions="Start"
+                                     Color="{StaticResource Gray100}"/>
+                            <Label Text="Kéo xuống để đóng · tắt âm thanh"
+                                   FontSize="11"
+                                   TextColor="{StaticResource TextMuted}"
+                                   LineBreakMode="WordWrap"/>
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1"
+                               Text="Đóng"
+                               FontSize="13"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Primary}"
+                               VerticalOptions="Center"
+                               Padding="8,4">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnInfoCardCloseTapped"/>
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
 
-                <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Grid Grid.Row="1"
+                          ColumnDefinitions="96,*"
+                          ColumnSpacing="10">
+                        <Border StrokeShape="RoundRectangle 16" StrokeThickness="0" HeightRequest="104" WidthRequest="96" VerticalOptions="Start">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnInfoCardTapped" />
+                            </Border.GestureRecognizers>
+                            <Image x:Name="PlaceImage" Aspect="AspectFill" Source="logo.png"/>
+                        </Border>
+
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                            <VerticalStackLayout.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnInfoCardTapped" />
+                            </VerticalStackLayout.GestureRecognizers>
+                            <Label x:Name="PlaceName" FontAttributes="Bold" FontSize="18" MaxLines="2" LineBreakMode="TailTruncation" TextColor="{StaticResource TextPrimary}"/>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label x:Name="PlaceStatus" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource Primary}"/>
+                                <Label x:Name="PlaceHours" FontSize="12" TextColor="{StaticResource TextSecondary}"/>
+                            </HorizontalStackLayout>
+                            <Label x:Name="PlaceAddress" FontSize="12" TextColor="{StaticResource TextSecondary}" MaxLines="2"/>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Grid>
+
+                <Grid Grid.Row="1"
+                      ColumnDefinitions="*,*"
+                      ColumnSpacing="12"
+                      Padding="12,0,12,12">
                     <Button Grid.Column="0"
-                                 Text="Phát"
-                                 Clicked="OnPlayClicked"
-                                 HeightRequest="44"
-                                 BackgroundColor="{StaticResource Secondary}"
-                                 TextColor="{StaticResource SecondaryDarkText}"
-                                 FontAttributes="Bold"
-                                 CornerRadius="14"/>
+                            Text="Phát"
+                            Clicked="OnPlayClicked"
+                            HeightRequest="44"
+                            BackgroundColor="{StaticResource Secondary}"
+                            TextColor="{StaticResource SecondaryDarkText}"
+                            FontAttributes="Bold"
+                            CornerRadius="14"/>
                     <Button Grid.Column="1"
-                                 Text="Tạm dừng"
-                                 Clicked="OnPauseClicked"
-                                 HeightRequest="44"
-                                 BackgroundColor="{StaticResource Gray100}"
-                                 TextColor="#B71C1C"
-                                 FontAttributes="Bold"
-                                 CornerRadius="14"/>
+                            Text="Tạm dừng"
+                            Clicked="OnPauseClicked"
+                            HeightRequest="44"
+                            BackgroundColor="{StaticResource Gray100}"
+                            TextColor="#B71C1C"
+                            FontAttributes="Bold"
+                            CornerRadius="14"/>
                 </Grid>
             </Grid>
         </Border>

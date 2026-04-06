@@ -19,19 +19,27 @@ public partial class HomePage : ContentPage
     int currentAudioPoiId = -1;
     bool isFirstLocation = true;
     bool _isAutoPlaying = false;
-    bool _manualSelectionBlocksAuto = false;
+    /// <summary>Đã bấm chọn POI trên map / ghim — thẻ treo dù ra khỏi bán kính cho đến khi Đóng hoặc kéo xuống.</summary>
+    bool _cardPinnedByMapTap;
     Location? _currentUserLocation;
     CancellationTokenSource? _speechCts;
     Dictionary<int, DateTime> lastPlayed = new();
     const int COOLDOWN_SECONDS = 300;
+    /// <summary>Độ lệch GPS tối đa (m) để tin cậy kích hoạt tự động.</summary>
+    const double MaxGpsAccuracyMeters = 120;
 
     const string AutoAudioKey = "autoAudioEnabled";
 
     Poi? _currentPoi;
+    /// <summary>Sau khi người dùng kéo tắt thẻ trong vùng — không tự bật lại cho POI này cho đến khi ra khỏi bán kính.</summary>
+    int? _dismissedAutoCardForPoiId;
+    double _infoCardPointerStartY;
+    readonly AudioListenMeter _listenMeter;
 
     public HomePage()
     {
         InitializeComponent();
+        _listenMeter = new AudioListenMeter(AudioPlayer, () => currentAudioPoiId);
     }
 
     protected override async void OnAppearing()
@@ -88,52 +96,108 @@ public partial class HomePage : ContentPage
         return true;
     }
 
+    static int EffectiveRadiusMeters(Poi p) => p.Radius > 0 ? p.Radius : 50;
+
+    static double DistanceToPoiMeters(Location userLoc, Poi p) =>
+        userLoc.CalculateDistance(new Location(p.Latitude, p.Longitude), DistanceUnits.Kilometers) * 1000;
+
+    /// <summary>POI mà người dùng đang đứng trong bán kính (ưu tiên gần tâm nhất nếu trùng vùng).</summary>
+    static Poi? FindPoiContainingUser(Location userLoc, List<Poi> pois)
+    {
+        return pois
+            .Select(p => (Poi: p, DistM: DistanceToPoiMeters(userLoc, p)))
+            .Where(x => x.DistM <= EffectiveRadiusMeters(x.Poi))
+            .OrderBy(x => x.DistM)
+            .Select(x => x.Poi)
+            .FirstOrDefault();
+    }
+
     private void CheckNearby(Location userLoc)
     {
         if (filteredPoiList == null || !filteredPoiList.Any()) return;
 
-        var nearest = filteredPoiList
-            .OrderBy(p => userLoc.CalculateDistance(new Location(p.Latitude, p.Longitude), DistanceUnits.Kilometers))
-            .FirstOrDefault();
+        // GPS kém → không tự phát / không tự đóng thẻ theo vùng (tránh nhầm quán xa)
+        if (userLoc.Accuracy > 0 && userLoc.Accuracy > MaxGpsAccuracyMeters)
+            return;
+
+        var activePoi = FindPoiContainingUser(userLoc, filteredPoiList);
 
         MainThread.BeginInvokeOnMainThread(async () =>
         {
-            if (nearest != null)
+            // Đã bấm chọn POI: thẻ luôn treo; chỉ tự phát audio khi đang trong bán kính POI đó
+            if (_cardPinnedByMapTap && _currentPoi != null)
             {
-                if (_manualSelectionBlocksAuto) return;
+                ShowInfoCard(_currentPoi);
 
-                double distance = userLoc.CalculateDistance(new Location(nearest.Latitude, nearest.Longitude), DistanceUnits.Kilometers) * 1000;
-                if (distance <= 50)
+                bool insidePinned = DistanceToPoiMeters(userLoc, _currentPoi) <= EffectiveRadiusMeters(_currentPoi);
+                bool autoAudioEnabled = Preferences.Default.Get(AutoAudioKey, true);
+
+                if (!autoAudioEnabled || !insidePinned)
                 {
-                    ShowInfoCard(nearest);
-
-                    bool autoAudioEnabled = Preferences.Default.Get(AutoAudioKey, true);
-
-                    if (!autoAudioEnabled)
+                    if (_isAutoPlaying)
                     {
-                        // Chỉ dừng khi đang tự động phát (không chạm tới phát thủ công)
-                        if (_isAutoPlaying)
-                        {
-                            AudioPlayer.Stop();
-                            currentAudioPoiId = -1;
-                            _isAutoPlaying = false;
-                        }
-
-                        return;
+                        _listenMeter.StopAndFlushFireAndForget();
+                        AudioPlayer.Stop();
+                        currentAudioPoiId = -1;
+                        _isAutoPlaying = false;
                     }
 
-                    if (!string.IsNullOrEmpty(nearest.AudioUrl) && currentAudioPoiId != nearest.Id && CanPlay(nearest.Id))
-                    {
-                        currentAudioPoiId = nearest.Id;
-                        _isAutoPlaying = true;
-                        await PlayPoiAudioAsync(nearest);
-                    }
+                    return;
                 }
-                else
+
+                if (_dismissedAutoCardForPoiId == _currentPoi.Id)
+                    return;
+
+                if (!string.IsNullOrEmpty(_currentPoi.AudioUrl) && currentAudioPoiId != _currentPoi.Id && CanPlay(_currentPoi.Id))
                 {
-                    if (!_manualSelectionBlocksAuto)
-                        HideCard();
+                    currentAudioPoiId = _currentPoi.Id;
+                    _isAutoPlaying = true;
+                    await PlayPoiAudioAsync(_currentPoi);
                 }
+
+                return;
+            }
+
+            // Chưa bấm ghim: chỉ hiện thẻ khi đứng trong bán kính một POI; ra khỏi hết vùng thì ẩn
+            if (activePoi == null)
+            {
+                if (_dismissedAutoCardForPoiId.HasValue)
+                {
+                    var dismissed = filteredPoiList.FirstOrDefault(p => p.Id == _dismissedAutoCardForPoiId.Value);
+                    if (dismissed == null || DistanceToPoiMeters(userLoc, dismissed) > EffectiveRadiusMeters(dismissed))
+                        _dismissedAutoCardForPoiId = null;
+                }
+
+                HideCard();
+                return;
+            }
+
+            if (_dismissedAutoCardForPoiId != activePoi.Id)
+                ShowInfoCard(activePoi);
+
+            bool autoOn = Preferences.Default.Get(AutoAudioKey, true);
+
+            if (!autoOn)
+            {
+                if (_isAutoPlaying)
+                {
+                    _listenMeter.StopAndFlushFireAndForget();
+                    AudioPlayer.Stop();
+                    currentAudioPoiId = -1;
+                    _isAutoPlaying = false;
+                }
+
+                return;
+            }
+
+            if (_dismissedAutoCardForPoiId == activePoi.Id)
+                return;
+
+            if (!string.IsNullOrEmpty(activePoi.AudioUrl) && currentAudioPoiId != activePoi.Id && CanPlay(activePoi.Id))
+            {
+                currentAudioPoiId = activePoi.Id;
+                _isAutoPlaying = true;
+                await PlayPoiAudioAsync(activePoi);
             }
         });
     }
@@ -149,14 +213,20 @@ public partial class HomePage : ContentPage
         InfoCard.IsVisible = true;
     }
 
-    void HideCard()
+    void HideCard(bool userSwipeDismiss = false)
     {
+        if (userSwipeDismiss && _currentPoi != null)
+            _dismissedAutoCardForPoiId = _currentPoi.Id;
+
         InfoCard.IsVisible = false;
         StopOfflineSpeech();
+        _listenMeter.StopAndFlushFireAndForget();
         AudioPlayer?.Stop();
         currentAudioPoiId = -1;
-        _manualSelectionBlocksAuto = false;
+        _currentPoi = null;
+        _cardPinnedByMapTap = false;
         _isAutoPlaying = false;
+        Preferences.Default.Remove(PinnedPoiKey);
     }
 
     void TryShowPinnedPoi()
@@ -167,7 +237,8 @@ public partial class HomePage : ContentPage
         var pinnedPoi = poiList.FirstOrDefault(p => p.Id == pinnedPoiId);
         if (pinnedPoi == null) return;
 
-        _manualSelectionBlocksAuto = true;
+        _cardPinnedByMapTap = true;
+        _dismissedAutoCardForPoiId = null;
         ShowInfoCard(pinnedPoi);
         MixiMap.MoveToRegion(MapSpan.FromCenterAndRadius(new Location(pinnedPoi.Latitude, pinnedPoi.Longitude), Distance.FromMeters(400)));
     }
@@ -178,6 +249,7 @@ public partial class HomePage : ContentPage
         _cts?.Dispose();
         _cts = null;
         StopOfflineSpeech();
+        _listenMeter.StopAndFlushFireAndForget();
         AudioPlayer?.Stop();
         base.OnDisappearing();
     }
@@ -188,7 +260,6 @@ public partial class HomePage : ContentPage
 
         await PlayPoiAudioAsync(_currentPoi);
         currentAudioPoiId = _currentPoi.Id;
-        _manualSelectionBlocksAuto = false;
         _isAutoPlaying = false; // phát thủ công
     }
 
@@ -205,10 +276,12 @@ public partial class HomePage : ContentPage
         var hasInternet = NetworkReachability.HasUsableConnection;
         if (hasInternet && !string.IsNullOrWhiteSpace(poi.AudioUrl))
         {
+            _listenMeter.StopAndFlushFireAndForget();
             AudioPlayer.Stop();
             AudioPlayer.Source = MediaSource.FromUri(poi.AudioUrl);
             await Task.Delay(300);
             AudioPlayer.Play();
+            _listenMeter.Arm(Dispatcher, poi.Id);
             return;
         }
 
@@ -245,6 +318,39 @@ public partial class HomePage : ContentPage
         if (selectedPoiId is null or <= 0) return;
         await Shell.Current.GoToAsync($"poidetail?poiId={selectedPoiId.Value}");
     }
+
+    void OnInfoCardPanUpdated(object? sender, PanUpdatedEventArgs e)
+    {
+        if (e.StatusType != GestureStatus.Completed)
+            return;
+        if (e.TotalY > 40)
+            HideCard(userSwipeDismiss: true);
+    }
+
+    void OnInfoCardSwipedDown(object? sender, SwipedEventArgs e)
+    {
+        if (e.Direction == SwipeDirection.Down)
+            HideCard(userSwipeDismiss: true);
+    }
+
+    void OnInfoCardPointerPressed(object? sender, PointerEventArgs e)
+    {
+        var pos = e.GetPosition(InfoCard);
+        if (pos.HasValue)
+            _infoCardPointerStartY = pos.Value.Y;
+    }
+
+    void OnInfoCardPointerReleased(object? sender, PointerEventArgs e)
+    {
+        var pos = e.GetPosition(InfoCard);
+        if (!pos.HasValue)
+            return;
+        if (pos.Value.Y - _infoCardPointerStartY > 40)
+            HideCard(userSwipeDismiss: true);
+    }
+
+    void OnInfoCardCloseTapped(object? sender, TappedEventArgs e) =>
+        HideCard(userSwipeDismiss: true);
 
     private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
     {
@@ -288,20 +394,23 @@ public partial class HomePage : ContentPage
             pin.MarkerClicked += (_, args) =>
             {
                 args.HideInfoWindow = true;
+                _dismissedAutoCardForPoiId = null;
                 _currentPoi = poi;
                 ShowInfoCard(poi);
-                _manualSelectionBlocksAuto = true;
+                _cardPinnedByMapTap = true;
                 Preferences.Default.Set(PinnedPoiKey, poi.Id);
                 _isAutoPlaying = false;
+                _listenMeter.StopAndFlushFireAndForget();
                 AudioPlayer.Stop();
                 currentAudioPoiId = -1;
             };
             MixiMap.Pins.Add(pin);
 
+            var r = Math.Max(EffectiveRadiusMeters(poi), 15);
             MixiMap.MapElements.Add(new Circle
             {
                 Center = poiLocation,
-                Radius = Distance.FromMeters(50),
+                Radius = Distance.FromMeters(r),
                 StrokeColor = Color.FromArgb("#2E7D32"),
                 StrokeWidth = 2,
                 FillColor = Color.FromRgba(46, 125, 50, 40)

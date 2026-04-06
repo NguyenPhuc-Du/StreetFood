@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tạo POI & tài khoản chủ quán | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/sidebar.css?v=20260402a">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
     <style>
         .steps { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-        .step-pill { padding: 8px 14px; border-radius: 999px; background: #f1f5f9; font-size: 13px; font-weight: 600; color: var(--text-muted); }
-        .step-pill.on { background: var(--accent-bg); color: var(--primary-blue); }
+        .step-pill { padding: 8px 14px; border-radius: 999px; background: #f1f5f9; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border: 1px solid transparent; }
+        .step-pill:hover { border-color: #cbd5e1; }
+        .step-pill.done { background: #e0f2fe; color: #0369a1; }
+        .step-pill.on { background: var(--accent-bg); color: var(--primary-blue); border-color: #bfdbfe; }
         .form-grid { display: grid; gap: 14px; max-width: 560px; }
         .form-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #334155; }
         .form-grid input, .form-grid textarea { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; }
@@ -17,7 +19,6 @@
         .wizard-panel { display: none; }
         .wizard-panel.active { display: block; }
         .nav-row { display: flex; gap: 12px; margin-top: 20px; }
-        .hint { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -27,6 +28,7 @@
             <nav class="nav-menu">
                 <ul>
                     <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li>
+                    <li><a href="poiListenStatsPage.html"><i class="fa-solid fa-headphones"></i> Thời lượng nghe</a></li>
                     <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
                     <li class="active"><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
                     <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
@@ -38,6 +40,7 @@
             <header class="top-header">
                 <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Tìm nhanh..."></div>
                 <div class="header-actions">
+                    <a class="btn-logout-admin" href="poiListenStatsPage.html"><i class="fa-solid fa-headphones"></i> Thời lượng nghe</a>
                     <a class="btn-logout-admin" href="loginPage.html" onclick="window.AdminLogout?.(); return false;">
                         <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
                     </a>
@@ -45,20 +48,19 @@
             </header>
             <div class="page-title-block">
                 <h1>Tạo tài khoản chủ quán & POI</h1>
-                <p>Bước 1: tài khoản → Bước 2: thông tin cửa hàng → Bước 3: script (tuỳ chọn). Có thể bổ sung script sau khi chủ quán gửi yêu cầu.</p>
             </div>
             <div class="card-panel">
                 <div class="steps">
-                    <span class="step-pill on" id="sp1">1 — Tài khoản</span>
-                    <span class="step-pill" id="sp2">2 — Cửa hàng</span>
-                    <span class="step-pill" id="sp3">3 — Script</span>
+                    <span class="step-pill on" id="sp1" data-step="1">1 — Tài khoản</span>
+                    <span class="step-pill" id="sp2" data-step="2">2 — Cửa hàng</span>
+                    <span class="step-pill" id="sp3" data-step="3">3 — Script</span>
                 </div>
 
                 <div class="wizard-panel active" id="w1">
                     <div class="form-grid">
                         <label>Username chủ quán<input type="text" id="ownerUsername" placeholder="vd: quan_pho_owner" autocomplete="off"></label>
                         <label>Mật khẩu<input type="password" id="ownerPassword" placeholder="••••••••"></label>
-                        <label>Email (tuỳ chọn)<input type="email" id="ownerEmail" placeholder="owner@email.com"></label>
+                        <label>Email<input type="email" id="ownerEmail" placeholder="owner@email.com"></label>
                     </div>
                     <div class="nav-row">
                         <button type="button" class="btn-primary" id="to2">Tiếp theo</button>
@@ -87,7 +89,6 @@
                     <div class="form-grid">
                         <label>Script kể chuyện (tiếng Việt)<textarea id="initialScript" placeholder="Có thể để trống và bổ sung sau..."></textarea></label>
                     </div>
-                    <p class="hint">Để trống nếu muốn nhập sau; khi có nội dung, hãy phê duyệt ở mục Phê duyệt script.</p>
                     <div class="nav-row">
                         <button type="button" class="btn-outline" id="back2">Quay lại</button>
                         <button type="button" class="btn-primary" id="submitAll"><i class="fa-solid fa-check"></i> Hoàn tất</button>
@@ -100,18 +101,35 @@
         </div>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js"></script>
-    <script src="/js/logout.js?v=20260402a"></script>
+    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/logout.js?v=20260406c"></script>
     <script>
         const sp = [document.getElementById('sp1'), document.getElementById('sp2'), document.getElementById('sp3')];
         const panels = [document.getElementById('w1'), document.getElementById('w2'), document.getElementById('w3')];
         function goStep(n) {
+            n = Math.max(1, Math.min(3, n));
             panels.forEach((p, i) => { p.classList.toggle('active', i === n - 1); });
-            sp.forEach((s, i) => { s.classList.toggle('on', i < n); });
+            sp.forEach((s, i) => {
+                s.classList.toggle('on', i === n - 1);
+                s.classList.toggle('done', i < n - 1);
+            });
         }
+        function canGoStep2() {
+            return !!(document.getElementById('ownerUsername').value.trim() && document.getElementById('ownerPassword').value);
+        }
+        function canGoStep3() {
+            return canGoStep2() && !!document.getElementById('poiName').value.trim();
+        }
+        sp.forEach(function (el) {
+            el.addEventListener('click', function () {
+                var step = parseInt(el.getAttribute('data-step'), 10);
+                if (step === 2 && !canGoStep2()) return alert('Nhập username và mật khẩu ở bước 1 trước.');
+                if (step === 3 && !canGoStep3()) return alert('Hoàn tất bước 1 và nhập tên POI ở bước 2 trước.');
+                goStep(step);
+            });
+        });
         document.getElementById('to2').onclick = () => {
-            if (!document.getElementById('ownerUsername').value.trim() || !document.getElementById('ownerPassword').value)
-                return alert('Nhập username và mật khẩu.');
+            if (!canGoStep2()) return alert('Nhập username và mật khẩu.');
             goStep(2);
         };
         document.getElementById('back1').onclick = () => goStep(1);

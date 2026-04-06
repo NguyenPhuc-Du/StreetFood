@@ -5,16 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tuyến đi & Bản đồ nhiệt | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-    <link rel="stylesheet" href="/css/sidebar.css?v=20260402a">
     <style>
+        .layout-map { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 16px; align-items: start; }
+        @media (max-width: 900px) { .layout-map { grid-template-columns: 1fr; } }
         #map { height: calc(100vh - 220px); min-height: 420px; border-radius: 12px; z-index: 1; }
         .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
         .toolbar label { font-size: 14px; color: var(--text-muted); }
         .toggle-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; border-radius: 999px; padding: 8px 12px; background: #fff; color: #334155; cursor: pointer; }
         .toggle-chip.active { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
         .toggle-chip input { accent-color: #2563eb; }
+        .route-list { list-style: none; padding: 0; margin: 0; }
+        .route-list li {
+            border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+            cursor: pointer; background: #fff; transition: border-color .15s, box-shadow .15s;
+        }
+        .route-list li:hover { border-color: #93c5fd; box-shadow: 0 2px 8px rgba(37, 99, 235, .12); }
+        .route-list li.active { border-color: #2563eb; background: #eff6ff; }
+        .route-list .meta { font-size: 12px; color: #64748b; margin-top: 4px; }
+        .route-list .name { font-weight: 600; color: #0f172a; font-size: 14px; }
+        .panel-routes h2 { font-size: 16px; margin: 0 0 12px; color: #0f172a; }
+        .err { color: #b91c1c; margin-bottom: 12px; font-size: 14px; }
         .legend { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+        .info-banner { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; font-size: 13px; line-height: 1.45; }
     </style>
 </head>
 <body>
@@ -24,6 +38,7 @@
             <nav class="nav-menu">
                 <ul>
                     <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li>
+                    <li><a href="poiListenStatsPage.html"><i class="fa-solid fa-headphones"></i> Thời lượng nghe</a></li>
                     <li class="active"><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
                     <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
                     <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
@@ -42,35 +57,85 @@
             </header>
             <div class="page-title-block">
                 <h1>Phân tích tuyến đi & Heatmap</h1>
-                <p>Mật độ lưu lượng và hướng di chuyển giữa các điểm (90 ngày gần nhất).</p>
+                <p>Heatmap từ Location_Logs; tuyến từ Movement_Paths (chuỗi tối đa 5 POI). Bản đồ nền OpenStreetMap.</p>
             </div>
             <div class="card-panel">
+                <div class="info-banner">OpenStreetMap (Leaflet) — không dùng Google Maps.</div>
                 <div class="toolbar">
                     <button type="button" class="btn-primary" id="btnReload"><i class="fa-solid fa-rotate"></i> Tải dữ liệu</button>
                     <label class="toggle-chip active" id="chipHeat"><input type="checkbox" id="chkHeat" checked> Heatmap</label>
-                    <label class="toggle-chip active" id="chipPaths"><input type="checkbox" id="chkPaths" checked> Tuyến di chuyển</label>
+                    <label class="toggle-chip active" id="chipPaths"><input type="checkbox" id="chkPaths" checked> Tuyến đường</label>
                 </div>
                 <div id="err" class="err"></div>
-                <div id="map"></div>
-                <p class="legend">Khi chưa có lịch sử di chuyển, bản đồ có thể hiển thị ít hoặc không có điểm.</p>
+                <div class="layout-map">
+                    <div class="panel-routes">
+                        <h2>Tuyến người dùng hay đi</h2>
+                        <p class="legend" style="margin-bottom:12px">Mỗi tuyến tối đa 5 POI. Chọn một dòng để làm nổi bật trên bản đồ.</p>
+                        <ul class="route-list" id="routeList"></ul>
+                    </div>
+                    <div id="map"></div>
+                </div>
+                <p class="legend">Đường tuyến là polyline nối các điểm POI (không routing đường phố).</p>
             </div>
         </div>
     </div>
     <script src="/config.js"></script>
+    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/logout.js?v=20260406c"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    <script src="/js/admin-api.js"></script>
-    <script src="/js/logout.js?v=20260402a"></script>
     <script>
         const errEl = document.getElementById('err');
-        const map = L.map('map').setView([10.76, 106.67], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-        let heatLayer = null;
-        /** FeatureGroup có getBounds(); LayerGroup thì không — tránh lỗi getBounds is not a function */
-        let pathLayer = L.featureGroup().addTo(map);
+        const routeListEl = document.getElementById('routeList');
+        const routeColors = ['#1d4ed8', '#b45309', '#047857', '#7c3aed', '#be123c'];
+
+        let leafletMap = null;
+        let heatLayerLeaflet = null;
+        let leafletPathLayer = null;
+        let popularChains = [];
 
         function showErr(e) {
             errEl.textContent = e.message || String(e);
+        }
+
+        function renderRouteList() {
+            routeListEl.innerHTML = '';
+            if (!popularChains.length) {
+                routeListEl.innerHTML = '<li style="cursor:default;border-style:dashed;color:#64748b">Chưa có dữ liệu Movement_Paths (90 ngày).</li>';
+                return;
+            }
+            popularChains.forEach((c, i) => {
+                const li = document.createElement('li');
+                li.dataset.index = String(i);
+                const summary = c.summary || c.Summary || '';
+                const pts = c.points || c.Points || [];
+                const tc = c.tripCount ?? c.TripCount ?? 0;
+                li.innerHTML = '<div class="name">' + escapeHtml(summary) + '</div>' +
+                    '<div class="meta">' + tc + ' lượt (min trên cạnh) · ' + pts.length + ' POI · tuyến ' + (i + 1) + '</div>';
+                li.addEventListener('click', () => highlightRoute(i));
+                routeListEl.appendChild(li);
+            });
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function highlightRoute(index) {
+            document.querySelectorAll('.route-list li').forEach((el, i) => el.classList.toggle('active', i === index));
+            if (!leafletPathLayer) return;
+            leafletPathLayer.eachLayer(function (layer) {
+                if (!(layer instanceof L.Polyline)) return;
+                const i = layer._routeIndex;
+                if (i === undefined) return;
+                layer.setStyle({
+                    weight: i === index ? 6 : 3,
+                    opacity: i === index ? 1 : 0.45
+                });
+            });
         }
 
         function hottestPoint(heatArr) {
@@ -86,58 +151,91 @@
             return best;
         }
 
-        function focusMap(heatArr, pathLines) {
+        function focusLeaflet(heatArr, boundsLatLng) {
+            if (!leafletMap) return;
             const hot = hottestPoint(heatArr);
             if (hot) {
-                map.setView([hot.lat, hot.lng], 16);
+                leafletMap.setView([hot.lat, hot.lng], 16);
                 return;
             }
-            if (pathLines && pathLines.getBounds && pathLines.getBounds().isValid()) {
-                map.fitBounds(pathLines.getBounds(), { padding: [48, 48] });
+            if (boundsLatLng && boundsLatLng.isValid()) {
+                leafletMap.fitBounds(boundsLatLng, { padding: [48, 48] });
                 return;
             }
-            map.setView([10.76, 106.67], 13);
+            leafletMap.setView([10.76, 106.67], 13);
+        }
+
+        function renderLeaflet(heat, chains, heatOn, pathsOn) {
+            const el = document.getElementById('map');
+            el.innerHTML = '';
+            leafletMap = L.map('map').setView([10.76, 106.67], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(leafletMap);
+
+            const bounds = L.latLngBounds([]);
+            let heatArr = heat || [];
+
+            if (heatOn && heatArr.length && typeof L.heatLayer === 'function') {
+                const pts = heatArr.map(h => [h.lat ?? h.Lat, h.lng ?? h.Lng, Math.min(1, (h.weight || h.Weight || 1) / 20)]);
+                pts.forEach(p => bounds.extend([p[0], p[1]]));
+                heatLayerLeaflet = L.heatLayer(pts, { radius: 28, blur: 22, maxZoom: 17 });
+                leafletMap.addLayer(heatLayerLeaflet);
+            }
+
+            leafletPathLayer = L.featureGroup().addTo(leafletMap);
+            if (pathsOn && chains && chains.length) {
+                chains.forEach((c, i) => {
+                    const pts = c.points || c.Points || [];
+                    const latlngs = [];
+                    for (let j = 0; j < pts.length; j++) {
+                        const p = pts[j];
+                        const lat = p.lat ?? p.Lat;
+                        const lng = p.lng ?? p.Lng;
+                        if (lat == null || lng == null) continue;
+                        latlngs.push([lat, lng]);
+                    }
+                    if (latlngs.length < 2) return;
+                    latlngs.forEach(ll => bounds.extend(ll));
+                    const summary = c.summary || c.Summary || ('Tuyến ' + (i + 1));
+                    const line = L.polyline(latlngs, {
+                        color: routeColors[i % routeColors.length],
+                        weight: 3,
+                        opacity: 0.45
+                    });
+                    line._routeIndex = i;
+                    line.bindPopup(escapeHtml(summary));
+                    line.on('click', () => highlightRoute(i));
+                    line.addTo(leafletPathLayer);
+                });
+            }
+
+            focusLeaflet(heatOn ? heatArr : [], bounds.isValid() ? bounds : null);
         }
 
         async function load() {
             errEl.textContent = '';
+            const heatOn = document.getElementById('chkHeat').checked;
+            const pathsOn = document.getElementById('chkPaths').checked;
+
+            let heat, chains;
             try {
-                const [heat, paths] = await Promise.all([
+                [heat, chains] = await Promise.all([
                     window.StreetFoodAdmin.getHeatmap(),
-                    window.StreetFoodAdmin.getPaths()
+                    window.StreetFoodAdmin.getPopularRouteChains(5, 5)
                 ]);
-                if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
-                pathLayer.clearLayers();
-
-                const heatArr = heat || [];
-                const pts = heatArr.map(h => [h.lat, h.lng, Math.min(1, (h.weight || 1) / 20)]);
-                if (document.getElementById('chkHeat').checked && pts.length && typeof L.heatLayer === 'function') {
-                    heatLayer = L.heatLayer(pts, { radius: 28, blur: 22, maxZoom: 17 });
-                    map.addLayer(heatLayer);
-                }
-
-                if (document.getElementById('chkPaths').checked && paths && paths.length) {
-                    paths.forEach(p => {
-                        if (p.fromLat == null || p.toLat == null) return;
-                        const latlngs = [[p.fromLat, p.fromLng], [p.toLat, p.toLng]];
-                        const line = L.polyline(latlngs, { color: '#1e3a8a', weight: 3, opacity: 0.75 });
-                        line.bindPopup((p.fromName || 'A') + ' → ' + (p.toName || 'B'));
-                        line.addTo(pathLayer);
-                    });
-                }
-
-                focusMap(heatArr, pathLayer);
             } catch (e) {
                 showErr(e);
+                return;
             }
+
+            popularChains = chains || [];
+            renderRouteList();
+            renderLeaflet(heat, popularChains, heatOn, pathsOn);
         }
 
         document.getElementById('btnReload').addEventListener('click', load);
         function syncToggleChip() {
-            const heatOn = document.getElementById('chkHeat').checked;
-            const pathsOn = document.getElementById('chkPaths').checked;
-            document.getElementById('chipHeat').classList.toggle('active', heatOn);
-            document.getElementById('chipPaths').classList.toggle('active', pathsOn);
+            document.getElementById('chipHeat').classList.toggle('active', document.getElementById('chkHeat').checked);
+            document.getElementById('chipPaths').classList.toggle('active', document.getElementById('chkPaths').checked);
         }
         document.getElementById('chkHeat').addEventListener('change', () => { syncToggleChip(); load(); });
         document.getElementById('chkPaths').addEventListener('change', () => { syncToggleChip(); load(); });
