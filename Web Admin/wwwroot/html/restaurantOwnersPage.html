@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chủ cửa hàng | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/sidebar.css?v=20260402a">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
 </head>
 <body>
     <div class="app-shell">
@@ -14,6 +14,7 @@
             <nav class="nav-menu">
                 <ul>
                     <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li>
+                    <li><a href="poiListenStatsPage.html"><i class="fa-solid fa-headphones"></i> Thời lượng nghe</a></li>
                     <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
                     <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
                     <li><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
@@ -55,8 +56,8 @@
         </div>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js"></script>
-    <script src="/js/logout.js?v=20260402a"></script>
+    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/logout.js?v=20260406c"></script>
     <script>
         const err = document.getElementById('err');
         async function load() {

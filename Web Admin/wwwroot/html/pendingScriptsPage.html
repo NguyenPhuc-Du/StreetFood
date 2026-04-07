@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phê duyệt script | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/sidebar.css?v=20260402a">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
 </head>
 <body>
     <div class="app-shell">
@@ -14,6 +14,7 @@
             <nav class="nav-menu">
                 <ul>
                     <li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li>
+                    <li><a href="poiListenStatsPage.html"><i class="fa-solid fa-headphones"></i> Thời lượng nghe</a></li>
                     <li><a href="routeHeatmapPage.html"><i class="fa-solid fa-route"></i> Tuyến & Heatmap</a></li>
                     <li><a href="createPoiOwnerPage.html"><i class="fa-solid fa-user-plus"></i> Tạo POI & chủ quán</a></li>
                     <li class="active"><a href="pendingScriptsPage.html"><i class="fa-solid fa-file-signature"></i> Phê duyệt script</a></li>
@@ -33,7 +34,6 @@
             </header>
             <div class="page-title-block">
                 <h1>Phê duyệt script & POI chờ vendor</h1>
-                <p>Sau khi phê duyệt, hệ thống đồng bộ nội dung đa ngôn ngữ và tạo bản âm thanh tương ứng.</p>
             </div>
             <div class="card-panel">
                 <h3 class="section-title">POI chờ script từ vendor</h3>
@@ -45,14 +45,13 @@
             <div class="card-panel">
                 <h3 class="section-title">Yêu cầu script chờ duyệt</h3>
                 <table class="data-table" id="tblPending">
-                    <thead><tr><th>ID</th><th>POI</th><th>Script</th><th>Gửi lúc</th><th></th></tr></thead>
+                    <thead><tr><th>ID</th><th>POI</th><th>Loại / Nội dung</th><th>Gửi lúc</th><th></th></tr></thead>
                     <tbody></tbody>
                 </table>
                 <div id="err" class="err"></div>
             </div>
-                    <div class="card-panel">
+            <div class="card-panel">
                 <h3 class="section-title">Tạo lại âm thanh</h3>
-                <p class="muted-help">Dùng khi cần sinh lại file đọc theo nội dung hiện tại (nhập mã POI).</p>
                 <div class="regen-audio-row">
                     <input type="number" id="regenPoiId" class="regen-audio-input" placeholder="POI Id" min="1" step="1">
                     <button type="button" class="btn-primary" id="btnRegenAudio">Tạo lại MP3</button>
@@ -62,10 +61,32 @@
         </div>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js"></script>
-    <script src="/js/logout.js?v=20260402a"></script>
+    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/logout.js?v=20260406c"></script>
     <script>
         const err = document.getElementById('err');
+        function escapeAttr(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        }
+        function formatPendingCell(raw) {
+            const s = raw || '';
+            const t = s.trim();
+            if (t.startsWith('{')) {
+                try {
+                    const o = JSON.parse(t);
+                    if (o.type === 'vendor_audio_bundle' && o.urls && typeof o.urls === 'object') {
+                        const langs = ['vi', 'en', 'cn', 'ja', 'ko'];
+                        const links = langs.map(function (l) {
+                            var u = o.urls[l];
+                            if (!u) return '<span style="color:#b91c1c;">' + l + ' (thiếu)</span>';
+                            return '<a href="' + escapeAttr(u) + '" target="_blank" rel="noopener">' + l + '</a>';
+                        });
+                        return '<strong>Gói 5 audio</strong><div style="margin-top:6px;font-size:13px;">' + links.join(' · ') + '</div>';
+                    }
+                } catch (e) { /* fall through */ }
+            }
+            return escapeHtml(s.slice(0, 400)) + (s.length > 400 ? '…' : '');
+        }
         async function load() {
             err.textContent = '';
             try {
@@ -90,7 +111,7 @@
                 tbA.innerHTML = (awaiting || []).map(a => '<tr><td>' + escapeHtml(a.poiName) + '</td><td>' + escapeHtml(a.ownerUsername) + '</td><td><span class="badge ' + stateClass(a.state) + '">' + escapeHtml(stateLabel(a.state)) + '</span>' + (a.audioCount > 0 ? ' <span style="font-size:12px;color:var(--text-muted);">(' + a.audioCount + ')</span>' : '') + '</td></tr>').join('') || '<tr><td colspan="3">Không có bản ghi.</td></tr>';
 
                 const tbP = document.querySelector('#tblPending tbody');
-                tbP.innerHTML = (pending || []).map(p => '<tr data-id="' + p.id + '"><td>' + p.id + '</td><td>' + escapeHtml(p.poiName) + '</td><td style="max-width:320px;white-space:pre-wrap;">' + escapeHtml((p.newScript || '').slice(0, 400)) + '</td><td>' + (p.createdAt ? new Date(p.createdAt).toLocaleString() : '') + '</td><td><button type="button" class="btn-primary btn-approve">Phê duyệt</button></td></tr>').join('') || '<tr><td colspan="5">Không có yêu cầu pending.</td></tr>';
+                tbP.innerHTML = (pending || []).map(p => '<tr data-id="' + p.id + '"><td>' + p.id + '</td><td>' + escapeHtml(p.poiName) + '</td><td style="max-width:380px;white-space:normal;word-break:break-word;">' + formatPendingCell(p.newScript) + '</td><td>' + (p.createdAt ? new Date(p.createdAt).toLocaleString() : '') + '</td><td><button type="button" class="btn-primary btn-approve">Phê duyệt</button></td></tr>').join('') || '<tr><td colspan="5">Không có yêu cầu pending.</td></tr>';
 
                 tbP.querySelectorAll('.btn-approve').forEach(btn => {
                     btn.onclick = async () => {

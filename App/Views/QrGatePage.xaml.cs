@@ -7,7 +7,6 @@ namespace App.Views;
 public partial class QrGatePage : ContentPage
 {
     bool _completed;
-    readonly AuthApiService _auth = AuthApiService.Instance;
     string? _lastBarcodeValue;
     DateTime _lastBarcodeUtc;
 
@@ -26,7 +25,7 @@ public partial class QrGatePage : ContentPage
             return;
         }
 
-        _ = PullServerThenMaybeDismissAsync();
+        _ = TryRestoreFromServerIfActivatedAsync();
 
         if (BarcodeScanning.IsSupported)
         {
@@ -50,23 +49,16 @@ public partial class QrGatePage : ContentPage
             ManualPanel.IsVisible = true;
     }
 
-    async Task PullServerThenMaybeDismissAsync()
-    {
-        await TryPullServerStatusAsync();
-        if (_completed)
-            return;
-        if (ActivationService.IsCurrentlyActivated())
-            await MainThread.InvokeOnMainThreadAsync(DismissAsync);
-    }
-
-    async Task TryPullServerStatusAsync()
+    /// <summary>Nếu trước đây đã kích hoạt trên server (bản cũ), vẫn có thể đồng bộ hạn — không bắt buộc cho QR mới.</summary>
+    async Task TryRestoreFromServerIfActivatedAsync()
     {
         if (!NetworkReachability.HasUsableConnection)
             return;
         try
         {
+            var auth = AuthApiService.Instance;
             var id = ActivationService.GetOrCreateInstallId();
-            var (ok, data) = await _auth.GetDeviceStatusAsync(id);
+            var (ok, data) = await auth.GetDeviceStatusAsync(id);
             if (!ok || data == null || !data.Active || string.IsNullOrEmpty(data.ActivationExpiresAt))
                 return;
             if (!DateTime.TryParse(data.ActivationExpiresAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var exp))
@@ -79,12 +71,17 @@ public partial class QrGatePage : ContentPage
         {
             // ignore
         }
+
+        if (_completed)
+            return;
+        if (ActivationService.IsCurrentlyActivated())
+            await MainThread.InvokeOnMainThreadAsync(DismissAsync);
     }
 
     protected override bool OnBackButtonPressed()
     {
         Dispatcher.Dispatch(async () =>
-            await DisplayAlertAsync("Cần kích hoạt", "Quét mã hợp lệ. Có internet và API dùng được thì đồng bộ máy chủ; không thì app vẫn kích hoạt cục bộ.", "OK"));
+            await DisplayAlertAsync("Cần kích hoạt", "Quét mã QR hợp lệ để dùng app. Hạn lưu trên máy (mặc định 7 ngày).", "OK"));
         return true;
     }
 
@@ -126,36 +123,7 @@ public partial class QrGatePage : ContentPage
             return;
         }
 
-        if (NetworkReachability.HasUsableConnection)
-        {
-            BusyIndicator.IsVisible = true;
-            BusyIndicator.IsRunning = true;
-            try
-            {
-                var installId = ActivationService.GetOrCreateInstallId();
-                var (ok, error, data, transientNetworkFailure) = await _auth.ActivateDeviceAsync(installId, payload);
-                if (ok && data?.ActivationExpiresAt != null
-                    && DateTime.TryParse(data.ActivationExpiresAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var exp))
-                {
-                    _completed = true;
-                    ActivationService.ApplyServerUtc(exp, data.PlanLabel);
-                    await DismissAsync();
-                    return;
-                }
-
-                if (!transientNetworkFailure)
-                {
-                    ShowError(string.IsNullOrWhiteSpace(error) ? "Không kích hoạt được." : error);
-                    return;
-                }
-            }
-            finally
-            {
-                BusyIndicator.IsRunning = false;
-                BusyIndicator.IsVisible = false;
-            }
-        }
-
+        _ = ActivationService.GetOrCreateInstallId();
         _completed = true;
         ActivationService.ApplyLocalFromQr(payload, plan);
         await DismissAsync();

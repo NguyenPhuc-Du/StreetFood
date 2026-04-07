@@ -32,6 +32,23 @@ public record PathSegmentDto(
     string? FromName,
     string? ToName);
 
+/// <summary>Cặp From→To được ghi nhận nhiều nhất (dùng vẽ tuyến đường).</summary>
+public record PopularPathDto(
+    int FromPoiId,
+    int ToPoiId,
+    int TripCount,
+    double FromLat,
+    double FromLng,
+    double ToLat,
+    double ToLng,
+    string? FromName,
+    string? ToName);
+
+public record RouteChainPointDto(int PoiId, double Lat, double Lng, string? Name);
+
+/// <summary>Chuỗi POI (tối đa 5 điểm) ghép từ Movement_Paths.</summary>
+public record PopularRouteChainDto(int TripCount, string Summary, IReadOnlyList<RouteChainPointDto> Points);
+
 public record AwaitingPoiDto(int PoiId, string PoiName, string OwnerUsername, string State, int AudioCount);
 
 public record PendingScriptDto(
@@ -59,3 +76,10 @@ public record DashboardSummaryDto(
     int PendingScripts,
     int AudioTracks,
     int LocationSamples30d);
+
+/// <summary>Thống kê thời lượng nghe audio trung bình theo POI (từ poi_audio_listen_events).</summary>
+public record PoiAudioListenStatsDto(
+    int PoiId,
+    string? PoiName,
+    long ListenSamples,
+    double? AvgDurationSeconds);

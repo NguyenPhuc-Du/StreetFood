@@ -13,20 +13,24 @@
             </Border>
 
             <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
-                <VerticalStackLayout Spacing="10">
-                    <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="Tự động phát audio khi ở gần" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource TextPrimary}"/>
-                            <Label Text="Tự phát audio khi bạn đi vào phạm vi của quán trên bản đồ."
-                                   FontSize="13"
-                                   TextColor="{StaticResource TextMuted}"/>
-                        </VerticalStackLayout>
-
-                        <Switch x:Name="AutoAudioSwitch"
-                                IsToggled="True"
-                                OnColor="{StaticResource Primary}"
-                                Toggled="OnAutoAudioSwitchToggled"/>
-                    </Grid>
+                <VerticalStackLayout Spacing="14">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Tự động phát audio khi ở gần"
+                               FontAttributes="Bold"
+                               FontSize="16"
+                               TextColor="{StaticResource TextPrimary}"
+                               LineBreakMode="WordWrap"/>
+                        <Label Text="Tự phát audio khi bạn đi vào phạm vi của quán trên bản đồ."
+                               FontSize="13"
+                               TextColor="{StaticResource TextMuted}"
+                               LineBreakMode="WordWrap"/>
+                    </VerticalStackLayout>
+                    <Switch x:Name="AutoAudioSwitch"
+                            IsToggled="True"
+                            OnColor="{StaticResource Primary}"
+                            HorizontalOptions="End"
+                            VerticalOptions="Center"
+                            Toggled="OnAutoAudioSwitchToggled"/>
                 </VerticalStackLayout>
             </Border>
 

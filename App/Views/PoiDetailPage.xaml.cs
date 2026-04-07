@@ -15,6 +15,7 @@ public partial class PoiDetailPage : ContentPage
 {
     const string PinnedPoiKey = "pinnedPoiId";
     private readonly ApiService _api = ApiService.Instance;
+    private readonly AudioListenMeter _listenMeter;
     private readonly IDispatcherTimer _audioTimer;
     private bool _isSeeking;
     private PoiDetail? _currentDetail;
@@ -28,6 +29,7 @@ public partial class PoiDetailPage : ContentPage
     {
         InitializeComponent();
         BindingContext = this;
+        _listenMeter = new AudioListenMeter(AudioPlayer, () => PoiId);
 
         _audioTimer = Dispatcher.CreateTimer();
         _audioTimer.Interval = TimeSpan.FromMilliseconds(500);
@@ -83,6 +85,7 @@ public partial class PoiDetailPage : ContentPage
     {
         StopOfflineSpeech();
         _audioTimer.Stop();
+        _listenMeter.StopAndFlushFireAndForget();
         AudioPlayer?.Stop();
         base.OnDisappearing();
     }
@@ -168,6 +171,7 @@ public partial class PoiDetailPage : ContentPage
         {
             AudioPlayer?.Play();
             _audioTimer.Start();
+            _listenMeter.Arm(Dispatcher, PoiId);
             return;
         }
 

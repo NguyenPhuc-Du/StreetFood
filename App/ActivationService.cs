@@ -41,14 +41,14 @@ public static class ActivationService
             Preferences.Default.Remove(PlanKey);
     }
 
-    /// <summary>Kích hoạt cục bộ khi QR hợp lệ nhưng không gọi được API (hoặc không có mạng).</summary>
+    /// <summary>Kích hoạt cục bộ sau khi quét QR hợp lệ (Preferences; không phụ thuộc DB).</summary>
     public static void ApplyLocalFromQr(string payload, QrActivationPlan plan)
     {
         var days = plan switch
         {
             QrActivationPlan.Week => 7,
             QrActivationPlan.Month => 30,
-            _ => 30
+            _ => 7
         };
         var exp = DateTime.UtcNow.AddDays(days);
         var label = QrAccess.ResolveDisplayLabel(payload);
@@ -76,7 +76,7 @@ public static class ActivationService
 public enum QrActivationPlan
 {
     None,
-    /// <summary>QR đơn: chỉ cần chứa StreetFood — mặc định 30 ngày (server).</summary>
+    /// <summary>QR đơn: chỉ cần chứa StreetFood — mặc định 7 ngày (cục bộ).</summary>
     Standard,
     Week,
     Month

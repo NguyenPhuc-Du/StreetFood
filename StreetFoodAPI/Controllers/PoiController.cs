@@ -30,7 +30,7 @@ public class PoiController : ControllerBase
             // Sửa lại SQL trong hàm GetPois
             var sql = @"
             SELECT 
-                p.Id, p.Latitude, p.Longitude, p.ImageUrl, 
+                p.Id, p.Latitude, p.Longitude, COALESCE(p.Radius, 50) AS Radius, p.ImageUrl, 
                 t.Name, t.Description as Address,
                 d.OpeningHours,
                 a.AudioUrl

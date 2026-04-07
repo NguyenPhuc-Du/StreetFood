@@ -1,12 +1,12 @@
 namespace App;
 
 /// <summary>
-/// Mã QR kích hoạt trong app. Có mạng và API dùng được thì đồng bộ server; không thì vẫn kích hoạt cục bộ theo gói (30 ngày / tuần / tháng). Không mở trình duyệt từ nội dung QR.
+/// Mã QR kích hoạt trong app — lưu hạn trên máy (Preferences), không cần DB. Mặc định 7 ngày; có thể |WEEK / |MONTH (30 ngày). Không mở trình duyệt từ nội dung QR.
 /// Chấp nhận một trong các dạng nội dung:
 /// <list type="bullet">
 /// <item><description>Chuẩn in ấn: <c>StreetFood:30_days_activation:Mixi</c></description></item>
 /// <item><description><c>30_days_activation...</c> (ví dụ <c>30_days_activation_key_mixi_2023</c>)</description></item>
-/// <item><description><c>StreetFood</c> (mặc định 30 ngày; tùy chọn <c>|WEEK</c> / <c>|MONTH</c>)</description></item>
+/// <item><description><c>StreetFood</c> (mặc định 7 ngày; tùy chọn <c>|WEEK</c> / <c>|MONTH</c>)</description></item>
 /// </list>
 /// </summary>
 public static class QrAccess
@@ -74,7 +74,7 @@ public static class QrAccess
     {
         if (string.IsNullOrEmpty(payload)) return "30 ngày";
         if (!payload.Contains(ActivationKey30Days, StringComparison.OrdinalIgnoreCase))
-            return payload.Contains(RequiredToken, StringComparison.OrdinalIgnoreCase) ? "Kích hoạt tour" : "30 ngày";
+            return payload.Contains(RequiredToken, StringComparison.OrdinalIgnoreCase) ? "Kích hoạt tour" : "7 ngày";
 
         var i = payload.IndexOf(ActivationKey30Days, StringComparison.OrdinalIgnoreCase);
         var afterKey = payload.AsSpan(i + ActivationKey30Days.Length);
@@ -89,6 +89,6 @@ public static class QrAccess
             }
         }
 
-        return "30 ngày";
+        return "7 ngày";
     }
 }
