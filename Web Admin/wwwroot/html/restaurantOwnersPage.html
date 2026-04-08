@@ -6,6 +6,44 @@
     <title>Chủ cửa hàng | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
+    <style>
+        .sf-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 9999;
+        }
+        .sf-modal.open { display: flex; }
+        .sf-modal-card {
+            width: 100%;
+            max-width: 420px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+            overflow: hidden;
+        }
+        .sf-modal-head {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 800;
+        }
+        .sf-modal-body {
+            padding: 14px 16px;
+            color: #334155;
+            line-height: 1.45;
+        }
+        .sf-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 0 16px 16px;
+        }
+    </style>
 </head>
 <body>
     <div class="app-shell">
@@ -26,7 +64,6 @@
             <header class="top-header">
                 <div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Tìm chủ quán..."></div>
                 <div class="header-actions">
-                    <label style="font-size:14px;color:var(--text-muted);"><input type="checkbox" id="chkHidden"> Hiện tài khoản đã ẩn</label>
                     <button type="button" class="btn-primary" id="btnReload"><i class="fa-solid fa-rotate"></i> Làm mới</button>
                     <a class="btn-logout-admin" href="loginPage.html" onclick="window.AdminLogout?.(); return false;">
                         <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
@@ -41,7 +78,7 @@
                 <table class="data-table" id="tbl">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>STT</th>
                             <th>Username</th>
                             <th>Email</th>
                             <th>POI</th>
@@ -55,27 +92,77 @@
             </div>
         </div>
     </div>
+    <div id="sfModal" class="sf-modal" aria-hidden="true">
+        <div class="sf-modal-card" role="dialog" aria-modal="true" aria-labelledby="sfModalTitle">
+            <div class="sf-modal-head" id="sfModalTitle">Xác nhận</div>
+            <div class="sf-modal-body" id="sfModalMessage"></div>
+            <div class="sf-modal-actions">
+                <button id="sfModalCancel" class="btn-outline" type="button">Hủy</button>
+                <button id="sfModalOk" class="btn-primary" type="button">Đồng ý</button>
+            </div>
+        </div>
+    </div>
     <script src="/config.js"></script>
     <script src="/js/admin-api.js?v=20260406f"></script>
     <script src="/js/logout.js?v=20260406c"></script>
     <script>
         const err = document.getElementById('err');
+        const sfModal = document.getElementById('sfModal');
+        const sfModalTitle = document.getElementById('sfModalTitle');
+        const sfModalMessage = document.getElementById('sfModalMessage');
+        const sfModalOk = document.getElementById('sfModalOk');
+        const sfModalCancel = document.getElementById('sfModalCancel');
+        let modalResolver = null;
+
+        function closeModal(value) {
+            if (sfModal) {
+                sfModal.classList.remove('open');
+                sfModal.setAttribute('aria-hidden', 'true');
+            }
+            if (modalResolver) {
+                modalResolver(value);
+                modalResolver = null;
+            }
+        }
+        function showConfirm(title, message, okText) {
+            if (!sfModal || !sfModalTitle || !sfModalMessage || !sfModalOk || !sfModalCancel) {
+                return Promise.resolve(false);
+            }
+            sfModalTitle.textContent = title || 'Xác nhận';
+            sfModalMessage.textContent = message || '';
+            sfModalOk.textContent = okText || 'Đồng ý';
+            sfModalCancel.style.display = 'inline-flex';
+            sfModal.classList.add('open');
+            sfModal.setAttribute('aria-hidden', 'false');
+            sfModalOk.focus();
+            return new Promise((resolve) => { modalResolver = resolve; });
+        }
+
         async function load() {
             err.textContent = '';
-            const inc = document.getElementById('chkHidden').checked;
             try {
-                const rows = await window.StreetFoodAdmin.listOwners(inc);
+                const rows = await window.StreetFoodAdmin.listOwners(true);
                 const tb = document.querySelector('#tbl tbody');
-                tb.innerHTML = (rows || []).map(r => '<tr data-user="' + r.id + '"><td>' + r.id + '</td><td>' + esc(r.username) + '</td><td>' + esc(r.email || '') + '</td><td>' + esc(r.poiName || '—') + '</td><td>' + (r.isHidden ? 'Có' : 'Không') + '</td><td>' + (!r.isHidden ? '<button type="button" class="btn-outline btn-hide">Ẩn</button>' : '') + '</td></tr>').join('') || '<tr><td colspan="6">Không có dữ liệu.</td></tr>';
+                tb.innerHTML = (rows || []).map((r, i) => '<tr data-user="' + r.id + '" data-hidden="' + (r.isHidden ? '1' : '0') + '" data-poi="' + escAttr(r.poiName || '—') + '" data-username="' + escAttr(r.username || '') + '"><td>' + (i + 1) + '</td><td>' + esc(r.username) + '</td><td>' + esc(r.email || '') + '</td><td>' + esc(r.poiName || '—') + '</td><td>' + (r.isHidden ? 'Có' : 'Không') + '</td><td><button type="button" class="btn-outline btn-toggle">' + (r.isHidden ? 'Hiện' : 'Ẩn') + '</button></td></tr>').join('') || '<tr><td colspan="6">Không có dữ liệu.</td></tr>';
 
-                tb.querySelectorAll('.btn-hide').forEach(btn => {
+                tb.querySelectorAll('.btn-toggle').forEach(btn => {
                     btn.onclick = async () => {
                         const tr = btn.closest('tr');
                         const uid = parseInt(tr.getAttribute('data-user'), 10);
-                        if (!confirm('Ẩn tài khoản #' + uid + '?')) return;
+                        const isHidden = tr.getAttribute('data-hidden') === '1';
+                        const poiName = tr.getAttribute('data-poi') || '—';
+                        const ok = await showConfirm(
+                            isHidden ? 'Xác nhận hiện' : 'Xác nhận ẩn',
+                            isHidden
+                                ? ('Hiện lại quán "' + poiName + '"?')
+                                : ('Ẩn quán "' + poiName + '"?'),
+                            isHidden ? 'Hiện' : 'Ẩn'
+                        );
+                        if (!ok) return;
                         btn.disabled = true;
                         try {
-                            await window.StreetFoodAdmin.hideOwner(uid);
+                            if (isHidden) await window.StreetFoodAdmin.unhideOwner(uid);
+                            else await window.StreetFoodAdmin.hideOwner(uid);
                             await load();
                         } catch (e) {
                             err.textContent = e.message || String(e);
@@ -91,8 +178,13 @@
             d.textContent = s;
             return d.innerHTML;
         }
+        function escAttr(s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        }
+        if (sfModalOk) sfModalOk.onclick = () => closeModal(true);
+        if (sfModalCancel) sfModalCancel.onclick = () => closeModal(false);
+        if (sfModal) sfModal.addEventListener('click', (ev) => { if (ev.target === sfModal) closeModal(false); });
         document.getElementById('btnReload').onclick = load;
-        document.getElementById('chkHidden').onchange = load;
         load();
     </script>
 </body>

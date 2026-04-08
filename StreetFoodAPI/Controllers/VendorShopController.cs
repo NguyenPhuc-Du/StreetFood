@@ -67,6 +67,7 @@ public class VendorShopController : ControllerBase
         // DB column Foods.Price is INT, so keep it as int for clean mapping.
         public int Price { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
+        public bool IsHidden { get; set; }
     }
 
     public record CreateFoodBody(
@@ -88,6 +89,7 @@ public class VendorShopController : ControllerBase
         string? ImageUrl);
 
     public record DeleteFoodBody(string Username, string Password, int FoodId);
+    public record RestoreFoodBody(string Username, string Password, int FoodId);
 
     [HttpPost("pois/list")]
     public async Task<IActionResult> ListVendorPois([FromBody] VendorAuthBody body)
@@ -211,10 +213,10 @@ public class VendorShopController : ControllerBase
                         Name,
                         Description,
                         Price,
-                        ImageUrl
+                        ImageUrl,
+                        COALESCE(IsHidden, FALSE) AS IsHidden
                     FROM Foods
                     WHERE PoiId = @PoiId
-                      AND COALESCE(IsHidden, FALSE) = FALSE
                     ORDER BY Id DESC",
                     new { PoiId = body.PoiId });
             }
@@ -229,7 +231,8 @@ public class VendorShopController : ControllerBase
                         Name,
                         Description,
                         Price,
-                        ImageUrl
+                        ImageUrl,
+                        FALSE AS IsHidden
                     FROM Foods
                     WHERE PoiId = @PoiId
                     ORDER BY Id DESC",
@@ -365,6 +368,45 @@ public class VendorShopController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "DeleteFood");
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost("foods/restore")]
+    public async Task<IActionResult> RestoreFood([FromBody] RestoreFoodBody body)
+    {
+        if (body.FoodId <= 0) return BadRequest("FoodId không hợp lệ.");
+        var userId = await GetVendorUserId(body.Username, body.Password);
+        if (userId == null) return Unauthorized("Sai tài khoản hoặc tài khoản đã bị ẩn.");
+
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var poiId = await conn.QueryFirstOrDefaultAsync<int?>(@"
+                SELECT PoiId FROM Foods WHERE Id = @Id",
+                new { Id = body.FoodId });
+
+            if (poiId == null) return NotFound("Không tìm thấy món ăn.");
+            if (!await VendorOwnsPoi(userId.Value, poiId.Value)) return BadRequest("Bạn không quản lý POI này.");
+
+            try
+            {
+                await conn.ExecuteAsync(@"
+                    UPDATE Foods
+                    SET IsHidden = FALSE
+                    WHERE Id = @Id",
+                    new { Id = body.FoodId });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42703")
+            {
+                return BadRequest("Chưa có cột IsHidden trong bảng Foods. Vui lòng chạy migration V12__Foods_soft_delete.sql.");
+            }
+
+            return Ok(new { message = "Đã bật lại món ăn." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RestoreFood");
             return BadRequest(ex.Message);
         }
     }

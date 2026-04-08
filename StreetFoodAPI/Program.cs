@@ -14,6 +14,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
 
 builder.Services.AddHttpClient<AzureTranslatorClient>();
 builder.Services.AddScoped<AzureSpeechTtsService>();
+builder.Services.AddScoped<R2StorageService>();
 
 // Cấu hình Database (PostgreSQL)
 builder.Services.AddDbContext<StreetFoodDBContext>(options =>

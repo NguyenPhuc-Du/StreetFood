@@ -18,16 +18,19 @@ public class VendorScriptController : ControllerBase
     private readonly string _connStr;
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
+    private readonly R2StorageService _r2;
     private readonly ILogger<VendorScriptController> _logger;
 
     public VendorScriptController(
         IConfiguration config,
         IWebHostEnvironment env,
+        R2StorageService r2,
         ILogger<VendorScriptController> logger)
     {
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
         _config = config;
         _env = env;
+        _r2 = r2;
         _logger = logger;
     }
 
@@ -147,7 +150,8 @@ public class VendorScriptController : ControllerBase
 
             var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             var dir = Path.Combine(webRoot, "uploads", "vendor", "audio");
-            Directory.CreateDirectory(dir);
+            if (!_r2.IsEnabled)
+                Directory.CreateDirectory(dir);
 
             var urlsObj = new Dictionary<string, string>();
             foreach (var lang in AllLangs)
@@ -157,17 +161,29 @@ public class VendorScriptController : ControllerBase
                 if (string.IsNullOrEmpty(ext) || ext == ".")
                     ext = ".mp3";
                 var name = $"{poiId}_{lang}_{Guid.NewGuid():N}{ext}";
-                var physical = Path.Combine(dir, name);
-                await using (var fs = System.IO.File.Create(physical))
+                string url;
+                if (_r2.IsEnabled)
                 {
-                    await f.CopyToAsync(fs);
+                    await using var input = f.OpenReadStream();
+                    var objectKey = $"{poiId}/audio/{lang}{ext}";
+                    var uploaded = await _r2.UploadAsync(objectKey, input, f.ContentType ?? "audio/mpeg");
+                    if (string.IsNullOrWhiteSpace(uploaded))
+                        return BadRequest("Upload Cloudflare R2 thất bại. Kiểm tra cấu hình Storage:R2.");
+                    url = uploaded;
                 }
-
-                var rel = $"/uploads/vendor/audio/{name}";
-                var pub = _config["Api:PublicBaseUrl"]?.TrimEnd('/');
-                var url = !string.IsNullOrEmpty(pub)
-                    ? pub + rel
-                    : $"{Request.Scheme}://{Request.Host}{rel}";
+                else
+                {
+                    var physical = Path.Combine(dir, name);
+                    await using (var fs = System.IO.File.Create(physical))
+                    {
+                        await f.CopyToAsync(fs);
+                    }
+                    var rel = $"/uploads/vendor/audio/{name}";
+                    var pub = _config["Api:PublicBaseUrl"]?.TrimEnd('/');
+                    url = !string.IsNullOrEmpty(pub)
+                        ? pub + rel
+                        : $"{Request.Scheme}://{Request.Host}{rel}";
+                }
                 urlsObj[lang] = url;
             }
 
@@ -179,7 +195,7 @@ public class VendorScriptController : ControllerBase
 
             await conn.ExecuteAsync(@"
                 INSERT INTO script_change_requests (poiid, languagecode, newscript, status, createdby)
-                VALUES (@PoiId, 'bundle', @Script, 'pending', @CreatedBy)",
+                VALUES (@PoiId, 'bndl', @Script, 'pending', @CreatedBy)",
                 new { PoiId = poiId, Script = payload, CreatedBy = userId.Value });
 
             await conn.ExecuteAsync(

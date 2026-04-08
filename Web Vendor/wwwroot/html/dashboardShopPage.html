@@ -301,7 +301,7 @@
                             let imageUrlFinal = serverImageUrl;
                             if (pendingFile) {
                                 if (saveMsg) saveMsg.textContent = 'Đang tải ảnh lên máy chủ...';
-                                imageUrlFinal = await window.VendorAPI.uploadShopImage(pendingFile);
+                                imageUrlFinal = await window.VendorAPI.uploadShopImage(pendingFile, 'images');
                                 pendingFile = null;
                                 clearPreviewBlob();
                             }

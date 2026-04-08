@@ -78,6 +78,16 @@
     <script src="/config.js"></script>
     <script src="/js/logout.js"></script>
     <script src="/js/vendor-api.js?v=20260403b"></script>
+    <div id="sfModal" class="sf-modal" aria-hidden="true">
+        <div class="sf-modal-card" role="dialog" aria-modal="true" aria-labelledby="sfModalTitle">
+            <div class="sf-modal-head" id="sfModalTitle">Thông báo</div>
+            <div class="sf-modal-body" id="sfModalMessage"></div>
+            <div class="sf-modal-actions">
+                <button id="sfModalCancel" class="btn" type="button" style="border:1px solid var(--line);background:#fff;">Hủy</button>
+                <button id="sfModalOk" class="btn btn-primary" type="button">Đồng ý</button>
+            </div>
+        </div>
+    </div>
     <script>
         (async function () {
             let currentPoiId = null;
@@ -96,8 +106,56 @@
             const btnPickFoodImage = document.getElementById('btnPickFoodImage');
             const foodImagePreview = document.getElementById('foodImagePreview');
             const descInput = document.getElementById('foodDescInput');
+            const sfModal = document.getElementById('sfModal');
+            const sfModalTitle = document.getElementById('sfModalTitle');
+            const sfModalMessage = document.getElementById('sfModalMessage');
+            const sfModalOk = document.getElementById('sfModalOk');
+            const sfModalCancel = document.getElementById('sfModalCancel');
             let pendingFoodFile = null;
             let foodPreviewBlob = '';
+            let modalResolver = null;
+
+            function closeModal(value) {
+                if (sfModal) {
+                    sfModal.classList.remove('open');
+                    sfModal.setAttribute('aria-hidden', 'true');
+                }
+                if (modalResolver) {
+                    modalResolver(value);
+                    modalResolver = null;
+                }
+            }
+
+            function showModal(opts) {
+                const title = opts?.title || 'Thông báo';
+                const message = opts?.message || '';
+                const okText = opts?.okText || 'Đồng ý';
+                const cancelText = opts?.cancelText || 'Hủy';
+                const hideCancel = Boolean(opts?.hideCancel);
+                if (!sfModal || !sfModalTitle || !sfModalMessage || !sfModalOk || !sfModalCancel) {
+                    return Promise.resolve(true);
+                }
+                sfModalTitle.textContent = title;
+                sfModalMessage.textContent = message;
+                sfModalOk.textContent = okText;
+                sfModalCancel.textContent = cancelText;
+                sfModalCancel.style.display = hideCancel ? 'none' : 'inline-flex';
+                sfModal.classList.add('open');
+                sfModal.setAttribute('aria-hidden', 'false');
+                sfModalOk.focus();
+                return new Promise((resolve) => {
+                    modalResolver = resolve;
+                });
+            }
+
+            async function showInfo(message, title) {
+                await showModal({
+                    title: title || 'Thông báo',
+                    message: message || '',
+                    okText: 'Đã hiểu',
+                    hideCancel: true
+                });
+            }
 
             function esc(s) {
                 if (s === null || s === undefined) return '';
@@ -160,15 +218,20 @@
                         const price = f.price ?? f.Price ?? 0;
                         const image = (f.imageUrl ?? f.ImageUrl) || 'https://via.placeholder.com/360x220?text=Mon+an';
                         const desc = f.description ?? f.Description ?? '';
+                        const isHidden = Boolean(f.isHidden ?? f.IsHidden);
+                        const statusText = isHidden ? 'Đang ẩn' : 'Đang bán';
+                        const toggleText = isHidden ? 'Hiện món ăn' : 'Ẩn món ăn';
+                        const toggleClass = isHidden ? 'btn btn-primary' : 'btn btn-danger';
                         return '' +
                             '<div class="product-card">' +
                             '  <img class="product-image clickable" data-action="edit" data-food-id="' + id + '" src="' + esc(image) + '" alt="food">' +
                             '  <div class="product-image-actions">' +
-                            '    <button type="button" class="btn btn-danger" data-action="hide" data-food-id="' + id + '">Ẩn món ăn</button>' +
+                            '    <button type="button" class="' + toggleClass + '" data-action="toggle-hidden" data-food-id="' + id + '" data-hidden="' + (isHidden ? '1' : '0') + '">' + toggleText + '</button>' +
                             '  </div>' +
                             '  <div class="product-body">' +
                             '    <div class="product-title">' + esc(name) + '</div>' +
                             '    <div class="product-price">' + Number(price).toLocaleString() + ' VND</div>' +
+                            '    <div class="muted" style="font-size:12px;">Trạng thái: ' + statusText + '</div>' +
                             '    <div class="product-desc">' + esc(desc).slice(0, 100) + '</div>' +
                             '  </div>' +
                             '</div>';
@@ -203,12 +266,35 @@
 
             async function hideFood(id) {
                 const foodId = Number(id);
-                if (!confirm('Ẩn món ăn này?')) return;
+                const yes = await showModal({
+                    title: 'Xác nhận ẩn món',
+                    message: 'Bạn có chắc muốn ẩn món ăn này không?',
+                    okText: 'Ẩn món ăn',
+                    cancelText: 'Không'
+                });
+                if (!yes) return;
                 try {
                     await window.VendorAPI.deleteFood(foodId);
                     await reloadFoods();
                 } catch (err) {
-                    alert(err?.message || String(err));
+                    await showInfo(err?.message || String(err), 'Không thể ẩn món');
+                }
+            }
+
+            async function restoreFood(id) {
+                const foodId = Number(id);
+                const yes = await showModal({
+                    title: 'Xác nhận bật món',
+                    message: 'Bạn có muốn bật lại món ăn này không?',
+                    okText: 'Bật món ăn',
+                    cancelText: 'Không'
+                });
+                if (!yes) return;
+                try {
+                    await window.VendorAPI.restoreFood(foodId);
+                    await reloadFoods();
+                } catch (err) {
+                    await showInfo(err?.message || String(err), 'Không thể bật món');
                 }
             }
 
@@ -219,6 +305,10 @@
                 const id = target.dataset.foodId;
                 if (action === 'edit') return editFood(id);
                 if (action === 'hide') return hideFood(id);
+                if (action === 'toggle-hidden') {
+                    const isHidden = target.dataset.hidden === '1';
+                    return isHidden ? restoreFood(id) : hideFood(id);
+                }
             });
 
             document.getElementById('btnOpenCreate').onclick = function () {
@@ -243,11 +333,11 @@
                     const okType = allowed.includes(file.type);
                     const okExt = ext.endsWith('.png') || ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.webp');
                     if (!okType && !okExt) {
-                        alert('Chỉ hỗ trợ PNG/JPG/WEBP.');
+                        showInfo('Chỉ hỗ trợ PNG/JPG/WEBP.', 'Ảnh chưa hợp lệ');
                         return;
                     }
                     if (file.size > maxSizeBytes) {
-                        alert('Dung lượng ảnh tối đa 5MB.');
+                        showInfo('Dung lượng ảnh tối đa 5MB.', 'Ảnh quá lớn');
                         return;
                     }
                     pendingFoodFile = file;
@@ -261,6 +351,18 @@
                     foodImageFileInput.value = '';
                 };
             }
+
+            if (sfModalOk) sfModalOk.addEventListener('click', () => closeModal(true));
+            if (sfModalCancel) sfModalCancel.addEventListener('click', () => closeModal(false));
+            if (sfModal) {
+                sfModal.addEventListener('click', (ev) => {
+                    if (ev.target === sfModal) closeModal(false);
+                });
+            }
+            document.addEventListener('keydown', (ev) => {
+                if (!sfModal || !sfModal.classList.contains('open')) return;
+                if (ev.key === 'Escape') closeModal(false);
+            });
 
             document.getElementById('btnSaveFood').onclick = async function () {
                 const name = nameInput.value.trim();
@@ -276,7 +378,7 @@
                     let imageUrl = (foodImageUrlHidden?.value || '').trim();
                     if (pendingFoodFile) {
                         formMsg.textContent = 'Đang tải ảnh lên máy chủ...';
-                        imageUrl = await window.VendorAPI.uploadShopImage(pendingFoodFile);
+                        imageUrl = await window.VendorAPI.uploadShopImage(pendingFoodFile, 'dishes');
                         pendingFoodFile = null;
                         clearFoodPreviewBlob();
                     }

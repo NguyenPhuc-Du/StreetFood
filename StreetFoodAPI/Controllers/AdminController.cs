@@ -23,6 +23,8 @@ public class AdminController : ControllerBase
     private readonly IConfiguration _config;
     private readonly AzureTranslatorClient _translator;
     private readonly AzureSpeechTtsService _tts;
+    private readonly R2StorageService _r2;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AdminController> _logger;
 
     private static readonly string[] AllLangs = ["vi", "en", "cn", "ja", "ko"];
@@ -31,12 +33,16 @@ public class AdminController : ControllerBase
         IConfiguration config,
         AzureTranslatorClient translator,
         AzureSpeechTtsService tts,
+        R2StorageService r2,
+        IHttpClientFactory httpClientFactory,
         ILogger<AdminController> logger)
     {
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
         _config = config;
         _translator = translator;
         _tts = tts;
+        _r2 = r2;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -336,7 +342,7 @@ public class AdminController : ControllerBase
         {
             var taken = await conn.ExecuteScalarAsync<int>(
                 "SELECT COUNT(*)::int FROM Users WHERE Username = @Username",
-                new { body.OwnerUsername }, tx);
+                new { Username = body.OwnerUsername }, tx);
             if (taken > 0)
                 return BadRequest("Username đã tồn tại.");
 
@@ -344,7 +350,12 @@ public class AdminController : ControllerBase
                 INSERT INTO Users (Username, Password, Role, Email, IsHidden)
                 VALUES (@Username, @Password, 'vendor', @Email, FALSE)
                 RETURNING Id",
-                new { body.OwnerUsername, body.OwnerPassword, Email = (string?)body.OwnerEmail }, tx);
+                new
+                {
+                    Username = body.OwnerUsername,
+                    Password = body.OwnerPassword,
+                    Email = (string?)body.OwnerEmail
+                }, tx);
 
             var poiId = await conn.QuerySingleAsync<int>(@"
                 INSERT INTO POIs (Latitude, Longitude, Address, ImageUrl, Radius)
@@ -410,6 +421,12 @@ public class AdminController : ControllerBase
 
             await tx.CommitAsync();
 
+            string? storageMessage = null;
+            if (_r2.IsEnabled)
+            {
+                storageMessage = await SeedPoiStorageAsync(poiId, body.ImageUrl, HttpContext.RequestAborted);
+            }
+
             AudioGenerationResult? audio = null;
             if (hasScript)
             {
@@ -429,6 +446,7 @@ public class AdminController : ControllerBase
                 userId,
                 poiId,
                 scriptState = hasScript ? "approved" : "awaiting_vendor",
+                storage = storageMessage,
                 audio
             });
         }
@@ -437,6 +455,39 @@ public class AdminController : ControllerBase
             await tx.RollbackAsync();
             _logger.LogError(ex, "CreatePoiWithOwner");
             return BadRequest(ex.Message);
+        }
+    }
+
+    private async Task<string> SeedPoiStorageAsync(int poiId, string? logoUrl, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Create folder markers so dashboard shows audio/dishes/images immediately.
+            await _r2.PutTextAsync($"{poiId}/audio/.keep", "", "text/plain", cancellationToken);
+            await _r2.PutTextAsync($"{poiId}/dishes/.keep", "", "text/plain", cancellationToken);
+            await _r2.PutTextAsync($"{poiId}/images/.keep", "", "text/plain", cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(logoUrl))
+            {
+                var client = _httpClientFactory.CreateClient();
+                using var res = await client.GetAsync(logoUrl.Trim(), cancellationToken);
+                if (res.IsSuccessStatusCode)
+                {
+                    await using var stream = await res.Content.ReadAsStreamAsync(cancellationToken);
+                    var ct = res.Content.Headers.ContentType?.MediaType ?? "image/png";
+                    var up = await _r2.UploadAsync($"{poiId}/images/main.png", stream, ct, cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(up))
+                        return "Đã tạo cấu trúc R2 (audio/dishes/images) và upload logo main.png.";
+                }
+                return "Đã tạo cấu trúc R2 (audio/dishes/images); chưa tải được logo từ URL đã nhập.";
+            }
+
+            return "Đã tạo cấu trúc R2 (audio/dishes/images).";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Seed R2 structure failed for POI {PoiId}", poiId);
+            return "Chưa tạo được cấu trúc R2 cho POI.";
         }
     }
 
@@ -676,6 +727,26 @@ public class AdminController : ControllerBase
             if (n == 0)
                 return NotFound();
             return Ok(new { message = "Đã ẩn tài khoản (soft delete)." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost("owners/{userId:int}/unhide")]
+    public async Task<IActionResult> UnhideOwner([FromRoute] int userId)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var n = await conn.ExecuteAsync(
+                "UPDATE Users SET IsHidden = FALSE WHERE Id = @Id AND Role = 'vendor'",
+                new { Id = userId });
+            if (n == 0)
+                return NotFound();
+            return Ok(new { message = "Đã bật lại tài khoản." });
         }
         catch (Exception ex)
         {
