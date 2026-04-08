@@ -79,7 +79,7 @@
         return await vendorFetch('/api/vendor/pois/list', getCreds());
     }
 
-    async function uploadShopImage(file) {
+    async function uploadShopImage(file, purpose) {
         const creds = getCreds();
         if (typeof window.STREETFOOD_API !== 'string' || !window.STREETFOOD_API) {
             throw new Error('Thiếu cấu hình STREETFOOD_API.');
@@ -88,6 +88,7 @@
         fd.append('username', creds.Username);
         fd.append('password', creds.Password);
         fd.append('file', file);
+        fd.append('purpose', (purpose || 'images').toString());
 
         const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const timeoutMs = 60000;
@@ -167,6 +168,14 @@
         });
     }
 
+    async function restoreFood(foodId) {
+        const creds = getCreds();
+        return await vendorFetch('/api/vendor/foods/restore', {
+            ...creds,
+            FoodId: foodId
+        });
+    }
+
     async function submitScript(poiId, ScriptText, LanguageCode) {
         const creds = getCreds();
         return await vendorFetch('/api/vendor/submit-script', {
@@ -228,6 +237,7 @@
         createFood,
         updateFood,
         deleteFood,
+        restoreFood,
         submitScript,
         submitAudioBundle
     };

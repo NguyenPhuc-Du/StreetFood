@@ -15,6 +15,7 @@ public class AzureSpeechTtsService
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
     private readonly AzureTranslatorClient _translator;
+    private readonly R2StorageService _r2;
     private readonly ILogger<AzureSpeechTtsService> _logger;
     private readonly string _connStr;
 
@@ -22,11 +23,13 @@ public class AzureSpeechTtsService
         IConfiguration config,
         IWebHostEnvironment env,
         AzureTranslatorClient translator,
+        R2StorageService r2,
         ILogger<AzureSpeechTtsService> logger)
     {
         _config = config;
         _env = env;
         _translator = translator;
+        _r2 = r2;
         _logger = logger;
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
     }
@@ -110,12 +113,13 @@ public class AzureSpeechTtsService
         if (string.IsNullOrWhiteSpace(speechKey))
         {
             _logger.LogWarning("Azure:Speech:Key trống — đã cập nhật 4 bản dịch từ script VI, không tạo MP3 (POI {PoiId}).", poiId);
-            return new AudioGenerationResult(true, 0, "Đã cập nhật mô tả en/cn/ja/ko từ bản tiếng Việt. Chưa cấu hình Azure:Speech:Key nên chưa tạo file âm thanh.");
+            return new AudioGenerationResult(true, 0, "Đã duyệt script và cập nhật mô tả en/cn/ja/ko. Chưa tạo MP3 vì chưa cấu hình Azure Speech Key.");
         }
 
         var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
         var audioDir = Path.Combine(webRoot, "audio");
-        Directory.CreateDirectory(audioDir);
+        if (!_r2.IsEnabled)
+            Directory.CreateDirectory(audioDir);
 
         var ok = 0;
         var errors = new List<string>();
@@ -156,10 +160,26 @@ public class AzureSpeechTtsService
                 }
 
                 var fileName = $"poi_{poiId}_{lang}.mp3";
-                var path = Path.Combine(audioDir, fileName);
-                await File.WriteAllBytesAsync(path, audioData, cancellationToken).ConfigureAwait(false);
+                string url;
+                if (_r2.IsEnabled)
+                {
+                    await using var ms = new MemoryStream(audioData, writable: false);
+                    var objectKey = $"{poiId}/audio/{lang}.mp3";
+                    var r2Url = await _r2.UploadAsync(objectKey, ms, "audio/mpeg", cancellationToken).ConfigureAwait(false);
+                    if (string.IsNullOrWhiteSpace(r2Url))
+                    {
+                        errors.Add($"{lang}: upload R2 thất bại.");
+                        continue;
+                    }
+                    url = r2Url;
+                }
+                else
+                {
+                    var path = Path.Combine(audioDir, fileName);
+                    await File.WriteAllBytesAsync(path, audioData, cancellationToken).ConfigureAwait(false);
+                    url = $"{publicBase}/audio/{fileName}";
+                }
 
-                var url = $"{publicBase}/audio/{fileName}";
                 await conn.ExecuteAsync(new CommandDefinition(@"
                     INSERT INTO restaurant_audio (poiid, languagecode, audiourl)
                     VALUES (@PoiId, @Lang, @Url)

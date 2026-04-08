@@ -36,65 +36,86 @@
     syncToggleIcon();
 })();
 
-document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
+const loginForm = document.getElementById('loginForm');
+if (loginForm && loginForm.dataset.boundLoginHandler !== '1') {
+    loginForm.dataset.boundLoginHandler = '1';
+    let isSubmitting = false;
+    let navigating = false;
 
-    const username = document.getElementById('txtUsername').value;
-    const password = document.getElementById('txtPassword').value;
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (isSubmitting) return;
+        isSubmitting = true;
 
-    function setCookie(name, value) {
-        // Shared across ports on localhost because cookies are host-based, not port-based.
-        document.cookie = name + '=' + encodeURIComponent(value || '') + '; path=/; SameSite=Lax';
-    }
+        const username = document.getElementById('txtUsername').value;
+        const password = document.getElementById('txtPassword').value;
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
 
-    try {
-        if (typeof window.STREETFOOD_API !== 'string' || !window.STREETFOOD_API) {
-            alert('Thiếu cấu hình STREETFOOD_API. Hãy kiểm tra config.js.');
-            return;
+        function setCookie(name, value) {
+            // Shared across ports on localhost because cookies are host-based, not port-based.
+            document.cookie = name + '=' + encodeURIComponent(value || '') + '; path=/; SameSite=Lax';
         }
 
-        const response = await fetch(window.STREETFOOD_API + '/api/Auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                Username: username,
-                Password: password
-            })
-        });
-
-        if (response.ok) {
-            const data = await response.json().catch(() => null);
-            const role = data?.role;
-
-            if (!role) {
-                alert('Login OK nhưng không xác định được role.');
+        try {
+            if (typeof window.STREETFOOD_API !== 'string' || !window.STREETFOOD_API) {
+                alert('Thiếu cấu hình STREETFOOD_API. Hãy kiểm tra config.js.');
                 return;
             }
 
-            localStorage.setItem('userRole', role);
+            const response = await fetch(window.STREETFOOD_API + '/api/Auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    Username: username,
+                    Password: password
+                })
+            });
 
-            if (role === 'vendor') {
-                setCookie('vendorUsername', username);
-                setCookie('vendorPassword', password);
-                window.location.href = window.STREETFOOD_VENDOR_DASHBOARD_URL || '/html/dashboardShopPage.html';
-                return;
+            if (response.ok) {
+                const data = await response.json().catch(() => null);
+                const role = data?.role;
+
+                if (!role) {
+                    alert('Login OK nhưng không xác định được role.');
+                    return;
+                }
+
+                localStorage.setItem('userRole', role);
+
+                if (role === 'vendor') {
+                    setCookie('vendorUsername', username);
+                    setCookie('vendorPassword', password);
+                    navigating = true;
+                    window.location.href = window.STREETFOOD_VENDOR_DASHBOARD_URL || '/html/dashboardShopPage.html';
+                    return;
+                }
+
+                if (role === 'admin') {
+                    navigating = true;
+                    window.location.href = window.STREETFOOD_ADMIN_DASHBOARD_URL || '/html/dashboardPage.html';
+                    return;
+                }
+
+                alert('Role không hợp lệ: ' + role);
+            } else {
+                const errorText = await response.text();
+                alert('Đăng nhập thất bại: ' + errorText);
             }
-
-            if (role === 'admin') {
-                window.location.href = window.STREETFOOD_ADMIN_DASHBOARD_URL || '/html/dashboardPage.html';
-                return;
+        } catch (error) {
+            console.error('Lỗi kết nối API:', error);
+            // Tránh alert giả khi đang chuyển trang do login thành công từ request trước.
+            if (!navigating) {
+                alert('Không thể kết nối đến máy chủ API. Hãy chắc chắn StreetFoodAPI đang chạy!');
             }
-
-            alert('Role không hợp lệ: ' + role);
-        } else {
-            const errorText = await response.text();
-            alert('Đăng nhập thất bại: ' + errorText);
+        } finally {
+            if (!navigating) {
+                isSubmitting = false;
+                if (submitBtn) submitBtn.disabled = false;
+            }
         }
-    } catch (error) {
-        console.error('Lỗi kết nối API:', error);
-        alert('Không thể kết nối đến máy chủ API. Hãy chắc chắn StreetFoodAPI đang chạy!');
-    }
-});
+    });
+}
 

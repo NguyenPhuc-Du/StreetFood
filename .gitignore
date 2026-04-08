@@ -12,3 +12,5 @@ obj/
 /App/Platforms/Android/Resources/values/Strings.xml
 
 appsettings.Development.json
+appsettings.Local.json
+*.secrets.json

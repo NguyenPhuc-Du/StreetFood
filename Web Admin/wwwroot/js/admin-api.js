@@ -35,6 +35,7 @@
         approveScript: (id) => adminFetch('/api/admin/script-requests/' + id + '/approve', { method: 'POST' }),
         listOwners: (includeHidden) => adminFetch('/api/admin/owners?includeHidden=' + !!includeHidden),
         hideOwner: (userId) => adminFetch('/api/admin/owners/' + userId + '/hide', { method: 'POST' }),
+        unhideOwner: (userId) => adminFetch('/api/admin/owners/' + userId + '/unhide', { method: 'POST' }),
         getDashboardSummary: () => adminFetch('/api/admin/dashboard/summary'),
         regenerateAudio: (poiId) => adminFetch('/api/admin/poi/' + poiId + '/regenerate-audio', { method: 'POST' })
     };

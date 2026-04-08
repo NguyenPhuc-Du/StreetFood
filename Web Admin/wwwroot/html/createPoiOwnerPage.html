@@ -19,6 +19,44 @@
         .wizard-panel { display: none; }
         .wizard-panel.active { display: block; }
         .nav-row { display: flex; gap: 12px; margin-top: 20px; }
+        .sf-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 9999;
+        }
+        .sf-modal.open { display: flex; }
+        .sf-modal-card {
+            width: 100%;
+            max-width: 460px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+            overflow: hidden;
+        }
+        .sf-modal-head {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .sf-modal-body {
+            padding: 14px 16px;
+            color: #334155;
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+        .sf-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 0 16px 16px;
+        }
     </style>
 </head>
 <body>
@@ -95,8 +133,17 @@
                     </div>
                 </div>
 
-                <div id="msg" class="err" style="color:#047857;margin-top:16px;"></div>
-                <div id="err" class="err"></div>
+                <div id="msg" class="err" style="color:#047857;margin-top:16px;display:none;"></div>
+                <div id="err" class="err" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+    <div id="sfModal" class="sf-modal" aria-hidden="true">
+        <div class="sf-modal-card" role="dialog" aria-modal="true" aria-labelledby="sfModalTitle">
+            <div id="sfModalTitle" class="sf-modal-head">Thông báo</div>
+            <div id="sfModalBody" class="sf-modal-body"></div>
+            <div class="sf-modal-actions">
+                <button type="button" id="sfModalClose" class="btn-primary">Đã hiểu</button>
             </div>
         </div>
     </div>
@@ -106,6 +153,29 @@
     <script>
         const sp = [document.getElementById('sp1'), document.getElementById('sp2'), document.getElementById('sp3')];
         const panels = [document.getElementById('w1'), document.getElementById('w2'), document.getElementById('w3')];
+        const sfModal = document.getElementById('sfModal');
+        const sfModalTitle = document.getElementById('sfModalTitle');
+        const sfModalBody = document.getElementById('sfModalBody');
+        const sfModalClose = document.getElementById('sfModalClose');
+        function showModal(title, body) {
+            if (!sfModal || !sfModalTitle || !sfModalBody) return;
+            sfModalTitle.textContent = title || 'Thông báo';
+            sfModalBody.textContent = body || '';
+            sfModal.classList.add('open');
+            sfModal.setAttribute('aria-hidden', 'false');
+            if (sfModalClose) sfModalClose.focus();
+        }
+        function hideModal() {
+            if (!sfModal) return;
+            sfModal.classList.remove('open');
+            sfModal.setAttribute('aria-hidden', 'true');
+        }
+        if (sfModalClose) sfModalClose.onclick = hideModal;
+        if (sfModal) {
+            sfModal.addEventListener('click', function (ev) {
+                if (ev.target === sfModal) hideModal();
+            });
+        }
         function goStep(n) {
             n = Math.max(1, Math.min(3, n));
             panels.forEach((p, i) => { p.classList.toggle('active', i === n - 1); });
@@ -123,18 +193,18 @@
         sp.forEach(function (el) {
             el.addEventListener('click', function () {
                 var step = parseInt(el.getAttribute('data-step'), 10);
-                if (step === 2 && !canGoStep2()) return alert('Nhập username và mật khẩu ở bước 1 trước.');
-                if (step === 3 && !canGoStep3()) return alert('Hoàn tất bước 1 và nhập tên POI ở bước 2 trước.');
+                if (step === 2 && !canGoStep2()) return showModal('Thiếu thông tin', 'Nhập username và mật khẩu ở bước 1 trước.');
+                if (step === 3 && !canGoStep3()) return showModal('Thiếu thông tin', 'Hoàn tất bước 1 và nhập tên POI ở bước 2 trước.');
                 goStep(step);
             });
         });
         document.getElementById('to2').onclick = () => {
-            if (!canGoStep2()) return alert('Nhập username và mật khẩu.');
+            if (!canGoStep2()) return showModal('Thiếu thông tin', 'Nhập username và mật khẩu.');
             goStep(2);
         };
         document.getElementById('back1').onclick = () => goStep(1);
         document.getElementById('to3').onclick = () => {
-            if (!document.getElementById('poiName').value.trim()) return alert('Nhập tên POI.');
+            if (!document.getElementById('poiName').value.trim()) return showModal('Thiếu thông tin', 'Nhập tên POI.');
             goStep(3);
         };
         document.getElementById('back2').onclick = () => goStep(2);
@@ -144,6 +214,8 @@
             const msg = document.getElementById('msg');
             err.textContent = '';
             msg.textContent = '';
+            if (err) err.style.display = 'none';
+            if (msg) msg.style.display = 'none';
             const body = {
                 ownerUsername: document.getElementById('ownerUsername').value.trim(),
                 ownerPassword: document.getElementById('ownerPassword').value,
@@ -161,10 +233,11 @@
             };
             try {
                 const r = await window.StreetFoodAdmin.createPoiWithOwner(body);
-                msg.textContent = 'Đã tạo. userId=' + r.userId + ', poiId=' + r.poiId + ', scriptState=' + r.scriptState;
-                if (r.audio && r.audio.message) msg.textContent += ' | TTS: ' + r.audio.message;
+                let popupText = 'Tạo POI và tài khoản chủ quán thành công.\nUserId: ' + r.userId + '\nPoiId: ' + r.poiId;
+                if (r.audio && r.audio.message) popupText += '\n\nÂm thanh: ' + r.audio.message;
+                showModal('Tạo thành công', popupText);
             } catch (e) {
-                err.textContent = e.message || String(e);
+                showModal('Không thể tạo POI', e.message || String(e));
             }
         };
     </script>

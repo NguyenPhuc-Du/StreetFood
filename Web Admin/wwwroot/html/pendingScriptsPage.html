@@ -6,6 +6,46 @@
     <title>Phê duyệt script | StreetFood Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
+    <style>
+        .sf-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 9999;
+        }
+        .sf-modal.open { display: flex; }
+        .sf-modal-card {
+            width: 100%;
+            max-width: 460px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+            overflow: hidden;
+        }
+        .sf-modal-head {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .sf-modal-body {
+            padding: 14px 16px;
+            color: #334155;
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+        .sf-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 0 16px 16px;
+        }
+    </style>
 </head>
 <body>
     <div class="app-shell">
@@ -48,6 +88,7 @@
                     <thead><tr><th>ID</th><th>POI</th><th>Loại / Nội dung</th><th>Gửi lúc</th><th></th></tr></thead>
                     <tbody></tbody>
                 </table>
+                <div id="actionMsg" class="regen-audio-msg" style="margin-top:8px;"></div>
                 <div id="err" class="err"></div>
             </div>
             <div class="card-panel">
@@ -60,11 +101,55 @@
             </div>
         </div>
     </div>
+    <div id="sfModal" class="sf-modal" aria-hidden="true">
+        <div class="sf-modal-card" role="dialog" aria-modal="true" aria-labelledby="sfModalTitle">
+            <div id="sfModalTitle" class="sf-modal-head">Thông báo</div>
+            <div id="sfModalBody" class="sf-modal-body"></div>
+            <div class="sf-modal-actions">
+                <button type="button" id="sfModalClose" class="btn-primary">Đã hiểu</button>
+            </div>
+        </div>
+    </div>
     <script src="/config.js"></script>
     <script src="/js/admin-api.js?v=20260406f"></script>
     <script src="/js/logout.js?v=20260406c"></script>
     <script>
         const err = document.getElementById('err');
+        const actionMsg = document.getElementById('actionMsg');
+        const sfModal = document.getElementById('sfModal');
+        const sfModalTitle = document.getElementById('sfModalTitle');
+        const sfModalBody = document.getElementById('sfModalBody');
+        const sfModalClose = document.getElementById('sfModalClose');
+        function showModal(title, body) {
+            if (!sfModal || !sfModalTitle || !sfModalBody) return;
+            sfModalTitle.textContent = title || 'Thông báo';
+            sfModalBody.textContent = body || '';
+            sfModal.classList.add('open');
+            sfModal.setAttribute('aria-hidden', 'false');
+            if (sfModalClose) sfModalClose.focus();
+        }
+        function hideModal() {
+            if (!sfModal) return;
+            sfModal.classList.remove('open');
+            sfModal.setAttribute('aria-hidden', 'true');
+        }
+        if (sfModalClose) sfModalClose.onclick = hideModal;
+        if (sfModal) {
+            sfModal.addEventListener('click', function (ev) {
+                if (ev.target === sfModal) hideModal();
+            });
+        }
+        function showActionMessage(text, tone) {
+            if (!actionMsg) return;
+            actionMsg.textContent = text || '';
+            if (!text) {
+                actionMsg.style.color = '';
+                return;
+            }
+            if (tone === 'warn') actionMsg.style.color = '#b45309';
+            else if (tone === 'error') actionMsg.style.color = '#b91c1c';
+            else actionMsg.style.color = '#047857';
+        }
         function escapeAttr(s) {
             return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         }
@@ -89,6 +174,7 @@
         }
         async function load() {
             err.textContent = '';
+            showActionMessage('', 'ok');
             try {
                 const [awaiting, pending] = await Promise.all([
                     window.StreetFoodAdmin.getAwaitingPois(),
@@ -121,10 +207,23 @@
                         try {
                             const res = await window.StreetFoodAdmin.approveScript(id);
                             await load();
-                            if (res && res.audio && res.audio.message)
-                                alert('Phê duyệt xong.\n\nTTS: ' + res.audio.message);
+                            if (res && res.audio && res.audio.message) {
+                                const isOk = (res.audio.success === true);
+                                const noAudioYet = Number(res.audio.filesWritten || 0) === 0;
+                                const tone = (isOk && !noAudioYet) ? 'ok' : 'warn';
+                                let msg = 'Phê duyệt thành công. ' + res.audio.message;
+                                if (noAudioYet) {
+                                    msg += ' (Thiếu Azure Speech Key trong cấu hình API nên chưa sinh MP3.)';
+                                }
+                                showActionMessage(msg, tone);
+                                showModal('Phê duyệt thành công', msg);
+                            } else {
+                                showActionMessage('Phê duyệt thành công.', 'ok');
+                                showModal('Phê duyệt thành công', 'Yêu cầu script đã được phê duyệt.');
+                            }
                         } catch (e) {
                             err.textContent = e.message || String(e);
+                            showActionMessage('', 'ok');
                         }
                         btn.disabled = false;
                     };
