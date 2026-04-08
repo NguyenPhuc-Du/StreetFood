@@ -6,7 +6,7 @@
              NavigationPage.HasNavigationBar="False">
 
     <Grid RowDefinitions="Auto,*">
-        <maps:Map x:Name="MixiMap" IsShowingUser="True" Grid.RowSpan="2"/>
+        <maps:Map x:Name="MixiMap" IsShowingUser="True" Grid.RowSpan="2" MapClicked="OnMapClicked"/>
 
         <toolkit:MediaElement x:Name="AudioPlayer" 
                               ShouldAutoPlay="False" 
@@ -95,7 +95,7 @@
                                      CornerRadius="3"
                                      HorizontalOptions="Start"
                                      Color="{StaticResource Gray100}"/>
-                            <Label Text="Kéo xuống để đóng · tắt âm thanh"
+                            <Label Text="Kéo xuống để đóng thẻ và tắt âm thanh"
                                    FontSize="11"
                                    TextColor="{StaticResource TextMuted}"
                                    LineBreakMode="WordWrap"/>
@@ -132,7 +132,8 @@
                                 <Label x:Name="PlaceStatus" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource Primary}"/>
                                 <Label x:Name="PlaceHours" FontSize="12" TextColor="{StaticResource TextSecondary}"/>
                             </HorizontalStackLayout>
-                            <Label x:Name="PlaceAddress" FontSize="12" TextColor="{StaticResource TextSecondary}" MaxLines="2"/>
+                            <Label x:Name="PlaceAddress" FontSize="12" TextColor="{StaticResource TextSecondary}" MaxLines="2" LineBreakMode="WordWrap"/>
+                            <Label x:Name="PlacePhone" FontSize="12" TextColor="{StaticResource TextMuted}" MaxLines="1" LineBreakMode="TailTruncation"/>
                         </VerticalStackLayout>
                     </Grid>
                 </Grid>

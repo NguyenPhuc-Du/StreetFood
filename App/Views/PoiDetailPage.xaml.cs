@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using App.Models;
 using App.Services;
 using CommunityToolkit.Maui.Views;
@@ -10,8 +11,11 @@ using Microsoft.Maui.Media;
 
 namespace App.Views;
 
-[QueryProperty(nameof(PoiId), "poiId")]
-public partial class PoiDetailPage : ContentPage
+/// <summary>
+/// Dùng IQueryAttributable để đọc poiId trước khi tải API.
+/// [QueryProperty] đôi khi gán sau OnAppearing → PoiId = 0 → không có dữ liệu hiển thị.
+/// </summary>
+public partial class PoiDetailPage : ContentPage, IQueryAttributable
 {
     const string PinnedPoiKey = "pinnedPoiId";
     private readonly ApiService _api = ApiService.Instance;
@@ -20,6 +24,7 @@ public partial class PoiDetailPage : ContentPage
     private bool _isSeeking;
     private PoiDetail? _currentDetail;
     private CancellationTokenSource? _speechCts;
+    private int _lastLoadedPoiId;
 
     public int PoiId { get; set; }
 
@@ -36,19 +41,61 @@ public partial class PoiDetailPage : ContentPage
         _audioTimer.Tick += (_, _) => UpdateAudioProgress();
     }
 
+    public void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        if (!TryParsePoiId(query, out var id)) return;
+        PoiId = id;
+        // Một số phiên bản Shell gọi ApplyQueryAttributes sau OnAppearing — buộc tải lại khi vừa gán poiId.
+        _ = MainThread.InvokeOnMainThreadAsync(async () => await LoadDetailAsync());
+    }
+
+    static bool TryParsePoiId(IDictionary<string, object> query, out int id)
+    {
+        id = 0;
+        foreach (var key in new[] { "poiId", "PoiId" })
+        {
+            if (!query.TryGetValue(key, out var raw)) continue;
+            var s = raw?.ToString();
+            if (int.TryParse(s, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out id) && id > 0)
+                return true;
+        }
+        return false;
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        await LoadDetailAsync();
+    }
 
-        var detail = await _api.GetPoiDetail(PoiId);
+    async Task LoadDetailAsync()
+    {
+        if (PoiId <= 0) return;
+        if (_lastLoadedPoiId == PoiId && _currentDetail != null) return;
+
+        var detail = await _api.GetPoiDetail(PoiId, forceRefresh: true);
         if (detail == null) return;
+
+        _lastLoadedPoiId = PoiId;
         _currentDetail = detail;
 
         HeaderTitle.Text = detail.Name;
         PlaceName.Text = detail.Name;
-        PlaceAddress.Text = $"Địa chỉ: {detail.Address ?? "-"}";
-        PlacePhone.Text = $"Số điện thoại: {detail.Phone ?? "-"}";
-        PlaceHours.Text = $"Giờ mở cửa: {detail.OpeningHours ?? "-"}";
+
+        if (!string.IsNullOrWhiteSpace(detail.Description))
+        {
+            PlaceDescription.Text = detail.Description;
+            PlaceDescription.IsVisible = true;
+        }
+        else
+        {
+            PlaceDescription.Text = string.Empty;
+            PlaceDescription.IsVisible = false;
+        }
+
+        PlaceAddress.Text = $"Địa chỉ: {ResolveAddress(detail.Address, detail.Description)}";
+        PlacePhone.Text = $"Số điện thoại: {(string.IsNullOrWhiteSpace(detail.Phone) ? "—" : detail.Phone.Trim())}";
+        PlaceHours.Text = $"Giờ mở cửa: {(string.IsNullOrWhiteSpace(detail.OpeningHours) ? "—" : detail.OpeningHours.Trim())}";
 
         PlaceImage.Source = string.IsNullOrEmpty(detail.ImageUrl) ? "logo.png" : detail.ImageUrl;
 
@@ -62,6 +109,11 @@ public partial class PoiDetailPage : ContentPage
         }
 
         ResetAudioProgress();
+    }
+
+    static string ResolveAddress(string? address, string? description)
+    {
+        return string.IsNullOrWhiteSpace(address) ? "—" : address.Trim();
     }
 
     private async void OnBackClicked(object? sender, EventArgs e)

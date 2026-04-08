@@ -6,6 +6,7 @@ using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Maps;
 using Microsoft.Maui.Media;
 using System.Threading;
+using System.Globalization;
 
 namespace App.Views;
 
@@ -29,17 +30,26 @@ public partial class HomePage : ContentPage
     const double MaxGpsAccuracyMeters = 120;
 
     const string AutoAudioKey = "autoAudioEnabled";
+    string _deviceId = string.Empty;
+    int _lastTrackedPoiId = -1;
+    DateTime _suspendNearbyUntilUtc = DateTime.MinValue;
 
     Poi? _currentPoi;
     /// <summary>Sau khi người dùng kéo tắt thẻ trong vùng — không tự bật lại cho POI này cho đến khi ra khỏi bán kính.</summary>
     int? _dismissedAutoCardForPoiId;
     double _infoCardPointerStartY;
     readonly AudioListenMeter _listenMeter;
+    readonly Dictionary<int, PoiDetail> _detailByPoiId = new();
+
+    const string LanguageKey = "appLanguage";
+    /// <summary>Ngôn ngữ đã dùng để tải danh sách POI lần cuối — đổi ngôn ngữ trong Cài đặt sẽ tải lại.</summary>
+    string? _poisLoadedForLanguage;
 
     public HomePage()
     {
         InitializeComponent();
         _listenMeter = new AudioListenMeter(AudioPlayer, () => currentAudioPoiId);
+        _deviceId = ActivationService.GetOrCreateInstallId();
     }
 
     protected override async void OnAppearing()
@@ -48,14 +58,45 @@ public partial class HomePage : ContentPage
         var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
         if (status != PermissionStatus.Granted) return;
 
+        var lang = Preferences.Default.Get(LanguageKey, CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+
         try
         {
-            var data = await api.GetPois();
-            poiList = data ?? new();
-            ApplyFiltersAndRefreshMap();
+            if (poiList.Count == 0 || _poisLoadedForLanguage != lang)
+            {
+                var data = await api.GetPois(forceRefresh: true);
+                poiList = data ?? new();
+                _poisLoadedForLanguage = lang;
+                ApplyFiltersAndRefreshMap();
+                _ = api.WarmupPoiDetailsAsync(poiList.Select(p => p.Id).Take(3));
+            }
+            else
+            {
+                ApplyFiltersAndRefreshMap();
+                var latest = await api.GetPois(forceRefresh: true);
+                if (latest.Count > 0)
+                {
+                    poiList = latest;
+                    ApplyFiltersAndRefreshMap();
+                }
+            }
+
             TryShowPinnedPoi();
+            if (poiList.Count == 0)
+            {
+                await DisplayAlertAsync(
+                    "Chưa tải được dữ liệu quán",
+                    $"Không có POI từ API.\nKiểm tra API URL trong Cài đặt:\n{ApiConfig.GetBaseUrl()}",
+                    "OK");
+            }
         }
-        catch { }
+        catch
+        {
+            await DisplayAlertAsync(
+                "Lỗi kết nối API",
+                $"Không thể gọi API tại:\n{ApiConfig.GetBaseUrl()}\nHãy mở Cài đặt để sửa API Base URL.",
+                "OK");
+        }
         StartTracking();
     }
 
@@ -115,6 +156,7 @@ public partial class HomePage : ContentPage
     private void CheckNearby(Location userLoc)
     {
         if (filteredPoiList == null || !filteredPoiList.Any()) return;
+        if (DateTime.UtcNow < _suspendNearbyUntilUtc) return;
 
         // GPS kém → không tự phát / không tự đóng thẻ theo vùng (tránh nhầm quán xa)
         if (userLoc.Accuracy > 0 && userLoc.Accuracy > MaxGpsAccuracyMeters)
@@ -169,11 +211,17 @@ public partial class HomePage : ContentPage
                 }
 
                 HideCard();
+                _lastTrackedPoiId = -1;
                 return;
             }
 
             if (_dismissedAutoCardForPoiId != activePoi.Id)
                 ShowInfoCard(activePoi);
+            if (_lastTrackedPoiId != activePoi.Id)
+            {
+                _lastTrackedPoiId = activePoi.Id;
+                _ = api.TrackPoiVisitAsync(_deviceId, activePoi.Id);
+            }
 
             bool autoOn = Preferences.Default.Get(AutoAudioKey, true);
 
@@ -204,21 +252,69 @@ public partial class HomePage : ContentPage
 
     void ShowInfoCard(Poi poi)
     {
+        var firstShow = !InfoCard.IsVisible;
         _currentPoi = poi;
         PlaceName.Text = poi.Name;
-        PlaceAddress.Text = poi.Address;
+        PlaceAddress.Text = BuildAddressText(poi.Address, poi.Description);
         PlaceHours.Text = poi.OpeningHours ?? "07:00 - 22:00";
+        PlacePhone.Text = "SĐT: —";
         PlaceStatus.Text = "OPEN";
         PlaceImage.Source = string.IsNullOrEmpty(poi.ImageUrl) ? "logo.png" : poi.ImageUrl;
         InfoCard.IsVisible = true;
+        if (firstShow)
+        {
+            InfoCard.Opacity = 0;
+            InfoCard.TranslationY = 32;
+            _ = InfoCard.FadeToAsync(1, 180, Easing.CubicOut);
+            _ = InfoCard.TranslateToAsync(0, 0, 220, Easing.CubicOut);
+        }
+        _ = EnrichInfoCardFromDetailAsync(poi.Id);
+    }
+
+    static string BuildAddressText(string? address, string? description)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return "Địa chỉ: —";
+        return $"Địa chỉ: {address.Trim()}";
+    }
+
+    async Task EnrichInfoCardFromDetailAsync(int poiId)
+    {
+        if (poiId <= 0) return;
+        if (!_detailByPoiId.TryGetValue(poiId, out var detail))
+        {
+            detail = await api.GetPoiDetail(poiId, forceRefresh: true);
+            if (detail == null) return;
+            _detailByPoiId[poiId] = detail;
+        }
+
+        if (_currentPoi?.Id != poiId)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            PlaceHours.Text = string.IsNullOrWhiteSpace(detail.OpeningHours) ? (PlaceHours.Text ?? "07:00 - 22:00") : detail.OpeningHours.Trim();
+            PlacePhone.Text = string.IsNullOrWhiteSpace(detail.Phone) ? "SĐT: —" : $"SĐT: {detail.Phone.Trim()}";
+            PlaceAddress.Text = BuildAddressText(detail.Address, detail.Description);
+        });
     }
 
     void HideCard(bool userSwipeDismiss = false)
     {
         if (userSwipeDismiss && _currentPoi != null)
             _dismissedAutoCardForPoiId = _currentPoi.Id;
-
-        InfoCard.IsVisible = false;
+        if (InfoCard.IsVisible)
+        {
+            _ = MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await Task.WhenAll(
+                    InfoCard.FadeToAsync(0, 130, Easing.CubicIn),
+                    InfoCard.TranslateToAsync(0, 24, 130, Easing.CubicIn));
+                InfoCard.IsVisible = false;
+                InfoCard.Opacity = 1;
+                InfoCard.TranslationY = 0;
+            });
+        }
         StopOfflineSpeech();
         _listenMeter.StopAndFlushFireAndForget();
         AudioPlayer?.Stop();
@@ -321,10 +417,22 @@ public partial class HomePage : ContentPage
 
     void OnInfoCardPanUpdated(object? sender, PanUpdatedEventArgs e)
     {
+        if (e.StatusType == GestureStatus.Running)
+        {
+            InfoCard.TranslationY = Math.Max(0, e.TotalY);
+            if (e.TotalY > 120)
+            {
+                HideCard(userSwipeDismiss: true);
+                return;
+            }
+            return;
+        }
         if (e.StatusType != GestureStatus.Completed)
             return;
-        if (e.TotalY > 40)
+        if (e.TotalY > 24)
             HideCard(userSwipeDismiss: true);
+        else
+            _ = InfoCard.TranslateToAsync(0, 0, 120, Easing.CubicOut);
     }
 
     void OnInfoCardSwipedDown(object? sender, SwipedEventArgs e)
@@ -349,6 +457,34 @@ public partial class HomePage : ContentPage
             HideCard(userSwipeDismiss: true);
     }
 
+    void OnMapClicked(object? sender, MapClickedEventArgs e)
+    {
+        if (filteredPoiList == null || filteredPoiList.Count == 0) return;
+        var nearest = filteredPoiList
+            .Select(p => new
+            {
+                Poi = p,
+                Dist = e.Location.CalculateDistance(new Location(p.Latitude, p.Longitude), DistanceUnits.Kilometers) * 1000
+            })
+            .OrderBy(x => x.Dist)
+            .FirstOrDefault();
+
+        if (nearest == null) return;
+        var tapThresholdMeters = Math.Max(80, EffectiveRadiusMeters(nearest.Poi));
+        if (nearest.Dist > tapThresholdMeters) return;
+
+        _suspendNearbyUntilUtc = DateTime.UtcNow.AddSeconds(2);
+        _dismissedAutoCardForPoiId = null;
+        _currentPoi = nearest.Poi;
+        ShowInfoCard(nearest.Poi);
+        _cardPinnedByMapTap = true;
+        Preferences.Default.Set(PinnedPoiKey, nearest.Poi.Id);
+        _isAutoPlaying = false;
+        _listenMeter.StopAndFlushFireAndForget();
+        AudioPlayer.Stop();
+        currentAudioPoiId = -1;
+    }
+
     void OnInfoCardCloseTapped(object? sender, TappedEventArgs e) =>
         HideCard(userSwipeDismiss: true);
 
@@ -368,7 +504,8 @@ public partial class HomePage : ContentPage
         {
             query = query.Where(p =>
                 p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                (p.Address?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false));
+                (p.Address?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.Description?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
         filteredPoiList = query.ToList();
@@ -394,6 +531,7 @@ public partial class HomePage : ContentPage
             pin.MarkerClicked += (_, args) =>
             {
                 args.HideInfoWindow = true;
+                _suspendNearbyUntilUtc = DateTime.UtcNow.AddSeconds(2);
                 _dismissedAutoCardForPoiId = null;
                 _currentPoi = poi;
                 ShowInfoCard(poi);

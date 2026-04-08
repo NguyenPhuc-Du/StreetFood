@@ -54,6 +54,33 @@
             </Border>
 
             <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="API Base URL" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource TextPrimary}"/>
+                    <Label Text="Ví dụ: http://192.168.1.11:5191 (điện thoại phải cùng Wi-Fi với máy chạy API)."
+                           FontSize="12"
+                           TextColor="{StaticResource TextMuted}"/>
+                    <Entry x:Name="ApiBaseUrlEntry"
+                           Placeholder="http://192.168.x.x:5191"
+                           Keyboard="Url"
+                           TextColor="{StaticResource TextPrimary}"
+                           PlaceholderColor="{StaticResource TextMuted}"
+                           BackgroundColor="{StaticResource Gray100}"/>
+                    <HorizontalStackLayout Spacing="10">
+                        <Button Text="Lưu URL"
+                                Clicked="OnSaveApiUrlClicked"
+                                BackgroundColor="{StaticResource Primary}"
+                                TextColor="White"
+                                CornerRadius="12"/>
+                        <Button Text="Mặc định"
+                                Clicked="OnResetApiUrlClicked"
+                                BackgroundColor="{StaticResource Gray100}"
+                                TextColor="{StaticResource TextPrimary}"
+                                CornerRadius="12"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
                 <VerticalStackLayout Spacing="6">
                     <Label Text="Gợi ý trải nghiệm" FontAttributes="Bold" FontSize="15" TextColor="{StaticResource Primary}"/>
                     <Label Text="Vào trang gợi ý để xem quán gần nhất và mở nhanh trang chi tiết."

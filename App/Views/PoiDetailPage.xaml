@@ -46,9 +46,15 @@
 
                 <Label x:Name="PlaceName" FontAttributes="Bold" FontSize="30" TextColor="{StaticResource TextPrimary}"/>
 
+                <Label x:Name="PlaceDescription"
+                       FontSize="14"
+                       TextColor="{StaticResource TextSecondary}"
+                       LineBreakMode="WordWrap"
+                       IsVisible="False"/>
+
                 <Border StrokeShape="RoundRectangle 20" Padding="14" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
                     <VerticalStackLayout Spacing="6">
-                        <Label x:Name="PlaceAddress" FontSize="14" TextColor="{StaticResource TextSecondary}" />
+                        <Label x:Name="PlaceAddress" FontSize="14" TextColor="{StaticResource TextSecondary}" LineBreakMode="WordWrap" />
                         <Label x:Name="PlacePhone" FontSize="14" TextColor="{StaticResource TextSecondary}" />
                         <Label x:Name="PlaceHours" FontSize="14" TextColor="{StaticResource TextSecondary}" />
                     </VerticalStackLayout>
