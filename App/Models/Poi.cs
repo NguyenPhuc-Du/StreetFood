@@ -12,4 +12,5 @@ public class Poi
     public string? Description { get; set; }
     public string? OpeningHours { get; set; } //
     public string? AudioUrl { get; set; }     //
+    public int VisitCount { get; set; }
 }

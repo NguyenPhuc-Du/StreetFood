@@ -1,5 +1,4 @@
 using System.Threading;
-using App.Services;
 using App.Views;
 namespace App;
 
@@ -20,8 +19,6 @@ public partial class AppShell : Shell
     {
         try
         {
-            await TrySyncActivationFromServerAsync();
-
             if (ActivationService.IsCurrentlyActivated())
                 return;
 
@@ -42,32 +39,6 @@ public partial class AppShell : Shell
         catch
         {
             Interlocked.Exchange(ref _modalGate, 0);
-        }
-    }
-
-    static async Task TrySyncActivationFromServerAsync()
-    {
-        if (ActivationService.IsCurrentlyActivated())
-            return;
-        if (!NetworkReachability.HasUsableConnection)
-            return;
-
-        try
-        {
-            var auth = AuthApiService.Instance;
-            var id = ActivationService.GetOrCreateInstallId();
-            var (ok, data) = await auth.GetDeviceStatusAsync(id);
-            if (!ok || data == null || !data.Active || string.IsNullOrEmpty(data.ActivationExpiresAt))
-                return;
-            if (!DateTime.TryParse(data.ActivationExpiresAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var exp))
-                return;
-            if (exp <= DateTime.UtcNow)
-                return;
-            ActivationService.ApplyServerUtc(exp, data.PlanLabel);
-        }
-        catch
-        {
-            // bỏ qua khi API không tới được
         }
     }
 }

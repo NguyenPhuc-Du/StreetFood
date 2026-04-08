@@ -1,4 +1,3 @@
-using App.Services;
 using ZXing.Net.Maui;
 using ZXing.Net.Maui.Controls;
 
@@ -25,8 +24,6 @@ public partial class QrGatePage : ContentPage
             return;
         }
 
-        _ = TryRestoreFromServerIfActivatedAsync();
-
         if (BarcodeScanning.IsSupported)
         {
             var cam = await Permissions.RequestAsync<Permissions.Camera>();
@@ -49,39 +46,10 @@ public partial class QrGatePage : ContentPage
             ManualPanel.IsVisible = true;
     }
 
-    /// <summary>Nếu trước đây đã kích hoạt trên server (bản cũ), vẫn có thể đồng bộ hạn — không bắt buộc cho QR mới.</summary>
-    async Task TryRestoreFromServerIfActivatedAsync()
-    {
-        if (!NetworkReachability.HasUsableConnection)
-            return;
-        try
-        {
-            var auth = AuthApiService.Instance;
-            var id = ActivationService.GetOrCreateInstallId();
-            var (ok, data) = await auth.GetDeviceStatusAsync(id);
-            if (!ok || data == null || !data.Active || string.IsNullOrEmpty(data.ActivationExpiresAt))
-                return;
-            if (!DateTime.TryParse(data.ActivationExpiresAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var exp))
-                return;
-            if (exp <= DateTime.UtcNow)
-                return;
-            ActivationService.ApplyServerUtc(exp, data.PlanLabel);
-        }
-        catch
-        {
-            // ignore
-        }
-
-        if (_completed)
-            return;
-        if (ActivationService.IsCurrentlyActivated())
-            await MainThread.InvokeOnMainThreadAsync(DismissAsync);
-    }
-
     protected override bool OnBackButtonPressed()
     {
         Dispatcher.Dispatch(async () =>
-            await DisplayAlertAsync("Cần kích hoạt", "Quét mã QR hợp lệ để dùng app. Hạn lưu trên máy (mặc định 7 ngày).", "OK"));
+            await DisplayAlertAsync("Cần kích hoạt", "Quét JWT QR hợp lệ để dùng app. Kích hoạt lưu cục bộ 7 ngày.", "OK"));
         return true;
     }
 

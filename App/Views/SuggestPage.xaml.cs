@@ -41,9 +41,9 @@ public partial class SuggestPage : ContentPage
 
         try
         {
-            var geoReq = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
+            var geoReq = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(8));
             var locTask = Geolocation.Default.GetLocationAsync(geoReq);
-            var poisTask = _api.GetPois();
+            var poisTask = _api.GetTopPois(10, 30);
 
             List<Poi> pois = new();
             Location? loc = null;
@@ -98,8 +98,9 @@ public partial class SuggestPage : ContentPage
                     Poi = p,
                     DistanceMeters = loc.CalculateDistance(new Location(p.Latitude, p.Longitude), DistanceUnits.Kilometers) * 1000
                 })
-                .OrderBy(x => x.DistanceMeters)
-                .Take(5)
+                .OrderByDescending(x => x.Poi.VisitCount)
+                .ThenBy(x => x.DistanceMeters)
+                .Take(10)
                 .ToList();
 
             foreach (var item in nearest)

@@ -62,25 +62,8 @@ public static class DbInitializer
             var fileName = Path.GetFileName(file);
             if (applied.Contains(fileName))
             {
-                // Safety: if V12 is recorded as applied but the target column is missing,
-                // re-run V12 to fix the schema drift.
-                if (fileName.StartsWith("V12__Foods_soft_delete", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!await IsFoodsIsHiddenColumnExistsAsync(connection))
-                    {
-                        Console.WriteLine($"Re-run (V12 recorded but column missing): {fileName}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Skip (already applied): {fileName}");
-                        continue;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Skip (already applied): {fileName}");
-                    continue;
-                }
+                Console.WriteLine($"Skip (already applied): {fileName}");
+                continue;
             }
 
             Console.WriteLine($"Running: {fileName}");
@@ -167,18 +150,6 @@ public static class DbInitializer
             {
                 var fileName = Path.GetFileName(file);
 
-                // If DB already exists but migration history is empty,
-                // we baseline (mark as applied) migrations whose effects already exist.
-                // Otherwise, we let the later migration runner execute them.
-                if (fileName.StartsWith("V12__Foods_soft_delete", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!await IsFoodsIsHiddenColumnExistsAsync(connection))
-                    {
-                        Console.WriteLine($"[DbInitializer] Baseline: column missing, do not mark as applied: {fileName}");
-                        continue;
-                    }
-                }
-
                 var sql = await File.ReadAllTextAsync(file);
                 var checksum = ComputeSha256(sql);
 
@@ -198,22 +169,6 @@ public static class DbInitializer
             await tx.RollbackAsync();
             throw;
         }
-    }
-
-    private static async Task<bool> IsFoodsIsHiddenColumnExistsAsync(NpgsqlConnection connection)
-    {
-        const string sql = @"
-            SELECT EXISTS (
-                SELECT 1
-                FROM information_schema.columns
-                WHERE table_schema = 'public'
-                  AND lower(table_name) = 'foods'
-                  AND lower(column_name) = 'ishidden'
-            );";
-
-        await using var cmd = new NpgsqlCommand(sql, connection);
-        var result = await cmd.ExecuteScalarAsync();
-        return result is bool b && b;
     }
 
     private static string ComputeSha256(string content)
