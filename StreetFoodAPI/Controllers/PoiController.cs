@@ -11,6 +11,7 @@ public class PoiController : ControllerBase
 {
     private readonly string _connStr;
     private static readonly TimeSpan VisitSpamWindow = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan MovementSpamWindow = TimeSpan.FromMinutes(2);
 
     public PoiController(IConfiguration config)
     {
@@ -172,6 +173,170 @@ public class PoiController : ControllerBase
         }
     }
 
+    /// <summary>Bắt đầu một phiên vào quán (thiết bị vào vùng POI).</summary>
+    [HttpPost("visit/start")]
+    public async Task<IActionResult> StartVisit([FromBody] VisitSessionRequest? body)
+    {
+        if (body == null || body.PoiId <= 0 || string.IsNullOrWhiteSpace(body.DeviceId))
+            return BadRequest("Thiếu poiId hoặc deviceId.");
+
+        var deviceId = body.DeviceId.Trim();
+        if (deviceId.Length > 100) deviceId = deviceId[..100];
+        var enterAt = body.AtUtc?.ToUniversalTime() ?? DateTime.UtcNow;
+
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var exists = await conn.ExecuteScalarAsync<bool>(
+                "SELECT EXISTS(SELECT 1 FROM pois WHERE id = @Id)",
+                new { Id = body.PoiId });
+            if (!exists) return BadRequest("POI không tồn tại.");
+
+            var open = await conn.ExecuteScalarAsync<int>(@"
+                SELECT COUNT(*)::int
+                FROM device_visits
+                WHERE deviceid = @D AND poiid = @P AND exittime IS NULL",
+                new { D = deviceId, P = body.PoiId });
+            if (open > 0) return Ok(new { accepted = false, reason = "already_open" });
+
+            var latestExit = await conn.QueryFirstOrDefaultAsync<DateTime?>(@"
+                SELECT exittime
+                FROM device_visits
+                WHERE deviceid = @D AND poiid = @P AND exittime IS NOT NULL
+                ORDER BY exittime DESC
+                LIMIT 1",
+                new { D = deviceId, P = body.PoiId });
+            if (latestExit.HasValue && (enterAt - latestExit.Value.ToUniversalTime()) < VisitSpamWindow)
+                return Ok(new { accepted = false, reason = "cooldown_5m" });
+
+            await conn.ExecuteAsync(@"
+                INSERT INTO device_visits (deviceid, poiid, entertime)
+                VALUES (@D, @P, @T)",
+                new { D = deviceId, P = body.PoiId, T = enterAt });
+
+            return Ok(new { accepted = true });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>Kết thúc phiên vào quán (thiết bị ra vùng POI), cập nhật exittime + duration.</summary>
+    [HttpPost("visit/end")]
+    public async Task<IActionResult> EndVisit([FromBody] VisitSessionRequest? body)
+    {
+        if (body == null || body.PoiId <= 0 || string.IsNullOrWhiteSpace(body.DeviceId))
+            return BadRequest("Thiếu poiId hoặc deviceId.");
+
+        var deviceId = body.DeviceId.Trim();
+        if (deviceId.Length > 100) deviceId = deviceId[..100];
+        var exitAt = body.AtUtc?.ToUniversalTime() ?? DateTime.UtcNow;
+
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var id = await conn.QueryFirstOrDefaultAsync<int?>(@"
+                SELECT id
+                FROM device_visits
+                WHERE deviceid = @D AND poiid = @P AND exittime IS NULL
+                ORDER BY entertime DESC
+                LIMIT 1",
+                new { D = deviceId, P = body.PoiId });
+            if (!id.HasValue)
+                return Ok(new { accepted = false, reason = "no_open_session" });
+
+            await conn.ExecuteAsync(@"
+                UPDATE device_visits
+                SET exittime = @ExitAt,
+                    duration = GREATEST(0, EXTRACT(EPOCH FROM (@ExitAt - entertime))::int)
+                WHERE id = @Id",
+                new { ExitAt = exitAt, Id = id.Value });
+
+            return Ok(new { accepted = true });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>Ghi log vị trí thô để heatmap.</summary>
+    [HttpPost("log")]
+    public async Task<IActionResult> LogLocation([FromBody] LocationLogRequest? body)
+    {
+        if (body == null || string.IsNullOrWhiteSpace(body.DeviceId))
+            return BadRequest("Thiếu deviceId.");
+        if (body.Latitude is < -90 or > 90 || body.Longitude is < -180 or > 180)
+            return BadRequest("Tọa độ không hợp lệ.");
+
+        var deviceId = body.DeviceId.Trim();
+        if (deviceId.Length > 100) deviceId = deviceId[..100];
+
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            await conn.ExecuteAsync(@"
+                INSERT INTO location_logs (deviceid, latitude, longitude, createdat)
+                VALUES (@D, @Lat, @Lng, NOW())",
+                new { D = deviceId, Lat = body.Latitude, Lng = body.Longitude });
+            return Ok(new { accepted = true });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>Ghi nhận dịch chuyển giữa 2 POI liên tiếp.</summary>
+    [HttpPost("movement")]
+    public async Task<IActionResult> TrackMovement([FromBody] MovementPathRequest? body)
+    {
+        if (body == null || string.IsNullOrWhiteSpace(body.DeviceId))
+            return BadRequest("Thiếu deviceId.");
+        if (body.FromPoiId <= 0 || body.ToPoiId <= 0 || body.FromPoiId == body.ToPoiId)
+            return BadRequest("fromPoiId/toPoiId không hợp lệ.");
+
+        var deviceId = body.DeviceId.Trim();
+        if (deviceId.Length > 100) deviceId = deviceId[..100];
+        var at = body.AtUtc?.ToUniversalTime() ?? DateTime.UtcNow;
+
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var exists = await conn.ExecuteScalarAsync<bool>(@"
+                SELECT EXISTS(SELECT 1 FROM pois WHERE id = @F)
+                AND EXISTS(SELECT 1 FROM pois WHERE id = @T)",
+                new { F = body.FromPoiId, T = body.ToPoiId });
+            if (!exists) return BadRequest("POI không tồn tại.");
+
+            var last = await conn.QueryFirstOrDefaultAsync<(int FromPoiId, int ToPoiId, DateTime CreatedAt)?>(@"
+                SELECT frompoiid AS FromPoiId, topoiid AS ToPoiId, createdat AS CreatedAt
+                FROM movement_paths
+                WHERE deviceid = @D
+                ORDER BY createdat DESC
+                LIMIT 1", new { D = deviceId });
+
+            if (last.HasValue
+                && last.Value.FromPoiId == body.FromPoiId
+                && last.Value.ToPoiId == body.ToPoiId
+                && (at - last.Value.CreatedAt.ToUniversalTime()) < MovementSpamWindow)
+            {
+                return Ok(new { accepted = false, reason = "cooldown_2m" });
+            }
+
+            await conn.ExecuteAsync(@"
+                INSERT INTO movement_paths (deviceid, frompoiid, topoiid, createdat)
+                VALUES (@D, @F, @T, @At)",
+                new { D = deviceId, F = body.FromPoiId, T = body.ToPoiId, At = at });
+            return Ok(new { accepted = true });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     /// <summary>
     /// Top quán theo số lượt vào (device_visits) trong N ngày gần nhất.
     /// </summary>
@@ -234,4 +399,26 @@ public sealed class TrackVisitRequest
 public sealed class TopPoiDto : PoiDto
 {
     public int VisitCount { get; set; }
+}
+
+public sealed class VisitSessionRequest
+{
+    public int PoiId { get; set; }
+    public string DeviceId { get; set; } = string.Empty;
+    public DateTime? AtUtc { get; set; }
+}
+
+public sealed class LocationLogRequest
+{
+    public string DeviceId { get; set; } = string.Empty;
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+}
+
+public sealed class MovementPathRequest
+{
+    public string DeviceId { get; set; } = string.Empty;
+    public int FromPoiId { get; set; }
+    public int ToPoiId { get; set; }
+    public DateTime? AtUtc { get; set; }
 }

@@ -11,15 +11,23 @@
     <Compile Remove="Models\**" />
     <Compile Remove="Presenters\**" />
     <Compile Remove="Views\**" />
+    <Compile Remove="wwwroot\fonts\**" />
+    <Compile Remove="wwwroot\images\**" />
     <Content Remove="Models\**" />
     <Content Remove="Presenters\**" />
     <Content Remove="Views\**" />
+    <Content Remove="wwwroot\fonts\**" />
+    <Content Remove="wwwroot\images\**" />
     <EmbeddedResource Remove="Models\**" />
     <EmbeddedResource Remove="Presenters\**" />
     <EmbeddedResource Remove="Views\**" />
+    <EmbeddedResource Remove="wwwroot\fonts\**" />
+    <EmbeddedResource Remove="wwwroot\images\**" />
     <None Remove="Models\**" />
     <None Remove="Presenters\**" />
     <None Remove="Views\**" />
+    <None Remove="wwwroot\fonts\**" />
+    <None Remove="wwwroot\images\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,9 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\images\" />
     <Folder Include="wwwroot\lib\" />
-    <Folder Include="wwwroot\fonts\" />
   </ItemGroup>
 
   <ItemGroup>

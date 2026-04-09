@@ -33,6 +33,7 @@ public partial class HomePage : ContentPage
     string _deviceId = string.Empty;
     int _lastTrackedPoiId = -1;
     DateTime _suspendNearbyUntilUtc = DateTime.MinValue;
+    int? _insidePoiId;
 
     Poi? _currentPoi;
     /// <summary>Sau khi người dùng kéo tắt thẻ trong vùng — không tự bật lại cho POI này cho đến khi ra khỏi bán kính.</summary>
@@ -118,6 +119,7 @@ public partial class HomePage : ContentPage
                         isFirstLocation = false;
                     }
                     ApplyFiltersAndRefreshMap();
+                    _ = api.SendLocationLog(_deviceId, loc.Latitude, loc.Longitude);
                     CheckNearby(loc);
                 }
                 await Task.Delay(4000, _cts.Token);
@@ -163,6 +165,7 @@ public partial class HomePage : ContentPage
             return;
 
         var activePoi = FindPoiContainingUser(userLoc, filteredPoiList);
+        HandleVisitAndMovement(activePoi?.Id);
 
         MainThread.BeginInvokeOnMainThread(async () =>
         {
@@ -248,6 +251,23 @@ public partial class HomePage : ContentPage
                 await PlayPoiAudioAsync(activePoi);
             }
         });
+    }
+
+    void HandleVisitAndMovement(int? newPoiId)
+    {
+        var prev = _insidePoiId;
+        if (prev == newPoiId) return;
+
+        if (prev.HasValue && prev.Value > 0)
+            _ = api.EndVisitSessionAsync(_deviceId, prev.Value);
+
+        if (newPoiId.HasValue && newPoiId.Value > 0)
+            _ = api.StartVisitSessionAsync(_deviceId, newPoiId.Value);
+
+        if (prev.HasValue && newPoiId.HasValue && prev.Value > 0 && newPoiId.Value > 0 && prev.Value != newPoiId.Value)
+            _ = api.TrackMovementAsync(_deviceId, prev.Value, newPoiId.Value);
+
+        _insidePoiId = newPoiId;
     }
 
     void ShowInfoCard(Poi poi)

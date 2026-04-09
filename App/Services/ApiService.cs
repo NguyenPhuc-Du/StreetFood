@@ -22,6 +22,7 @@ public class ApiService
     private static readonly ConcurrentDictionary<string, List<Poi>> _poisMemory = new();
     private static readonly ConcurrentDictionary<string, PoiDetail> _detailMemory = new();
     private static readonly ConcurrentDictionary<int, DateTime> _visitCooldown = new();
+    private static readonly ConcurrentDictionary<string, DateTime> _locationLogCooldown = new();
 
     // Tối ưu hóa bộ nhớ: Dùng chung một Options duy nhất
     private static readonly JsonSerializerOptions _options = new() { PropertyNameCaseInsensitive = true };
@@ -150,11 +151,53 @@ public class ApiService
 
     public async Task SendLocationLog(string deviceId, double lat, double lng)
     {
-        if (!IsOnline()) return;
+        if (!IsOnline() || string.IsNullOrWhiteSpace(deviceId)) return;
+        var key = deviceId.Trim();
+        var now = DateTime.UtcNow;
+        if (_locationLogCooldown.TryGetValue(key, out var last) && (now - last).TotalSeconds < 12)
+            return;
+        _locationLogCooldown[key] = now;
         try
         {
             var log = new { DeviceId = deviceId, Latitude = lat, Longitude = lng };
             await client.PostAsJsonAsync($"{ApiPoiUrl}/log", log);
+        }
+        catch { }
+    }
+
+    public async Task StartVisitSessionAsync(string deviceId, int poiId)
+    {
+        if (!IsOnline() || string.IsNullOrWhiteSpace(deviceId) || poiId <= 0) return;
+        try
+        {
+            await client.PostAsJsonAsync($"{ApiPoiUrl}/visit/start", new { deviceId, poiId, atUtc = DateTime.UtcNow });
+        }
+        catch { }
+    }
+
+    public async Task EndVisitSessionAsync(string deviceId, int poiId)
+    {
+        if (!IsOnline() || string.IsNullOrWhiteSpace(deviceId) || poiId <= 0) return;
+        try
+        {
+            await client.PostAsJsonAsync($"{ApiPoiUrl}/visit/end", new { deviceId, poiId, atUtc = DateTime.UtcNow });
+        }
+        catch { }
+    }
+
+    public async Task TrackMovementAsync(string deviceId, int fromPoiId, int toPoiId)
+    {
+        if (!IsOnline() || string.IsNullOrWhiteSpace(deviceId) || fromPoiId <= 0 || toPoiId <= 0 || fromPoiId == toPoiId)
+            return;
+        try
+        {
+            await client.PostAsJsonAsync($"{ApiPoiUrl}/movement", new
+            {
+                deviceId,
+                fromPoiId,
+                toPoiId,
+                atUtc = DateTime.UtcNow
+            });
         }
         catch { }
     }
