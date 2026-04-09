@@ -1,7 +1,6 @@
 using Microsoft.Maui.Storage;
 using System.Collections.Generic;
 using System.Globalization;
-using App.Services;
 
 namespace App.Views;
 
@@ -34,7 +33,6 @@ public partial class SettingsPage : ContentPage
 
         if (_languageButtons.TryGetValue(savedLang, out var selectedButton))
             selectedButton.IsChecked = true;
-        ApiBaseUrlEntry.Text = ApiConfig.GetBaseUrl();
 
         _isInitializing = false;
     }
@@ -44,7 +42,6 @@ public partial class SettingsPage : ContentPage
         base.OnAppearing();
         _isInitializing = true;
         AutoAudioSwitch.IsToggled = Preferences.Default.Get(AutoAudioKey, true);
-        ApiBaseUrlEntry.Text = ApiConfig.GetBaseUrl();
         _isInitializing = false;
     }
 
@@ -68,29 +65,4 @@ public partial class SettingsPage : ContentPage
         await DisplayAlertAsync("Đã lưu", "Ngôn ngữ đã được cập nhật cho dữ liệu hiển thị mới.", "OK");
     }
 
-    private async void OnSaveApiUrlClicked(object? sender, EventArgs e)
-    {
-        var raw = ApiBaseUrlEntry.Text?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            await DisplayAlertAsync("Thiếu URL", "Nhập API URL trước khi lưu.", "OK");
-            return;
-        }
-        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri) ||
-            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-        {
-            await DisplayAlertAsync("URL không hợp lệ", "URL phải bắt đầu bằng http:// hoặc https://", "OK");
-            return;
-        }
-
-        ApiConfig.SetBaseUrl(raw);
-        await DisplayAlertAsync("Đã lưu", $"API URL: {ApiConfig.GetBaseUrl()}", "OK");
-    }
-
-    private async void OnResetApiUrlClicked(object? sender, EventArgs e)
-    {
-        ApiConfig.SetBaseUrl(null);
-        ApiBaseUrlEntry.Text = ApiConfig.GetBaseUrl();
-        await DisplayAlertAsync("Đã đặt mặc định", $"API URL: {ApiConfig.GetBaseUrl()}", "OK");
-    }
 }

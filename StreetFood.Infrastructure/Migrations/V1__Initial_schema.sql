@@ -13,8 +13,7 @@ CREATE TABLE users (
     role VARCHAR(20) NOT NULL,
     createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ishidden BOOLEAN DEFAULT FALSE,
-    email VARCHAR(255),
-    app_activation_expires_at TIMESTAMPTZ NULL
+    email VARCHAR(255)
 );
 
 CREATE TABLE pois (
@@ -121,15 +120,6 @@ CREATE TABLE movement_paths (
 );
 
 CREATE INDEX idx_movement_paths_created ON movement_paths (createdat);
-
-CREATE TABLE device_activations (
-    install_id VARCHAR(64) PRIMARY KEY,
-    expires_at TIMESTAMPTZ NOT NULL,
-    plan_label VARCHAR(50),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_device_activations_expires ON device_activations (expires_at);
 
 CREATE TABLE poi_audio_listen_events (
     id BIGSERIAL PRIMARY KEY,

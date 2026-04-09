@@ -3,8 +3,8 @@
 
 | Thuộc tính             | Giá trị                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Phiên bản tài liệu** | **2.1**                                                                                                                     |
-| **Ngày cập nhật**      | **2026-04-06**                                                                                                              |
+| **Phiên bản tài liệu** | **2.2**                                                                                                                     |
+| **Ngày cập nhật**      | **2026-04-08**                                                                                                              |
 | **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được)                                                                         |
 | **Mục đích**           | Mô tả yêu cầu sản phẩm; ghi nhận **tiến độ thực tế**, **phiên bản công nghệ**, **tham chiếu file** để nộp đồ án / bàn giao. |
 
@@ -48,7 +48,7 @@ StreetFood là hệ thống **mobile + backend + admin/vendor web**:
 | **API**             | `StreetFoodAPI/`                                                           | ASP.NET Core **net10.0**; **PostgreSQL** qua **Dapper** + `Npgsql`; Azure **Speech** (TTS) & **Translator** (dịch script); tùy chọn `Admin:ApiKey` + header `X-Admin-Key`. |
 | **Admin Web**       | `Web Admin/wwwroot/`                                                       | ASP.NET Core static host **net10.0**; HTML/CSS/JS (`admin-api.js`, `config.js`).                                                                                           |
 | **Vendor Web**      | `Web Vendor/wwwroot/`                                                      | Cùng kiểu static host **net10.0**.                                                                                                                                         |
-| **Tầng dùng chung** | `StreetFood.Domain`, `StreetFood.Application`, `StreetFood.Infrastructure` | Hỗ trợ API & migration SQL (`StreetFood.Infrastructure/Migrations`).                                                                                                       |
+| **Tầng dùng chung** | `StreetFood.Domain`, `StreetFood.Infrastructure` | Hỗ trợ API & migration SQL (`StreetFood.Infrastructure/Migrations`).                                                                                                       |
 
 
 ### 1.5 Cổng dịch vụ phát triển (launchSettings — tham chiếu)
@@ -375,7 +375,6 @@ flowchart LR
 - `Movement_Paths`
 - `Languages`
 - `poi_audio_listen_events` (thống kê thời lượng nghe từ app — xem `ListenAnalyticsController`)
-- `device_activations` (kích hoạt theo thiết bị / gói demo trên app)
 - `schema_migrations` (lịch sử file SQL đã chạy — do `DbInitializer` tạo)
 
 ## 8.2 Sơ đồ ERD (ảnh)
@@ -430,44 +429,56 @@ flowchart TB
     Vendor((Vendor))
     Admin((Admin))
 
-    UC1[Scan QR va cai app]
-    UC2[Xem POI gan day]
-    UC3[Nghe audio tu dong]
-    UC4[Tim kiem va loc]
-    UC4b[Chon POI tren map nghe on-demand]
-    UC4c[Dieu khien timeline va tua audio]
+    UC1[Quét QR và cài app]
+    UC2[Xem POI gần đây]
+    UC3[Nghe audio tự động]
+    UC4[Tìm kiếm và lọc]
+    UC4b[Chọn POI trên bản đồ để nghe chủ động]
+    UC4c[Điều khiển timeline và tua audio]
 
-    UC5[Dang nhap Vendor]
-    UC6[Chinh sua thong tin nha hang]
-    UC7[Gui yeu cau doi audio script]
+    UC6[Chỉnh sửa thông tin nhà hàng]
 
-    UC8[Dang nhap Admin]
+    UC8[Đăng nhập Admin]
     UC9[CRUD nha hang/foods/audio]
-    UC10[Duyet yeu cau vendor]
+    UC10[Duyệt yêu cầu vendor]
     UC11[Xem analytics dashboard]
+    UC12[Quản lý tài khoản owner]
+    UC13[Tạo lại audio theo script đã duyệt]
+    UC14[Theo dõi heatmap và movement]
+    UC15[Đăng nhập Vendor]
+    UC16[Quản lý món ăn của cửa hàng]
+    UC17[Gửi script hoặc audio bundle cho Admin]
+    UC18[Quét JWT QR kích hoạt app local]
+    UC19[Theo dõi geofence và log analytics]
 
     User --> UC1
+    User --> UC18
     User --> UC2
     User --> UC3
     User --> UC4
     User --> UC4b
     User --> UC4c
+    User --> UC19
 
-    Vendor --> UC5
+    Vendor --> UC15
     Vendor --> UC6
-    Vendor --> UC7
+    Vendor --> UC16
+    Vendor --> UC17
 
     Admin --> UC8
     Admin --> UC9
     Admin --> UC10
     Admin --> UC11
+    Admin --> UC12
+    Admin --> UC13
+    Admin --> UC14
 ```
 
 
 
 ---
 
-## 12. Sequence diagram (User vao POI va phat audio)
+## 12. Sequence diagram (User vào POI và phát audio)
 
 ```mermaid
 sequenceDiagram
@@ -477,21 +488,21 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant R2 as Cloudflare R2
 
-    U->>M: Mo app + cap quyen GPS
+    U->>M: Mở app + cấp quyền GPS
     M->>API: GET /api/poi (Accept-Language)
     API->>DB: Query POI + translation + audio
     DB-->>API: Data POI
-    API-->>M: Danh sach POI
+    API-->>M: Danh sách POI
 
-    loop Moi chu ky GPS
-      M->>M: Doc vi tri hien tai
-      M->>M: Tinh khoang cach den POI
+    loop Mỗi chu kỳ GPS
+      M->>M: Đọc vị trí hiện tại
+      M->>M: Tính khoảng cách đến POI
     end
 
-    M->>M: User vao ban kinh POI
+    M->>M: User vào bán kính POI
     M->>R2: Stream audio theo AudioUrl
     R2-->>M: Audio content
-    M-->>U: Tu dong phat audio + hien info card
+    M-->>U: Tự động phát audio + hiện info card
 ```
 
 
@@ -504,37 +515,218 @@ sequenceDiagram
     participant M as Mobile App (MAUI)
     participant R2 as Cloudflare R2
 
-    U->>M: Cham vao marker POI tren ban do
-    M-->>U: Hien thong tin quan + nut Nghe gioi thieu
-    U->>M: Bam Nghe / Play
-    M->>M: Load AudioUrl (ngon ngu thiet bi)
+    U->>M: Chạm vào marker POI trên bản đồ
+    M-->>U: Hiện thông tin quán + nút Nghe giới thiệu
+    U->>M: Bấm Nghe / Play
+    M->>M: Load AudioUrl (ngôn ngữ thiết bị)
     M->>R2: Stream audio
     R2-->>M: Audio stream
-    M-->>U: Phat audio + hien timeline (current/total)
-    U->>M: Keo slider / seek
-    M->>M: Seek den vi tri moi
-    M-->>U: Tiep tuc phat tu vi tri da chon
+    M-->>U: Phát audio + hiện timeline (current/total)
+    U->>M: Kéo slider / seek
+    M->>M: Seek đến vị trí mới
+    M-->>U: Tiếp tục phát từ vị trí đã chọn
+```
+
+## 12.2 Sequence diagram (Vendor gửi script/audio -> Admin duyệt -> App nhận dữ liệu mới)
+
+```mermaid
+sequenceDiagram
+    participant V as Vendor Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    participant A as Admin Web
+    participant TTS as Azure Speech/Translator
+    participant R2 as Cloudflare R2
+    participant M as Mobile App
+
+    V->>API: POST /api/vendor/submit-script (hoặc submit-audio-bundle)
+    API->>DB: Insert script_change_requests (pending)
+    API-->>V: 200 Pending
+
+    A->>API: GET /api/Admin/script-requests/pending
+    API-->>A: Danh sách request
+    A->>API: POST /api/Admin/script-requests/{id}/approve
+
+    alt Submit script text
+        API->>TTS: Translate + synthesize audio
+        TTS-->>API: Audio files
+        API->>R2: Upload audio files
+        R2-->>API: Public URLs
+        API->>DB: Update restaurant_audio + translations + status approved
+    else Submit audio bundle URLs
+        API->>DB: Update restaurant_audio + status approved
+    end
+
+    M->>API: GET /api/poi/{id}
+    API->>DB: Query detail + restaurant_audio
+    DB-->>API: Dữ liệu mới nhất
+    API-->>M: audioUrl/description đã cập nhật
+```
+
+## 12.3 Sequence diagram (Telemetry: location -> visit -> movement -> dashboard)
+
+```mermaid
+sequenceDiagram
+    participant M as Mobile App
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    participant A as Admin Web
+
+    loop Mỗi chu kỳ vị trí
+      M->>API: POST /api/poi/log (deviceId, lat, lng)
+      API->>DB: INSERT location_logs
+    end
+
+    M->>API: POST /api/poi/visit/start
+    API->>DB: INSERT device_visits (entertime)
+    M->>API: POST /api/poi/movement (fromPoiId,toPoiId)
+    API->>DB: INSERT movement_paths
+    M->>API: POST /api/poi/visit/end
+    API->>DB: UPDATE device_visits (exittime,duration)
+
+    A->>API: GET /api/Admin/analytics/heatmap
+    A->>API: GET /api/Admin/analytics/paths
+    A->>API: GET /api/Admin/analytics/popular-paths
+    API->>DB: Aggregate queries
+    DB-->>API: Result sets
+    API-->>A: Dashboard data
+```
+
+## 12.4 Sequence diagram (Admin tạo POI + owner, Vendor quản lý món, App hiển thị)
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    participant V as Vendor Web
+    participant M as Mobile App
+
+    A->>API: POST /api/Admin/poi-with-owner
+    API->>DB: Insert users(role=vendor), pois, owners
+    DB-->>API: Tạo thành công
+    API-->>A: 200 + thông tin tài khoản owner
+
+    V->>API: POST /api/vendor/foods/create
+    API->>DB: Insert foods theo PoiId của vendor
+    API-->>V: 200 Created
+    V->>API: POST /api/vendor/foods/update
+    API->>DB: Update foods
+    API-->>V: 200 Updated
+
+    M->>API: GET /api/poi/{id}
+    API->>DB: Query poi + foods + details
+    DB-->>API: Dữ liệu đầy đủ
+    API-->>M: Chi tiết quán + danh sách món
+```
+
+## 12.5 Sequence diagram (App kích hoạt JWT local 7 ngày)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant M as Mobile App
+    participant QR as QR JWT
+    participant S as Local Storage (Preferences)
+
+    U->>M: Mở màn quét QR
+    M->>QR: Đọc token JWT từ mã QR
+    M->>M: Verify chữ ký + nbf/exp + issuer/type
+    alt Token hợp lệ
+        M->>S: Lưu hạn kích hoạt local (7 ngày)
+        M-->>U: Vào HomePage
+    else Token không hợp lệ/hết hạn
+        M-->>U: Báo lỗi và yêu cầu quét lại
+    end
 ```
 
 
 
 ---
 
-## 13. Activity diagram (Vendor request doi script)
+## 13. Activity diagram (Vendor request đổi script)
 
 ```mermaid
 flowchart TD
-    S[Vendor dang nhap] --> A[Mo trang quan ly nha hang]
-    A --> B[Nhap script moi]
+    S[Vendor đăng nhập] --> A[Mở trang quản lý nhà hàng]
+    A --> B[Nhập script mới]
     B --> C[Submit request]
-    C --> D[He thong luu Script_Change_Request = Pending]
-    D --> E[Admin nhan request]
-    E --> F{Phe duyet?}
-    F -- Yes --> G[Upload/cap nhat audio]
+    C --> D[Hệ thống lưu Script_Change_Request = Pending]
+    D --> E[Admin nhận request]
+    E --> F{Phê duyệt?}
+    F -- Yes --> G[Upload/cập nhật audio]
     G --> H[Set request = Approved]
     F -- No --> I[Set request = Rejected]
-    H --> J[Thong bao ket qua cho Vendor]
+    H --> J[Thông báo kết quả cho Vendor]
     I --> J
+```
+
+## 13.1 Activity diagram (User App end-to-end)
+
+```mermaid
+flowchart TD
+    A0[Mở app] --> A1{Đã kích hoạt?}
+    A1 -- Chưa --> A2[Quét JWT QR]
+    A2 --> A3[Lưu hạn local 7 ngày]
+    A1 -- Đã kích hoạt --> A4[Xin quyền GPS]
+    A3 --> A4
+    A4 --> A5[Load POI từ API]
+    A5 --> A6[Hiện map + marker]
+    A6 --> A7{Người dùng thao tác}
+    A7 -- Chạm POI --> A8[Mở thẻ thông tin/chi tiết]
+    A8 --> A9[Play/Pause/Seek audio]
+    A7 -- Đi vào geofence --> A10[Auto show card + play]
+    A10 --> A9
+    A7 -- Di chuyển --> A11[Gửi location_logs + visit start/end + movement]
+    A11 --> A6
+```
+
+## 13.2 Activity diagram (Admin dashboard + moderation)
+
+```mermaid
+flowchart TD
+    B0[Admin đăng nhập] --> B1[Mở dashboard]
+    B1 --> B2[Đọc KPI + heatmap + routes + listen stats]
+    B2 --> B3{Có request pending?}
+    B3 -- Có --> B4[Mở pendingScripts]
+    B4 --> B5{Approve hay Reject}
+    B5 -- Approve --> B6[Cập nhật DB + audio URLs]
+    B5 -- Reject --> B7[Set status rejected]
+    B6 --> B8[Refresh dashboard]
+    B7 --> B8
+    B3 -- Không --> B8
+```
+
+## 13.3 Activity diagram (Vendor quản lý cửa hàng và món ăn)
+
+```mermaid
+flowchart TD
+    V0[Vendor đăng nhập] --> V1[Lấy danh sách POI của mình]
+    V1 --> V2[Chọn cửa hàng]
+    V2 --> V3{Thao tác}
+    V3 -- Cập nhật chi tiết --> V4[POST /api/vendor/shop/update-details]
+    V3 -- Thêm món --> V5[POST /api/vendor/foods/create]
+    V3 -- Sửa món --> V6[POST /api/vendor/foods/update]
+    V3 -- Ẩn/Xóa món --> V7[POST /api/vendor/foods/delete]
+    V4 --> V8[Reload dữ liệu]
+    V5 --> V8
+    V6 --> V8
+    V7 --> V8
+```
+
+## 13.4 Activity diagram (Admin tạo POI + owner và giám sát analytics)
+
+```mermaid
+flowchart TD
+    C0[Admin đăng nhập] --> C1[Tạo POI + owner]
+    C1 --> C2[Hệ thống sinh user vendor + liên kết owner]
+    C2 --> C3[Theo dõi owner list]
+    C3 --> C4{Có vấn đề tài khoản?}
+    C4 -- Có --> C5[Hide owner account]
+    C4 -- Không --> C6[Giữ hoạt động bình thường]
+    C5 --> C7[Xem dashboard analytics]
+    C6 --> C7
+    C7 --> C8[Đánh giá heatmap, routes, top POI]
 ```
 
 
@@ -549,8 +741,8 @@ flowchart LR
     V[Vendor Web]
     A[Admin Web]
 
-    P1((P1: Quan ly POI/Noi dung))
-    P2((P2: Xu ly audio da ngon ngu))
+    P1((P1: Quản lý POI/Nội dung))
+    P2((P2: Xử lý audio đa ngôn ngữ))
     P3((P3: Tracking & Analytics))
 
     D1[(POI + Foods + Translations)]
@@ -666,7 +858,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | Phương thức | Đường dẫn         | Mô tả                                                                                                            |
 | ----------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
 | POST        | `/api/Auth/login` | Đăng nhập admin/vendor (bảng `users`).                                                                           |
-| POST        | `/api/Auth/...`   | Các endpoint app/device trong partial class (`register-app`, `login-app`, `activate-app`, `activate-device`, …). |
+| POST        | `/api/Auth/...`   | Các endpoint app/device cũ còn trong controller (khuyến nghị cleanup để đồng bộ 100% với mô hình kích hoạt JWT local của app). |
 
 
 ### 16.4 Quản trị (`AdminController` → `/api/Admin`) — cần `X-Admin-Key` nếu cấu hình `Admin:ApiKey`
@@ -789,5 +981,6 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **1.0**   | (trước 2026-04) | PRD MVP: personas, FR mobile/backend/admin/vendor, diagram, API đề xuất, roadmap.                                                                                                                   |
 | **2.0**   | **2026-04-06**  | Bổ sung: phiên bản stack & cổng dev; **bảng tiến độ thực tế**; **API đã triển khai**; chỉnh roadmap trạng thái; bảo mật đối chiếu code; **danh mục tài liệu / file tham chiếu**; lịch sử phiên bản. |
 | **2.1**   | **2026-04-06**  | Mục **8.2**: nhúng ảnh **ERD** (`Public/Resouces/ERD.png`); cập nhật **8.1** (thêm `device_activations`, `schema_migrations`); chỉnh tiêu đề và ghi chú ERD. Metadata PRD **2.1**. |
+| **2.2**   | **2026-04-08**  | Đồng bộ codebase hiện tại: bỏ `StreetFood.Application`; đồng bộ migration mới (loại `app_activation_expires_at` và `device_activations`); mở rộng dữ liệu demo analytics; bổ sung bộ **Use Case + Sequence + Activity** đầy đủ cho App, API, Web Admin, Web Vendor. |
 
 

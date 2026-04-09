@@ -97,6 +97,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <AndroidResource Remove="Presenters\**" />
+	  <Compile Remove="Presenters\**" />
+	  <EmbeddedResource Remove="Presenters\**" />
+	  <MauiCss Remove="Presenters\**" />
+	  <MauiXaml Remove="Presenters\**" />
+	  <None Remove="Presenters\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <None Remove="Platforms\Android\Resources\values\strings.xml" />
 	</ItemGroup>
 
@@ -108,10 +117,6 @@
 		<PackageReference Include="Plugin.Maui.Audio" Version="4.0.0" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 		<PackageReference Include="ZXing.Net.Maui.Controls" Version="0.7.4" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Presenters\" />
 	</ItemGroup>
 
 	<ItemGroup>

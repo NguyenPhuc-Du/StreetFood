@@ -1,10 +1,6 @@
 -- Dữ liệu ảo: heatmap, tuyến đi, lượt ghé, thời lượng nghe — phục vụ dashboard admin.
 -- Chạy sau V2 (đã có POI 1..4).
 
-INSERT INTO device_activations (install_id, expires_at, plan_label) VALUES
-('demo-install-001', NOW() + INTERVAL '365 days', 'demo'),
-('demo-install-002', NOW() + INTERVAL '180 days', 'trial');
-
 INSERT INTO location_logs (deviceid, latitude, longitude, createdat) VALUES
 ('sf-demo-1', 10.75490, 106.66660, NOW() - INTERVAL '14 days'),
 ('sf-demo-1', 10.75510, 106.66690, NOW() - INTERVAL '12 days'),
@@ -35,7 +31,29 @@ INSERT INTO device_visits (deviceid, poiid, entertime, exittime, duration) VALUE
 ('sf-demo-1', 1, NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days' + INTERVAL '12 minutes', 12),
 ('sf-demo-2', 2, NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days' + INTERVAL '25 minutes', 25),
 ('tour-a', 3, NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days' + INTERVAL '8 minutes', 8),
-('tour-b', 4, NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days' + INTERVAL '18 minutes', 18);
+('tour-b', 4, NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days' + INTERVAL '18 minutes', 18),
+('sf-demo-3', 1, NOW() - INTERVAL '30 hours', NOW() - INTERVAL '30 hours' + INTERVAL '16 minutes', 16),
+('sf-demo-3', 2, NOW() - INTERVAL '28 hours', NOW() - INTERVAL '28 hours' + INTERVAL '22 minutes', 22),
+('sf-demo-4', 3, NOW() - INTERVAL '26 hours', NOW() - INTERVAL '26 hours' + INTERVAL '14 minutes', 14),
+('sf-demo-4', 4, NOW() - INTERVAL '24 hours', NOW() - INTERVAL '24 hours' + INTERVAL '11 minutes', 11),
+('tour-c', 2, NOW() - INTERVAL '20 hours', NOW() - INTERVAL '20 hours' + INTERVAL '27 minutes', 27),
+('tour-c', 4, NOW() - INTERVAL '16 hours', NOW() - INTERVAL '16 hours' + INTERVAL '19 minutes', 19);
+
+INSERT INTO location_logs (deviceid, latitude, longitude, createdat) VALUES
+('sf-demo-3', 10.75495, 106.66672, NOW() - INTERVAL '20 hours'),
+('sf-demo-3', 10.75520, 106.66695, NOW() - INTERVAL '19 hours'),
+('sf-demo-4', 10.75605, 106.66810, NOW() - INTERVAL '18 hours'),
+('sf-demo-4', 10.75630, 106.66855, NOW() - INTERVAL '17 hours'),
+('tour-c', 10.75955, 106.68012, NOW() - INTERVAL '15 hours'),
+('tour-c', 10.75972, 106.68036, NOW() - INTERVAL '13 hours');
+
+INSERT INTO movement_paths (deviceid, frompoiid, topoiid, createdat) VALUES
+('sf-demo-3', 1, 2, NOW() - INTERVAL '29 hours'),
+('sf-demo-3', 2, 4, NOW() - INTERVAL '27 hours'),
+('sf-demo-4', 4, 3, NOW() - INTERVAL '23 hours'),
+('sf-demo-4', 3, 1, NOW() - INTERVAL '21 hours'),
+('tour-c', 2, 4, NOW() - INTERVAL '15 hours'),
+('tour-c', 4, 1, NOW() - INTERVAL '11 hours');
 
 INSERT INTO poi_audio_listen_events (poi_id, duration_seconds, device_id, created_at) VALUES
 (1, 45, 'sf-demo-1', NOW() - INTERVAL '10 days'),
@@ -57,4 +75,9 @@ INSERT INTO poi_audio_listen_events (poi_id, duration_seconds, device_id, create
 (1, 65, 'sf-demo-1', NOW() - INTERVAL '5 hours'),
 (2, 140, 'sf-demo-2', NOW() - INTERVAL '4 hours'),
 (3, 70, 'tour-a', NOW() - INTERVAL '2 hours'),
-(4, 99, 'sf-demo-1', NOW() - INTERVAL '1 hour');
+(4, 99, 'sf-demo-1', NOW() - INTERVAL '1 hour'),
+(1, 115, 'sf-demo-3', NOW() - INTERVAL '50 minutes'),
+(2, 165, 'sf-demo-4', NOW() - INTERVAL '42 minutes'),
+(3, 80, 'tour-c', NOW() - INTERVAL '34 minutes'),
+(4, 145, 'tour-c', NOW() - INTERVAL '26 minutes'),
+(2, 132, 'sf-demo-3', NOW() - INTERVAL '18 minutes');
