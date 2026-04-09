@@ -42,12 +42,12 @@ StreetFood là hệ thống **mobile + backend + admin/vendor web**:
 ### 1.4 Sản phẩm con & phiên bản công nghệ (repo hiện tại)
 
 
-| Thành phần          | Vị trí trong repo                                                          | Công nghệ / phiên bản (tham chiếu `.csproj`)                                                                                                                               |
-| ------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Mobile**          | `App/`                                                                     | .NET **MAUI** `net10.0` (Android, iOS, Mac Catalyst, Windows); `Microsoft.Maui.Controls` **10.0.50**; Maps, MediaElement, ZXing (QR), SQLite (`sqlite-net-pcl`).           |
-| **API**             | `StreetFoodAPI/`                                                           | ASP.NET Core **net10.0**; **PostgreSQL** qua **Dapper** + `Npgsql`; Azure **Speech** (TTS) & **Translator** (dịch script); tùy chọn `Admin:ApiKey` + header `X-Admin-Key`. |
-| **Admin Web**       | `Web Admin/wwwroot/`                                                       | ASP.NET Core static host **net10.0**; HTML/CSS/JS (`admin-api.js`, `config.js`).                                                                                           |
-| **Vendor Web**      | `Web Vendor/wwwroot/`                                                      | Cùng kiểu static host **net10.0**.                                                                                                                                         |
+| Thành phần          | Vị trí trong repo                                | Công nghệ / phiên bản (tham chiếu `.csproj`)                                                                                                                               |
+| ------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Mobile**          | `App/`                                           | .NET **MAUI** `net10.0` (Android, iOS, Mac Catalyst, Windows); `Microsoft.Maui.Controls` **10.0.50**; Maps, MediaElement, ZXing (QR), SQLite (`sqlite-net-pcl`).           |
+| **API**             | `StreetFoodAPI/`                                 | ASP.NET Core **net10.0**; **PostgreSQL** qua **Dapper** + `Npgsql`; Azure **Speech** (TTS) & **Translator** (dịch script); tùy chọn `Admin:ApiKey` + header `X-Admin-Key`. |
+| **Admin Web**       | `Web Admin/wwwroot/`                             | ASP.NET Core static host **net10.0**; HTML/CSS/JS (`admin-api.js`, `config.js`).                                                                                           |
+| **Vendor Web**      | `Web Vendor/wwwroot/`                            | Cùng kiểu static host **net10.0**.                                                                                                                                         |
 | **Tầng dùng chung** | `StreetFood.Domain`, `StreetFood.Infrastructure` | Hỗ trợ API & migration SQL (`StreetFood.Infrastructure/Migrations`).                                                                                                       |
 
 
@@ -377,13 +377,137 @@ flowchart LR
 - `poi_audio_listen_events` (thống kê thời lượng nghe từ app — xem `ListenAnalyticsController`)
 - `schema_migrations` (lịch sử file SQL đã chạy — do `DbInitializer` tạo)
 
-## 8.2 Sơ đồ ERD (ảnh)
+## 8.2 Sơ đồ ERD
 
-Ảnh sơ đồ quan hệ thực thể nằm trong repo tại `Public/Resouces/ERD.png` (thư mục giữ tên theo cấu trúc hiện có).
+```mermaid
+erDiagram
+    LANGUAGES {
+        varchar code PK
+        varchar name
+    }
 
-![Sơ đồ ERD — StreetFood (các bảng và quan hệ)](Public/Resouces/ERD.png)
+    USERS {
+        int id PK
+        varchar username UK
+        text password
+        varchar role
+        timestamp createdat
+        boolean ishidden
+        varchar email
+    }
 
-*Hình 1 — ERD tổng quan: POI, người dùng, audio đa ngôn ngữ, analytics và các bảng phụ trợ. Đối chiếu thêm danh sách bảng đầy đủ tại [mục 8.1](#81-danh-sách-bảng-chính) và migration `V1__Initial_schema.sql` nếu schema đã mở rộng so với sơ đồ.*
+    POIS {
+        int id PK
+        double latitude
+        double longitude
+        int radius
+        text address
+        text imageurl
+        timestamp createdat
+        varchar scriptsubmissionstate
+    }
+
+    POI_TRANSLATIONS {
+        int id PK
+        int poiid FK
+        varchar languagecode FK
+        varchar name
+        text description
+    }
+
+    RESTAURANT_DETAILS {
+        int id PK
+        int poiid FK
+        varchar openinghours
+        varchar phone
+    }
+
+    RESTAURANT_OWNERS {
+        int id PK
+        int userid FK
+        int poiid FK
+    }
+
+    FOODS {
+        int id PK
+        int poiid FK
+        varchar name
+        text description
+        int price
+        text imageurl
+        boolean ishidden
+    }
+
+    RESTAURANT_AUDIO {
+        int id PK
+        int poiid FK
+        varchar languagecode FK
+        text audiourl
+    }
+
+    SCRIPT_CHANGE_REQUESTS {
+        int id PK
+        int poiid FK
+        varchar languagecode
+        text newscript
+        varchar status
+        int createdby FK
+        timestamp createdat
+    }
+
+    DEVICE_VISITS {
+        int id PK
+        varchar deviceid
+        int poiid FK
+        timestamp entertime
+        timestamp exittime
+        int duration
+    }
+
+    LOCATION_LOGS {
+        int id PK
+        varchar deviceid
+        double latitude
+        double longitude
+        timestamp createdat
+    }
+
+    MOVEMENT_PATHS {
+        int id PK
+        varchar deviceid
+        int frompoiid
+        int topoiid
+        timestamp createdat
+    }
+
+    POI_AUDIO_LISTEN_EVENTS {
+        bigint id PK
+        int poi_id FK
+        int duration_seconds
+        varchar device_id
+        timestamp created_at
+    }
+
+    POIS ||--o{ POI_TRANSLATIONS : "poiid"
+    LANGUAGES ||--o{ POI_TRANSLATIONS : "languagecode"
+
+    POIS ||--o| RESTAURANT_DETAILS : "poiid (UNIQUE)"
+    POIS ||--o{ FOODS : "poiid"
+    POIS ||--o{ RESTAURANT_AUDIO : "poiid"
+    LANGUAGES ||--o{ RESTAURANT_AUDIO : "languagecode"
+
+    USERS ||--o{ RESTAURANT_OWNERS : "userid"
+    POIS ||--o{ RESTAURANT_OWNERS : "poiid"
+
+    USERS ||--o{ SCRIPT_CHANGE_REQUESTS : "createdby"
+    POIS ||--o{ SCRIPT_CHANGE_REQUESTS : "poiid"
+
+    POIS ||--o{ DEVICE_VISITS : "poiid"
+    POIS ||--o{ POI_AUDIO_LISTEN_EVENTS : "poi_id"
+
+    POIS ||--o{ MOVEMENT_PATHS : "frompoiid (nghiệp vụ)"
+    POIS ||--o{ MOVEMENT_PATHS : "topoiid (nghiệp vụ)"
+```
 
 ---
 
@@ -527,6 +651,8 @@ sequenceDiagram
     M-->>U: Tiếp tục phát từ vị trí đã chọn
 ```
 
+
+
 ## 12.2 Sequence diagram (Vendor gửi script/audio -> Admin duyệt -> App nhận dữ liệu mới)
 
 ```mermaid
@@ -563,6 +689,8 @@ sequenceDiagram
     API-->>M: audioUrl/description đã cập nhật
 ```
 
+
+
 ## 12.3 Sequence diagram (Telemetry: location -> visit -> movement -> dashboard)
 
 ```mermaid
@@ -592,6 +720,8 @@ sequenceDiagram
     API-->>A: Dashboard data
 ```
 
+
+
 ## 12.4 Sequence diagram (Admin tạo POI + owner, Vendor quản lý món, App hiển thị)
 
 ```mermaid
@@ -619,6 +749,8 @@ sequenceDiagram
     DB-->>API: Dữ liệu đầy đủ
     API-->>M: Chi tiết quán + danh sách món
 ```
+
+
 
 ## 12.5 Sequence diagram (App kích hoạt JWT local 7 ngày)
 
@@ -661,6 +793,8 @@ flowchart TD
     I --> J
 ```
 
+
+
 ## 13.1 Activity diagram (User App end-to-end)
 
 ```mermaid
@@ -681,6 +815,8 @@ flowchart TD
     A11 --> A6
 ```
 
+
+
 ## 13.2 Activity diagram (Admin dashboard + moderation)
 
 ```mermaid
@@ -696,6 +832,8 @@ flowchart TD
     B7 --> B8
     B3 -- Không --> B8
 ```
+
+
 
 ## 13.3 Activity diagram (Vendor quản lý cửa hàng và món ăn)
 
@@ -713,6 +851,8 @@ flowchart TD
     V6 --> V8
     V7 --> V8
 ```
+
+
 
 ## 13.4 Activity diagram (Admin tạo POI + owner và giám sát analytics)
 
@@ -855,9 +995,9 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 ### 16.3 Xác thực (`AuthController` → `/api/Auth`)
 
 
-| Phương thức | Đường dẫn         | Mô tả                                                                                                            |
-| ----------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| POST        | `/api/Auth/login` | Đăng nhập admin/vendor (bảng `users`).                                                                           |
+| Phương thức | Đường dẫn         | Mô tả                                                                                                                          |
+| ----------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| POST        | `/api/Auth/login` | Đăng nhập admin/vendor (bảng `users`).                                                                                         |
 | POST        | `/api/Auth/...`   | Các endpoint app/device cũ còn trong controller (khuyến nghị cleanup để đồng bộ 100% với mô hình kích hoạt JWT local của app). |
 
 
@@ -958,17 +1098,17 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 ## 21. Danh mục tài liệu và tham chiếu mã nguồn
 
 
-| Loại                     | Đường dẫn / ghi chú                                                                                                                                                                                       |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PRD (tài liệu này)**   | `prd.md` (root repo)                                                                                                                                                                                      |
-| **Cấu hình API cho web** | `Web Admin/wwwroot/config.js`, `Web Vendor/wwwroot/config.js`                                                                                                                                             |
-| **Client gọi API admin** | `Web Admin/wwwroot/js/admin-api.js` (gồm inject sidebar StreetFood)                                                                                                                                       |
-| **API**                  | `StreetFoodAPI/Controllers/*.cs`, `StreetFoodAPI/Program.cs`, `StreetFoodAPI/appsettings.json`                                                                                                            |
-| **Migration / SQL**      | `StreetFood.Infrastructure/Migrations/` — **`V1__Initial_schema.sql`** (DDL đầy đủ), **`V2__Seed_core_data.sql`** (dữ liệu nền), **`V3__Seed_demo_analytics.sql`** (heatmap/tuyến/thống kê nghe). DB mới: tạo database trống rồi chạy lần lượt hoặc bật `DbInitializer` (nếu được kích hoạt trong `Program.cs`). |
-| **App MAUI**             | `App/Views/*.xaml`, `App/AppShell.xaml`                                                                                                                                                                   |
-| **Trang HTML admin**     | `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`, `createPoiOwnerPage.html`, `pendingScriptsPage.html`, `restaurantOwnersPage.html` |
-| **Trang HTML vendor**    | `Web Vendor/wwwroot/html/` — `dashboardShopPage.html`, `manageProductsPage.html`, `requestScriptPage.html`, …                                                                                             |
-| **Sơ đồ ERD**            | File ảnh `Public/Resouces/ERD.png` — nhúng trong PRD tại [mục 8.2](#82-sơ-đồ-erd-ảnh).                                                                                                                    |
+| Loại                     | Đường dẫn / ghi chú                                                                                                                                                                                                                                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PRD (tài liệu này)**   | `prd.md` (root repo)                                                                                                                                                                                                                                                                                             |
+| **Cấu hình API cho web** | `Web Admin/wwwroot/config.js`, `Web Vendor/wwwroot/config.js`                                                                                                                                                                                                                                                    |
+| **Client gọi API admin** | `Web Admin/wwwroot/js/admin-api.js` (gồm inject sidebar StreetFood)                                                                                                                                                                                                                                              |
+| **API**                  | `StreetFoodAPI/Controllers/*.cs`, `StreetFoodAPI/Program.cs`, `StreetFoodAPI/appsettings.json`                                                                                                                                                                                                                   |
+| **Migration / SQL**      | `StreetFood.Infrastructure/Migrations/` — `**V1__Initial_schema.sql`** (DDL đầy đủ), `**V2__Seed_core_data.sql**` (dữ liệu nền), `**V3__Seed_demo_analytics.sql**` (heatmap/tuyến/thống kê nghe). DB mới: tạo database trống rồi chạy lần lượt hoặc bật `DbInitializer` (nếu được kích hoạt trong `Program.cs`). |
+| **App MAUI**             | `App/Views/*.xaml`, `App/AppShell.xaml`                                                                                                                                                                                                                                                                          |
+| **Trang HTML admin**     | `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`, `createPoiOwnerPage.html`, `pendingScriptsPage.html`, `restaurantOwnersPage.html`                                                                                                        |
+| **Trang HTML vendor**    | `Web Vendor/wwwroot/html/` — `dashboardShopPage.html`, `manageProductsPage.html`, `requestScriptPage.html`, …                                                                                                                                                                                                    |
+| **Sơ đồ ERD**            | Mermaid ERD duy nhất tại [mục 8.2](#82-sơ-đồ-erd-mermaid).                                                                                                                                                                                                                                                       |
 
 
 ---
@@ -976,11 +1116,11 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 ## 22. Lịch sử phiên bản PRD
 
 
-| Phiên bản | Ngày            | Nội dung thay đổi chính                                                                                                                                                                             |
-| --------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1.0**   | (trước 2026-04) | PRD MVP: personas, FR mobile/backend/admin/vendor, diagram, API đề xuất, roadmap.                                                                                                                   |
-| **2.0**   | **2026-04-06**  | Bổ sung: phiên bản stack & cổng dev; **bảng tiến độ thực tế**; **API đã triển khai**; chỉnh roadmap trạng thái; bảo mật đối chiếu code; **danh mục tài liệu / file tham chiếu**; lịch sử phiên bản. |
-| **2.1**   | **2026-04-06**  | Mục **8.2**: nhúng ảnh **ERD** (`Public/Resouces/ERD.png`); cập nhật **8.1** (thêm `device_activations`, `schema_migrations`); chỉnh tiêu đề và ghi chú ERD. Metadata PRD **2.1**. |
-| **2.2**   | **2026-04-08**  | Đồng bộ codebase hiện tại: bỏ `StreetFood.Application`; đồng bộ migration mới (loại `app_activation_expires_at` và `device_activations`); mở rộng dữ liệu demo analytics; bổ sung bộ **Use Case + Sequence + Activity** đầy đủ cho App, API, Web Admin, Web Vendor. |
+| Phiên bản | Ngày            | Nội dung thay đổi chính                                                                                                                                                                                                                                                                                    |
+| --------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1.0**   | (trước 2026-04) | PRD MVP: personas, FR mobile/backend/admin/vendor, diagram, API đề xuất, roadmap.                                                                                                                                                                                                                          |
+| **2.0**   | **2026-04-06**  | Bổ sung: phiên bản stack & cổng dev; **bảng tiến độ thực tế**; **API đã triển khai**; chỉnh roadmap trạng thái; bảo mật đối chiếu code; **danh mục tài liệu / file tham chiếu**; lịch sử phiên bản.                                                                                                        |
+| **2.1**   | **2026-04-06**  | Mục **8.2**: nhúng ảnh **ERD** (`Public/Resouces/ERD.png`); cập nhật **8.1** (thêm `device_activations`, `schema_migrations`); chỉnh tiêu đề và ghi chú ERD. Metadata PRD **2.1**.                                                                                                                         |
+| **2.2**   | **2026-04-08**  | Đồng bộ codebase hiện tại: bỏ `StreetFood.Application`; đồng bộ migration mới (loại `app_activation_expires_at` và `device_activations`); mở rộng dữ liệu demo analytics; bổ sung bộ **Use Case + Sequence + Activity** đầy đủ cho App, API, Web Admin, Web Vendor; thêm **ERD dạng Mermaid** tại mục 8.2. |
 
 
