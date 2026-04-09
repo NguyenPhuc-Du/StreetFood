@@ -651,6 +651,7 @@ public class AdminController : ControllerBase
         }
     }
 
+    // Kiểm tra xem script có phải là gói âm thanh do vendor cung cấp không, định dạng JSON đặc biệt với 5 URL cho 5 ngôn ngữ được gọi bởi hàm trên 
     private static bool TryParseVendorAudioBundle(string? raw, out Dictionary<string, string>? urls)
     {
         urls = null;

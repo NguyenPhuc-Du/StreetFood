@@ -11,7 +11,28 @@
 
 ### Mục lục nhanh
 
-1. [Giới thiệu](#1-giới-thiệu) · 2. [Mục tiêu sản phẩm](#2-mục-tiêu-sản-phẩm) · 3. [Personas](#3-personas-và-nhu-cầu) · 4. [Tính năng chi tiết](#4-tính-năng-và-yêu-cầu-chức-năng) · 5–7. Stories / Luồng / Kiến trúc · 8. [CSDL](#8-tổng-quan-cơ-sở-dữ-liệu-database-overview) · 9–15. Analytics / Diagrams / UI · 16. [API thực tế](#16-api-overview-đã-triển-khai-trong-repo) · 17. Bảo mật · 18. [Roadmap](#18-kế-hoạch-triển-khai-roadmap-và-trạng-thái) · 19. Nghiệm thu · 20. Future · **[21. Danh mục tài liệu & mã tham chiếu](#21-danh-mục-tài-liệu-và-tham-chiếu-mã-nguồn)** · **[22. Lịch sử phiên bản PRD](#22-lịch-sử-phiên-bản-prd)**
+1. [Giới thiệu](#1-giới-thiệu)
+2. [Mục tiêu sản phẩm](#2-mục-tiêu-sản-phẩm)
+3. [Personas](#3-personas-và-nhu-cầu)
+4. [Tính năng chi tiết](#4-tính-năng-và-yêu-cầu-chức-năng)
+5. [User stories](#5-user-stories)
+6. [Luồng người dùng chính](#6-luồng-người-dùng-chính)
+7. [Kiến trúc hệ thống](#7-kiến-trúc-hệ-thống-system-architecture-overview)
+8. [CSDL](#8-tổng-quan-cơ-sở-dữ-liệu-database-overview)
+9. [Thiết kế analytics](#9-thiết-kế-analytics)
+10. [Yêu cầu phi chức năng (NFR)](#10-yêu-cầu-phi-chức-năng-nfr)
+11. [Sơ đồ Use Case](#11-sơ-đồ-use-case)
+12. [Sequence diagram](#12-sequence-diagram-user-user-vào-poi-và-phát-audio)
+13. [Activity diagram](#13-activity-diagram-vendor-gửi-yêu-cầu-âm-thanh-2-cách)
+14. [Data Flow Diagram (DFD Level 1)](#14-data-flow-diagram-dfd-level-1)
+15. [UI wireframe (MVP)](#15-ui-wireframe-mvp)
+16. [API thực tế](#16-api-overview-đã-triển-khai-trong-repo)
+17. [Bảo mật](#17-bảo-mật-và-phân-quyền)
+18. [Roadmap](#18-kế-hoạch-triển-khai-roadmap-và-trạng-thái)
+19. [Nghiệm thu](#19-tiêu-chí-nghiệm-thu-mvp)
+20. [Future](#20-future-improvements)
+21. **[Danh mục tài liệu & mã tham chiếu](#21-danh-mục-tài-liệu-và-tham-chiếu-mã-nguồn)**
+22. **[Lịch sử phiên bản PRD](#22-lịch-sử-phiên-bản-prd)**
 
 ---
 
@@ -118,7 +139,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 | Mã     | Yêu cầu                                                   | Trạng thái   | Ghi chú                                                                           |
 | ------ | --------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------- |
-| FR-M01 | QR / cổng cài app                                         | **Đã có**    | `QrGatePage.xaml`                                                                 |
+| FR-M01 | QR / cổng cài app                                         | **Chưa có**    | `QrGatePage.xaml`                                                                 |
 | FR-M02 | GPS                                                       | **Đã có**    | `HomePage` + quyền vị trí                                                         |
 | FR-M03 | POI trên bản đồ, chạm xem thông tin                       | **Đã có**    | Maps + card POI                                                                   |
 | FR-M04 | Auto audio theo bán kính + cooldown / không cắt on-demand | **Đã có**    | Logic geofence + ưu tiên phát chủ động (theo triển khai hiện tại)                 |
@@ -139,8 +160,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 | FR-B03     | Audio đa ngôn ngữ | **Đã có**  | `Restaurant_Audio`; URL tới CDN/R2 tùy cấu hình                          |
 | FR-B04     | Translation       | **Đã có**  | `POI_Translations`                                                       |
 | FR-B05     | Telemetry         | **Đã có**  | Visit/path/listen events (admin analytics + `ListenAnalyticsController`) |
-| —          | Auth web          | **Đã có**  | `POST /api/auth/login` (admin/vendor)                                    |
-| —          | Auth app          | **Đã có**  | `AuthController` partial (register/login/activate app, device)           |
+| —          | Auth web          | **Đã có**  | `POST /api/auth/login` (admin/vendor)                                    |       |
 
 
 #### Admin Web (`Web Admin/wwwroot/html/`)
