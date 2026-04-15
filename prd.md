@@ -683,510 +683,556 @@ flowchart LR
 
 ---
 
-## 12. Sequence diagram [User] (User vào POI và phát audio)
+## 12. Sequence diagram theo chức năng (1 FR = 1 sequence)
 
-### 12.0 Thứ tự đọc chuẩn theo tác nhân (User -> Vendor -> Admin)
+### 12.0 Ma trận mapping FR -> Sequence -> Activity
 
-1. **User:** `12`, `12.1`, `12.5`, `12.11`, `12.3`  
-2. **Vendor:** `12.7`, `12.8`, `12.2`  
-3. **Admin:** `12.6`, `12.9`, `12.10`, `12.4`
+| FR | Chức năng | Sequence | Activity |
+| --- | --- | --- | --- |
+| FR-M01 | Cài đặt qua QR | 12.1 | 13.1 |
+| FR-M02 | Định vị GPS | 12.2 | 13.2 |
+| FR-M03 | Hiển thị POI trên bản đồ | 12.3 | 13.3 |
+| FR-M04 | Auto trigger audio theo geofence | 12.4 | 13.4 |
+| FR-M05 | Đa ngôn ngữ | 12.5 | 13.5 |
+| FR-M06 | Offline support (SQLite cache) | 12.6 | 13.6 |
+| FR-M07 | Tìm kiếm và lọc | 12.7 | 13.7 |
+| FR-M08 | On-demand nghe ngoài bán kính | 12.8 | 13.8 |
+| FR-M09 | Timeline + seek player | 12.9 | 13.9 |
+| FR-B01 | Quản lý POI | 12.10 | 13.10 |
+| FR-B02 | Quản lý foods/images | 12.11 | 13.11 |
+| FR-B03 | Quản lý audio đa ngôn ngữ | 12.12 | 13.12 |
+| FR-B04 | Quản lý nội dung đa ngôn ngữ | 12.13 | 13.13 |
+| FR-B05 | API cho mobile | 12.14 | 13.14 |
+| FR-A01 | Quản lý nhà hàng | 12.15 | 13.15 |
+| FR-A02 | Quản lý audio | 12.16 | 13.16 |
+| FR-A03 | Dashboard analytics | 12.17 | 13.17 |
+| FR-A04 | Duyệt yêu cầu vendor | 12.18 | 13.18 |
+| FR-V01 | Chỉnh sửa thông tin nhà hàng | 12.19 | 13.19 |
+| FR-V02 | Request thay đổi audio script | 12.20 | 13.20 |
+
+### 12.1 FR-M01 - Cài đặt qua QR
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant M as Mobile App (MAUI)
-    participant API as Backend API
-    participant DB as PostgreSQL
-    participant R2 as Cloudflare R2
+    participant M as Mobile App
+    participant QR as QR/DeepLink
+    participant S as App Store
+    U->>M: Mở màn quét
+    M->>QR: Scan mã QR
+    QR-->>M: Deep link cài đặt
+    M->>S: Điều hướng store tương ứng OS
+    S-->>U: Trang cài đặt ứng dụng
+```
 
-    U->>M: Mở app + cấp quyền GPS
-    M->>API: GET /api/poi (Accept-Language)
-    API->>DB: Query POI + translation + audio
-    DB-->>API: Data POI
+### 12.2 FR-M02 - Định vị GPS
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant M as Mobile App
+    participant OS as OS Location Service
+    U->>M: Mở app lần đầu
+    M->>OS: Xin quyền vị trí
+    OS-->>U: Prompt quyền
+    U-->>OS: Allow
+    loop Chu kỳ định vị
+        M->>OS: Lấy tọa độ hiện tại
+        OS-->>M: lat/lng/accuracy
+    end
+```
+
+### 12.3 FR-M03 - Hiển thị POI trên bản đồ
+
+```mermaid
+sequenceDiagram
+    participant M as Mobile App
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    M->>API: GET /api/poi
+    API->>DB: Query POI + metadata
+    DB-->>API: POI list
     API-->>M: Danh sách POI
-
-    loop Mỗi chu kỳ GPS
-      M->>M: Đọc vị trí hiện tại
-      M->>M: Tính khoảng cách đến POI
-    end
-
-    M->>M: User vào bán kính POI
-    M->>R2: Stream audio theo AudioUrl
-    R2-->>M: Audio content
-    M-->>U: Tự động phát audio + hiện info card
+    M->>M: Render marker trên map
 ```
 
-## 12.1 Sequence diagram [User] (User chọn POI trên map — on-demand + timeline)
+### 12.4 FR-M04 - Auto trigger audio theo geofence
+
+```mermaid
+sequenceDiagram
+    participant M as Mobile App
+    participant API as StreetFood API
+    participant R2 as Cloudflare R2
+    loop Mỗi lần cập nhật vị trí
+        M->>M: Tính khoảng cách tới POI
+        alt Vào geofence và không có on-demand active
+            M->>API: GET /api/poi/{id}
+            API-->>M: AudioUrl theo ngôn ngữ
+            M->>R2: Stream audio
+            R2-->>M: Audio content
+            M->>M: Auto play + hiện info card
+        else Có on-demand đang phát
+            M->>M: Bỏ qua auto switch
+        end
+    end
+```
+
+### 12.5 FR-M05 - Đa ngôn ngữ
+
+```mermaid
+sequenceDiagram
+    participant M as Mobile App
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    M->>API: GET /api/poi (Accept-Language=ja)
+    API->>DB: Query translation/audio theo language
+    alt Có dữ liệu ngôn ngữ yêu cầu
+        DB-->>API: Bản ghi language=ja
+    else Thiếu dữ liệu
+        DB-->>API: Fallback language=en
+    end
+    API-->>M: POI + content + AudioUrl phù hợp
+```
+
+### 12.6 FR-M06 - Offline support (SQLite cache)
+
+```mermaid
+sequenceDiagram
+    participant M as Mobile App
+    participant API as StreetFood API
+    participant C as SQLite Cache
+    M->>API: GET /api/poi
+    alt Online
+        API-->>M: Dữ liệu mới nhất
+        M->>C: Upsert cache POI/translations
+        C-->>M: Save OK
+    else Offline
+        M->>C: Read dữ liệu gần nhất
+        C-->>M: Cached POI
+        M->>M: Hiển thị map từ cache
+    end
+```
+
+### 12.7 FR-M07 - Tìm kiếm và lọc
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant M as Mobile App (MAUI)
-    participant R2 as Cloudflare R2
+    participant M as Mobile App
+    participant API as StreetFood API
+    U->>M: Nhập keyword + bộ lọc
+    M->>API: GET /api/poi?search&distance&category
+    API-->>M: POI đã lọc
+    M-->>U: Danh sách kết quả
+```
 
-    U->>M: Chạm vào marker POI trên bản đồ
-    M-->>U: Hiện thông tin quán + nút Nghe giới thiệu
-    U->>M: Bấm Nghe / Play
-    M->>M: Load AudioUrl (ngôn ngữ thiết bị)
-    M->>R2: Stream audio
+### 12.8 FR-M08 - Chọn POI để nghe on-demand
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant M as Mobile App
+    participant API as StreetFood API
+    participant R2 as Cloudflare R2
+    U->>M: Chạm marker POI trên map
+    M->>API: GET /api/poi/{id}
+    API-->>M: Detail + AudioUrl
+    M-->>U: Hiện card POI
+    U->>M: Bấm Nghe giới thiệu
+    M->>R2: Stream AudioUrl
     R2-->>M: Audio stream
-    M-->>U: Phát audio + hiện timeline (current/total)
-    U->>M: Kéo slider / seek
-    M->>M: Seek đến vị trí mới
-    M-->>U: Tiếp tục phát từ vị trí đã chọn
+    M-->>U: Phát audio on-demand
 ```
 
-## 12.2 Sequence diagram [Vendor -> Admin] (Vendor gửi yêu cầu âm thanh 2 cách -> Admin duyệt -> App nhận dữ liệu mới)
-
-```mermaid
-sequenceDiagram
-    participant V as Vendor Web
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-    participant A as Admin Web
-    participant TTS as Azure Speech/Translator
-    participant R2 as Cloudflare R2
-    participant M as Mobile App
-
-    V->>API: Chọn cách gửi request âm thanh
-    alt Cách 1: gửi 1 script ngôn ngữ nguồn
-        V->>API: POST /api/vendor/submit-script
-    else Cách 2: gửi 5 file audio theo ngôn ngữ
-        V->>API: POST /api/vendor/submit-audio-bundle
-    end
-    API->>DB: Insert script_change_requests (pending)
-    API-->>V: 200 Pending
-
-    A->>API: GET /api/Admin/script-requests/pending
-    API-->>A: Danh sách request
-    A->>API: POST /api/Admin/script-requests/{id}/approve
-
-    alt Approve request từ Cách 1 (script nguồn)
-        API->>TTS: Dịch thêm 4 ngôn ngữ + synthesize audio
-        TTS-->>API: Audio files
-        API->>R2: Upload audio files
-        R2-->>API: Public URLs
-        API->>DB: Update restaurant_audio + translations + status approved
-    else Approve request từ Cách 2 (audio bundle)
-        API->>DB: Update restaurant_audio + status approved
-    end
-
-    M->>API: GET /api/poi/{id}
-    API->>DB: Query detail + restaurant_audio
-    DB-->>API: Dữ liệu mới nhất
-    API-->>M: audioUrl/description đã cập nhật
-```
-
-## 12.3 Sequence diagram [User -> Admin] (Telemetry: location -> visit -> movement -> dashboard)
-
-```mermaid
-sequenceDiagram
-    participant M as Mobile App
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-    participant A as Admin Web
-
-    loop Mỗi chu kỳ vị trí
-      M->>API: POST /api/poi/log (deviceId, lat, lng)
-      API->>DB: INSERT location_logs
-    end
-
-    M->>API: POST /api/poi/visit/start
-    API->>DB: INSERT device_visits (entertime)
-    M->>API: POST /api/poi/movement (fromPoiId,toPoiId)
-    API->>DB: INSERT movement_paths
-    M->>API: POST /api/poi/visit/end
-    API->>DB: UPDATE device_visits (exittime,duration)
-
-    A->>API: GET /api/Admin/analytics/heatmap
-    A->>API: GET /api/Admin/analytics/paths
-    A->>API: GET /api/Admin/analytics/popular-paths
-    API->>DB: Aggregate queries
-    DB-->>API: Result sets
-    API-->>A: Dashboard data
-```
-
-## 12.4 Sequence diagram [Admin -> Vendor -> User] (Admin tạo POI + owner, Vendor quản lý món, App hiển thị)
-
-```mermaid
-sequenceDiagram
-    participant A as Admin Web
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-    participant V as Vendor Web
-    participant M as Mobile App
-
-    A->>API: POST /api/Admin/poi-with-owner
-    API->>DB: Insert users(role=vendor), pois, owners
-    DB-->>API: Tạo thành công
-    API-->>A: 200 + thông tin tài khoản owner
-
-    V->>API: POST /api/vendor/foods/create
-    API->>DB: Insert foods theo PoiId của vendor
-    API-->>V: 200 Created
-    V->>API: POST /api/vendor/foods/update
-    API->>DB: Update foods
-    API-->>V: 200 Updated
-
-    M->>API: GET /api/poi/{id}
-    API->>DB: Query poi + foods + details
-    DB-->>API: Dữ liệu đầy đủ
-    API-->>M: Chi tiết quán + danh sách món
-```
-
-## 12.5 Sequence diagram [User] (App kích hoạt JWT local 7 ngày)
+### 12.9 FR-M09 - Timeline và seek audio
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant M as Mobile App
-    participant QR as QR JWT
-    participant S as Local Storage (Preferences)
-
-    U->>M: Mở màn quét QR
-    M->>QR: Đọc token JWT từ mã QR
-    M->>M: Verify chữ ký + nbf/exp + issuer/type
-    alt Token hợp lệ
-        M->>S: Lưu hạn kích hoạt local (7 ngày)
-        M-->>U: Vào HomePage
-    else Token không hợp lệ/hết hạn
-        M-->>U: Báo lỗi và yêu cầu quét lại
+    participant P as MediaElement
+    U->>M: Bấm Play/Pause
+    M->>P: Toggle playback
+    loop Trong lúc phát
+        P-->>M: Position/Duration update
+        M-->>U: Cập nhật timeline UI
     end
+    U->>M: Kéo thanh seek
+    M->>P: Seek(position)
+    P-->>M: Playback từ vị trí mới
 ```
 
-## 12.6 Sequence diagram [Admin/Vendor] (Web login và điều hướng theo role)
+### 12.10 FR-B01 - Quản lý POI
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant W as Web Login Page
+    participant A as Admin Web
     participant API as StreetFood API
     participant DB as PostgreSQL
-
-    U->>W: Nhập username và password
-    W->>API: POST /api/Auth/login
-    API->>DB: Validate users + role
-    DB-->>API: userId + role
-    API-->>W: 200 + role (admin hoặc vendor)
-
-    alt role = admin
-        W-->>U: Redirect sang Admin Dashboard
-    else role = vendor
-        W-->>U: Redirect sang Vendor Dashboard
-    else login fail
-        W-->>U: Thông báo sai thông tin đăng nhập
-    end
+    A->>API: POST/PUT/DELETE /api/Admin/poi...
+    API->>DB: INSERT/UPDATE/DELETE POIs
+    DB-->>API: Result
+    API-->>A: 200 + trạng thái
 ```
 
-## 12.7 Sequence diagram [Vendor] (Vendor cập nhật thông tin cửa hàng gồm logo)
-
-```mermaid
-sequenceDiagram
-    participant V as Vendor Web
-    participant API as StreetFood API
-    participant R2 as Cloudflare R2
-    participant DB as PostgreSQL
-
-    opt Có đổi logo mới
-        V->>API: POST /api/vendor/media/upload (logo file)
-        API->>R2: Upload logo
-        R2-->>API: logoUrl
-        API-->>V: 200 + logoUrl
-    end
-
-    V->>API: POST /api/vendor/shop/update-details (name, openHours, phone, logoUrl, ...)
-    API->>DB: UPDATE restaurant_details
-    DB-->>API: Updated
-    API-->>V: 200 Updated
-```
-
-## 12.8 Sequence diagram [Vendor] (Vendor quản lý món thêm sửa ẩn hiển thị)
+### 12.11 FR-B02 - Quản lý foods và images
 
 ```mermaid
 sequenceDiagram
     participant V as Vendor Web
     participant API as StreetFood API
     participant DB as PostgreSQL
-
     V->>API: POST /api/vendor/foods/create
     API->>DB: INSERT foods
     DB-->>API: Created
-    API-->>V: 200 Created
-
-    V->>API: POST /api/vendor/foods/update
-    API->>DB: UPDATE foods
+    API-->>V: 200
+    V->>API: POST /api/vendor/foods/update/delete/restore
+    API->>DB: UPDATE foods/isHidden/imageUrl
     DB-->>API: Updated
-    API-->>V: 200 Updated
-
-    V->>API: POST /api/vendor/foods/delete (ẩn món)
-    API->>DB: UPDATE foods SET ishidden = true
-    DB-->>API: Updated
-    API-->>V: 200 Hidden
-
-    V->>API: POST /api/vendor/foods/restore (hiển thị lại)
-    API->>DB: UPDATE foods SET ishidden = false
-    DB-->>API: Updated
-    API-->>V: 200 Restored
+    API-->>V: 200
 ```
 
-## 12.9 Sequence diagram [Admin] (Admin hide và unhide owner account)
+### 12.12 FR-B03 - Quản lý audio đa ngôn ngữ
 
 ```mermaid
 sequenceDiagram
     participant A as Admin Web
     participant API as StreetFood API
-    participant DB as PostgreSQL
-
-    A->>API: POST /api/Admin/owners/{userId}/hide
-    API->>DB: UPDATE users SET ishidden = true
-    DB-->>API: Updated
-    API-->>A: 200 Hidden
-
-    A->>API: POST /api/Admin/owners/{userId}/unhide
-    API->>DB: UPDATE users SET ishidden = false
-    DB-->>API: Updated
-    API-->>A: 200 Unhidden
-```
-
-## 12.10 Sequence diagram [Admin] (Admin xem POI chờ script và regenerate audio)
-
-```mermaid
-sequenceDiagram
-    participant A as Admin Web
-    participant API as StreetFood API
-    participant DB as PostgreSQL
     participant TTS as Azure Speech
     participant R2 as Cloudflare R2
-
-    A->>API: GET /api/Admin/pois/awaiting-script
-    API->>DB: Query POI chưa có script hoàn chỉnh
-    DB-->>API: Danh sách POI
-    API-->>A: Awaiting script list
-
-    A->>API: POST /api/Admin/poi/{poiId}/regenerate-audio
-    API->>TTS: Synthesize audio theo script hiện tại
-    TTS-->>API: Audio file
-    API->>R2: Upload audio file
-    R2-->>API: Public URL
-    API->>DB: Update restaurant_audio.audio_url
-    API-->>A: 200 Regenerated
+    participant DB as PostgreSQL
+    A->>API: Regenerate audio theo script đã duyệt
+    API->>TTS: Synthesize từng ngôn ngữ
+    TTS-->>API: Audio files
+    API->>R2: Upload audio files
+    R2-->>API: Public URLs
+    API->>DB: Update Restaurant_Audio
+    API-->>A: 200 Updated
 ```
 
-## 12.11 Sequence diagram [User -> Admin] (App gửi listen analytics và Admin đọc báo cáo)
+### 12.13 FR-B04 - Quản lý nội dung đa ngôn ngữ
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant T as Azure Translator
+    participant DB as PostgreSQL
+    A->>API: Submit script ngôn ngữ nguồn
+    API->>T: Dịch sang en/zh/ja/ko
+    T-->>API: Bản dịch
+    API->>DB: Upsert POI_Translations
+    DB-->>API: Saved
+    API-->>A: 200 + translations
+```
+
+### 12.14 FR-B05 - API cho mobile
 
 ```mermaid
 sequenceDiagram
     participant M as Mobile App
     participant API as StreetFood API
     participant DB as PostgreSQL
-    participant A as Admin Web
-
-    M->>API: POST /api/analytics/poi-audio-listen
-    API->>DB: INSERT poi_audio_listen_events
-    DB-->>API: Saved
-    API-->>M: 200 OK
-
-    A->>API: GET /api/Admin/analytics/poi-audio-listen?days=30
-    API->>DB: Aggregate avg duration theo POI
-    DB-->>API: Result set
-    API-->>A: Listen analytics data
+    M->>API: GET /api/poi, POST telemetry/listen
+    API->>DB: Query + insert location/visit/movement/listen
+    DB-->>API: Result sets
+    API-->>M: Payload + ACK
 ```
 
+### 12.15 FR-A01 - Quản lý nhà hàng
 
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    A->>API: POST /api/Admin/poi-with-owner
+    API->>DB: Create POI + owner account
+    DB-->>API: Created
+    API-->>A: owner credentials
+```
+
+### 12.16 FR-A02 - Quản lý audio
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant TTS as Azure Speech
+    participant R2 as Cloudflare R2
+    participant DB as PostgreSQL
+    A->>API: POST /api/Admin/poi/{id}/regenerate-audio
+    API->>TTS: Generate audio
+    TTS-->>API: Audio file
+    API->>R2: Upload audio
+    R2-->>API: Public URL
+    API->>DB: Update restaurant_audio
+    API-->>A: 200 Updated
+```
+
+### 12.17 FR-A03 - Dashboard analytics
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    A->>API: GET /api/Admin/analytics/heatmap
+    A->>API: GET /api/Admin/analytics/paths
+    A->>API: GET /api/Admin/analytics/poi-audio-listen
+    API->>DB: Aggregate analytics datasets
+    DB-->>API: Results
+    API-->>A: Dashboard payload
+```
+
+### 12.18 FR-A04 - Duyệt yêu cầu vendor
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    A->>API: GET /api/Admin/script-requests/pending
+    API->>DB: Query pending requests
+    DB-->>API: Pending list
+    API-->>A: Danh sách chờ duyệt
+    A->>API: POST approve/reject
+    API->>DB: Update request status
+    API-->>A: 200 Updated
+```
+
+### 12.19 FR-V01 - Chỉnh sửa thông tin nhà hàng
+
+```mermaid
+sequenceDiagram
+    participant V as Vendor Web
+    participant API as StreetFood API
+    participant R2 as Cloudflare R2
+    participant DB as PostgreSQL
+    opt Có đổi logo
+        V->>API: POST /api/vendor/media/upload
+        API->>R2: Upload logo
+        R2-->>API: logoUrl
+        API-->>V: logoUrl
+    end
+    V->>API: POST /api/vendor/shop/update-details
+    API->>DB: Update restaurant details
+    DB-->>API: Updated
+    API-->>V: 200
+```
+
+### 12.20 FR-V02 - Request thay đổi audio script
+
+```mermaid
+sequenceDiagram
+    participant V as Vendor Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    alt Vendor gửi script nguồn
+        V->>API: POST /api/vendor/submit-script
+    else Vendor gửi audio bundle
+        V->>API: POST /api/vendor/submit-audio-bundle
+    end
+    API->>DB: Insert Script_Change_Request = pending
+    API-->>V: 200 Pending
+```
 
 ---
 
-## 13. Activity diagram (Vendor gửi yêu cầu âm thanh 2 cách)
+## 13. Activity diagram theo chức năng (1 FR = 1 activity)
+
+### 13.1 FR-M01 - Cài đặt qua QR
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    S[Vendor đăng nhập] --> A[Mở trang yêu cầu âm thanh]
-    A --> B{Chọn cách gửi}
-    B -- Cách 1 --> C[Nhập 1 script ngôn ngữ nguồn]
-    B -- Cách 2 --> D[Gắn 5 file audio theo ngôn ngữ]
-    C --> E[Submit request]
+    A[Mở màn quét QR] --> B[Quét mã]
+    B --> C{Hợp lệ}
+    C -- Có --> D[Đi tới deep link cài app]
+    C -- Không --> E[Báo lỗi và quét lại]
+```
+
+### 13.2 FR-M02 - Định vị GPS
+
+```mermaid
+flowchart TD
+    A[Mở app] --> B[Xin quyền vị trí]
+    B --> C{Được cấp quyền}
+    C -- Có --> D[Lấy GPS theo chu kỳ]
+    C -- Không --> E[Hiện hướng dẫn bật quyền]
+```
+
+### 13.3 FR-M03 - Hiển thị POI trên bản đồ
+
+```mermaid
+flowchart TD
+    A[Fetch danh sách POI] --> B[Nhận dữ liệu]
+    B --> C[Render marker lên bản đồ]
+    C --> D[User xem/nhấn marker]
+```
+
+### 13.4 FR-M04 - Auto trigger audio theo geofence
+
+```mermaid
+flowchart TD
+    A[Nhận vị trí mới] --> B[Tính khoảng cách tới POI]
+    B --> C{Vào geofence}
+    C -- Không --> A
+    C -- Có --> D{Đang phát on-demand}
+    D -- Có --> A
+    D -- Không --> E[Auto mở card + phát audio]
+```
+
+### 13.5 FR-M05 - Đa ngôn ngữ
+
+```mermaid
+flowchart TD
+    A[Gửi Accept-Language] --> B[API tìm bản dịch]
+    B --> C{Có bản dịch theo ngôn ngữ yêu cầu}
+    C -- Có --> D[Trả dữ liệu cùng ngôn ngữ đó]
+    C -- Không --> E[Fallback về en]
+```
+
+### 13.6 FR-M06 - Offline support (SQLite cache)
+
+```mermaid
+flowchart TD
+    A[App cần dữ liệu POI] --> B{Có mạng}
+    B -- Có --> C[Lấy API và cập nhật cache]
+    B -- Không --> D[Đọc cache SQLite]
+    C --> E[Hiển thị dữ liệu]
     D --> E
-    E --> F[Lưu Script_Change_Request = Pending]
-    F --> G[Admin duyệt request]
-    G --> H{Kết quả duyệt}
-    H -- Approve Cách 1 --> I[Dịch 4 ngôn ngữ còn lại + TTS + cập nhật audio]
-    H -- Approve Cách 2 --> J[Cập nhật audio từ bundle vendor]
-    H -- Reject --> K[Set request = Rejected]
-    I --> L[Set request = Approved]
-    J --> L
-    L --> M[Thông báo kết quả cho Vendor]
-    K --> M
 ```
 
-
-
-## 13.1 Activity diagram (User App end-to-end)
+### 13.7 FR-M07 - Tìm kiếm và lọc
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    A0[Mở app] --> A1{Đã kích hoạt?}
-    A1 -- Chưa --> A2[Quét JWT QR]
-    A2 --> A3[Lưu hạn local 7 ngày]
-    A1 -- Đã kích hoạt --> A4[Xin quyền GPS]
-    A3 --> A4
-    A4 --> A5[Load POI từ API]
-    A5 --> A6[Hiện map + marker]
-    A6 --> A7{Người dùng thao tác}
-    A7 -- Chạm POI --> A8[Mở thẻ thông tin/chi tiết]
-    A8 --> A9[Play/Pause/Seek audio]
-    A7 -- Đi vào geofence --> A10[Auto show card + play]
-    A10 --> A9
-    A7 -- Di chuyển --> A11[Gửi location_logs + visit start/end + movement]
-    A11 --> A6
+    A[Nhập từ khóa/bộ lọc] --> B[Gọi API tìm kiếm]
+    B --> C[Nhận danh sách đã lọc]
+    C --> D[Hiển thị kết quả]
 ```
 
-
-
-## 13.2 Activity diagram (Admin dashboard + moderation)
+### 13.8 FR-M08 - Chọn POI để nghe on-demand
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    B0[Admin đăng nhập] --> B1[Mở dashboard]
-    B1 --> B2[Đọc KPI + heatmap + routes + listen stats]
-    B2 --> B3{Có request pending?}
-    B3 -- Có --> B4[Mở pendingScripts]
-    B4 --> B5{Approve hay Reject}
-    B5 -- Approve --> B6[Cập nhật DB + audio URLs]
-    B5 -- Reject --> B7[Set status rejected]
-    B6 --> B8[Refresh dashboard]
-    B7 --> B8
-    B3 -- Không --> B8
+    A[Chạm marker POI] --> B[Hiện card chi tiết]
+    B --> C[Nhấn Nghe giới thiệu]
+    C --> D[Phát audio on-demand]
 ```
 
-
-
-## 13.3 Activity diagram (Vendor quản lý cửa hàng và món ăn)
+### 13.9 FR-M09 - Timeline và seek audio
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    V0[Vendor đăng nhập] --> V1[Lấy danh sách POI của mình]
-    V1 --> V2[Chọn cửa hàng]
-    V2 --> V3[Cập nhật thông tin cửa hàng gồm logo]
-    V3 --> V4[POST /api/vendor/shop/update-details]
-    V4 --> V5{Quản lý món}
-    V5 -- Thêm món --> V6[POST /api/vendor/foods/create]
-    V5 -- Sửa món --> V7[POST /api/vendor/foods/update]
-    V5 -- Ẩn món --> V8[POST /api/vendor/foods/delete]
-    V5 -- Hiển thị lại món --> V9[POST /api/vendor/foods/restore]
-    V6 --> V10[Reload dữ liệu]
-    V7 --> V10
-    V8 --> V10
-    V9 --> V10
+    A[Play audio] --> B[Cập nhật current/total]
+    B --> C{User thao tác}
+    C -- Pause/Resume --> A
+    C -- Seek --> D[Nhảy tới mốc mới]
+    D --> A
 ```
 
-
-
-## 13.4 Activity diagram (Admin tạo POI + owner và giám sát analytics)
+### 13.10 FR-B01 - Quản lý POI
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    C0[Admin đăng nhập] --> C1[Tạo POI + owner]
-    C1 --> C2[Hệ thống sinh user vendor + liên kết owner]
-    C2 --> C3[Theo dõi owner list]
-    C3 --> C4{Có vấn đề tài khoản?}
-    C4 -- Có --> C5[Hide owner account]
-    C4 -- Không --> C6[Giữ hoạt động bình thường]
-    C5 --> C7[Xem dashboard analytics]
-    C6 --> C7
-    C7 --> C8[Đánh giá heatmap, routes, top POI]
+    A[Admin thao tác CRUD POI] --> B[API validate dữ liệu]
+    B --> C[Ghi DB]
+    C --> D[Trả kết quả thành công/thất bại]
 ```
 
-## 13.5 Activity diagram (Web login theo role)
+### 13.11 FR-B02 - Quản lý foods/images
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    L0[Mở trang login] --> L1[Nhập username password]
-    L1 --> L2[POST /api/Auth/login]
-    L2 --> L3{Đăng nhập thành công}
-    L3 -- Không --> L4[Hiện lỗi đăng nhập]
-    L4 --> L1
-    L3 -- Có --> L5{Role}
-    L5 -- admin --> L6[Đi tới Admin dashboard]
-    L5 -- vendor --> L7[Đi tới Vendor dashboard]
+    A[Vendor thêm/sửa/ẩn/hiện món] --> B[API xử lý request]
+    B --> C[Cập nhật bảng foods]
+    C --> D[Reload danh sách món]
 ```
 
-## 13.6 Activity diagram (Vendor cập nhật cửa hàng và quản lý món)
+### 13.12 FR-B03 - Quản lý audio đa ngôn ngữ
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    V0[Vendor đăng nhập] --> V1[Chọn cửa hàng]
-    V1 --> V2{Có đổi logo cửa hàng}
-    V2 -- Có --> V3[Upload logo qua media upload]
-    V2 -- Không --> V4[Cập nhật thông tin không đổi logo]
-    V3 --> V4
-    V4 --> V5[POST shop update details]
-    V5 --> V6{Thao tác món}
-    V6 -- Add --> V7[foods create]
-    V6 -- Edit --> V8[foods update]
-    V6 -- Hide --> V9[foods delete]
-    V6 -- Show --> V10[foods restore]
-    V7 --> V11[Reload danh sách món]
-    V8 --> V11
-    V9 --> V11
-    V10 --> V11
+    A[Admin yêu cầu regenerate audio] --> B[Synthesize audio theo ngôn ngữ]
+    B --> C[Upload lên storage]
+    C --> D[Cập nhật URL audio trong DB]
 ```
 
-## 13.7 Activity diagram (Admin moderation mở rộng)
+### 13.13 FR-B04 - Quản lý nội dung đa ngôn ngữ
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    M0[Admin mở trang moderation] --> M1[Lấy list POI awaiting script]
-    M1 --> M2{Có request pending}
-    M2 -- Có --> M3[Open pending requests]
-    M3 --> M4{Approve hay Reject}
-    M4 -- Approve --> M5[Update DB trạng thái approved]
-    M4 -- Reject --> M6[Update DB trạng thái rejected]
-    M5 --> M7{Cần regenerate audio}
-    M7 -- Có --> M8[Regenerate audio và update URL]
-    M7 -- Không --> M9[Giữ audio hiện tại]
-    M8 --> M10[Kết thúc moderation]
-    M9 --> M10
-    M6 --> M10
-    M2 -- Không --> M10
+    A[Submit script nguồn] --> B[Dịch đa ngôn ngữ]
+    B --> C[Lưu translation]
+    C --> D[Sẵn sàng phục vụ mobile]
 ```
 
-## 13.8 Activity diagram (Admin quản lý owner hide unhide)
+### 13.14 FR-B05 - API cho mobile
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    O0[Admin mở owner list] --> O1[Chọn tài khoản owner]
-    O1 --> O2{Trạng thái tài khoản}
-    O2 -- Active --> O3[Hide account]
-    O2 -- Hidden --> O4[Unhide account]
-    O3 --> O5[Reload owner list]
-    O4 --> O5
+    A[Mobile gọi API POI/detail] --> B[API validate request]
+    B --> C[Query hoặc ghi dữ liệu cần thiết]
+    C --> D[Trả response cho app]
 ```
 
-## 13.9 Activity diagram (User nghe audio và gửi listen event)
+### 13.15 FR-A01 - Quản lý nhà hàng
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    P0[User chọn POI hoặc auto play geofence] --> P1[Player load audio]
-    P1 --> P2[Play audio]
-    P2 --> P3{Người dùng thao tác}
-    P3 -- Pause Resume --> P2
-    P3 -- Seek timeline --> P2
-    P3 -- Stop hoặc End --> P4[Tính duration thực nghe]
-    P4 --> P5[POST analytics poi audio listen]
-    P5 --> P6[Server lưu poi_audio_listen_events]
+    A[Admin nhập thông tin POI + owner] --> B[API tạo tài khoản vendor]
+    B --> C[API tạo POI và liên kết owner]
+    C --> D[Trả thông tin tài khoản vừa tạo]
 ```
 
+### 13.16 FR-A02 - Quản lý audio
 
+```mermaid
+flowchart TD
+    A[Admin chọn POI cần cập nhật audio] --> B[Nhấn regenerate audio]
+    B --> C[Hệ thống tạo file audio mới]
+    C --> D[Upload và cập nhật URL audio]
+```
+
+### 13.17 FR-A03 - Dashboard analytics
+
+```mermaid
+flowchart TD
+    A[Admin mở dashboard] --> B[Load heatmap, routes, listen stats]
+    B --> C[Tổng hợp KPI theo thời gian]
+    C --> D[Hiển thị biểu đồ và bảng số liệu]
+```
+
+### 13.18 FR-A04 - Duyệt yêu cầu vendor
+
+```mermaid
+flowchart TD
+    A[Admin mở danh sách pending] --> B[Chọn một request]
+    B --> C{Duyệt hay từ chối}
+    C -- Duyệt --> D[Set status approved]
+    C -- Từ chối --> E[Set status rejected]
+```
+
+### 13.19 FR-V01 - Chỉnh sửa thông tin nhà hàng
+
+```mermaid
+flowchart TD
+    A[Vendor chọn cửa hàng] --> B{Có đổi logo}
+    B -- Có --> C[Upload logo]
+    B -- Không --> D[Giữ logo cũ]
+    C --> E[Submit update details]
+    D --> E
+```
+
+### 13.20 FR-V02 - Request thay đổi audio script
+
+```mermaid
+flowchart TD
+    A[Vendor gửi request audio] --> B[Lưu trạng thái pending]
+    B --> C[Thông báo đã ghi nhận request]
+    C --> D[Vendor theo dõi trạng thái]
+```
 
 ---
 
