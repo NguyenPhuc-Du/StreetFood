@@ -41,8 +41,10 @@ public partial class HomePage : ContentPage
     double _infoCardPointerStartY;
     readonly AudioListenMeter _listenMeter;
     readonly Dictionary<int, PoiDetail> _detailByPoiId = new();
+    readonly Dictionary<int, int> _poiHeatScoreById = new();
+    DateTime _poiHeatUpdatedAtUtc = DateTime.MinValue;
 
-    const string LanguageKey = "appLanguage";
+    const string LanguageKey = LocalizationService.LanguageKey;
     /// <summary>Ngôn ngữ đã dùng để tải danh sách POI lần cuối — đổi ngôn ngữ trong Cài đặt sẽ tải lại.</summary>
     string? _poisLoadedForLanguage;
 
@@ -51,11 +53,14 @@ public partial class HomePage : ContentPage
         InitializeComponent();
         _listenMeter = new AudioListenMeter(AudioPlayer, () => currentAudioPoiId);
         _deviceId = ActivationService.GetOrCreateInstallId();
+        ApplyLocalizedTexts();
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        ApplyLocalizedTexts();
         var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
         if (status != PermissionStatus.Granted) return;
 
@@ -68,6 +73,7 @@ public partial class HomePage : ContentPage
                 var data = await api.GetPois(forceRefresh: true);
                 poiList = data ?? new();
                 _poisLoadedForLanguage = lang;
+                await RefreshPoiHeatPriorityAsync();
                 ApplyFiltersAndRefreshMap();
                 _ = api.WarmupPoiDetailsAsync(poiList.Select(p => p.Id).Take(3));
             }
@@ -78,6 +84,7 @@ public partial class HomePage : ContentPage
                 if (latest.Count > 0)
                 {
                     poiList = latest;
+                    await RefreshPoiHeatPriorityAsync();
                     ApplyFiltersAndRefreshMap();
                 }
             }
@@ -86,17 +93,17 @@ public partial class HomePage : ContentPage
             if (poiList.Count == 0)
             {
                 await DisplayAlertAsync(
-                    "Chưa tải được dữ liệu quán",
-                    $"Không có POI từ API.\nKiểm tra API URL trong Cài đặt:\n{ApiConfig.GetBaseUrl()}",
-                    "OK");
+                    LocalizationService.T("UnableLoadShopsTitle"),
+                    LocalizationService.Tf("UnableLoadShopsMessage", ApiConfig.GetBaseUrl()),
+                    LocalizationService.T("Ok"));
             }
         }
         catch
         {
             await DisplayAlertAsync(
-                "Lỗi kết nối API",
-                $"Không thể gọi API tại:\n{ApiConfig.GetBaseUrl()}\nHãy mở Cài đặt để sửa API Base URL.",
-                "OK");
+                LocalizationService.T("ApiConnectionErrorTitle"),
+                LocalizationService.Tf("ApiConnectionErrorMessage", ApiConfig.GetBaseUrl()),
+                LocalizationService.T("Ok"));
         }
         StartTracking();
     }
@@ -144,15 +151,40 @@ public partial class HomePage : ContentPage
     static double DistanceToPoiMeters(Location userLoc, Poi p) =>
         userLoc.CalculateDistance(new Location(p.Latitude, p.Longitude), DistanceUnits.Kilometers) * 1000;
 
-    /// <summary>POI mà người dùng đang đứng trong bán kính (ưu tiên gần tâm nhất nếu trùng vùng).</summary>
-    static Poi? FindPoiContainingUser(Location userLoc, List<Poi> pois)
+    /// <summary>
+    /// POI mà user đang đứng trong bán kính.
+    /// Ưu tiên theo heatmap (cao hơn thì ưu tiên), nếu bằng nhau thì chọn POI gần tâm hơn.
+    /// </summary>
+    Poi? FindPoiContainingUser(Location userLoc, List<Poi> pois)
     {
+        EnsurePoiHeatFresh();
         return pois
             .Select(p => (Poi: p, DistM: DistanceToPoiMeters(userLoc, p)))
             .Where(x => x.DistM <= EffectiveRadiusMeters(x.Poi))
-            .OrderBy(x => x.DistM)
+            .OrderByDescending(x => GetPoiHeatScore(x.Poi.Id))
+            .ThenBy(x => x.DistM)
             .Select(x => x.Poi)
             .FirstOrDefault();
+    }
+
+    int GetPoiHeatScore(int poiId) =>
+        _poiHeatScoreById.TryGetValue(poiId, out var score) ? score : 0;
+
+    void EnsurePoiHeatFresh()
+    {
+        var stale = DateTime.UtcNow - _poiHeatUpdatedAtUtc > TimeSpan.FromMinutes(10);
+        if (!stale) return;
+        _ = RefreshPoiHeatPriorityAsync();
+    }
+
+    async Task RefreshPoiHeatPriorityAsync()
+    {
+        var byPoi = await api.GetPoiHeatPriorityAsync(days: 30);
+        if (byPoi.Count == 0) return;
+        _poiHeatScoreById.Clear();
+        foreach (var item in byPoi)
+            _poiHeatScoreById[item.Key] = item.Value;
+        _poiHeatUpdatedAtUtc = DateTime.UtcNow;
     }
 
     private void CheckNearby(Location userLoc)
@@ -277,8 +309,8 @@ public partial class HomePage : ContentPage
         PlaceName.Text = poi.Name;
         PlaceAddress.Text = BuildAddressText(poi.Address, poi.Description);
         PlaceHours.Text = poi.OpeningHours ?? "07:00 - 22:00";
-        PlacePhone.Text = "SĐT: —";
-        PlaceStatus.Text = "OPEN";
+        PlacePhone.Text = $"{LocalizationService.T("Phone")}: —";
+        PlaceStatus.Text = LocalizationService.T("Open");
         PlaceImage.Source = string.IsNullOrEmpty(poi.ImageUrl) ? "logo.png" : poi.ImageUrl;
         InfoCard.IsVisible = true;
         if (firstShow)
@@ -294,8 +326,8 @@ public partial class HomePage : ContentPage
     static string BuildAddressText(string? address, string? description)
     {
         if (string.IsNullOrWhiteSpace(address))
-            return "Địa chỉ: —";
-        return $"Địa chỉ: {address.Trim()}";
+            return $"{LocalizationService.T("Address")}: —";
+        return $"{LocalizationService.T("Address")}: {address.Trim()}";
     }
 
     async Task EnrichInfoCardFromDetailAsync(int poiId)
@@ -314,7 +346,9 @@ public partial class HomePage : ContentPage
         MainThread.BeginInvokeOnMainThread(() =>
         {
             PlaceHours.Text = string.IsNullOrWhiteSpace(detail.OpeningHours) ? (PlaceHours.Text ?? "07:00 - 22:00") : detail.OpeningHours.Trim();
-            PlacePhone.Text = string.IsNullOrWhiteSpace(detail.Phone) ? "SĐT: —" : $"SĐT: {detail.Phone.Trim()}";
+            PlacePhone.Text = string.IsNullOrWhiteSpace(detail.Phone)
+                ? $"{LocalizationService.T("Phone")}: —"
+                : $"{LocalizationService.T("Phone")}: {detail.Phone.Trim()}";
             PlaceAddress.Text = BuildAddressText(detail.Address, detail.Description);
         });
     }
@@ -361,6 +395,7 @@ public partial class HomePage : ContentPage
 
     protected override void OnDisappearing()
     {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
@@ -368,6 +403,26 @@ public partial class HomePage : ContentPage
         _listenMeter.StopAndFlushFireAndForget();
         AudioPlayer?.Stop();
         base.OnDisappearing();
+    }
+
+    void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            ApplyLocalizedTexts();
+            if (_currentPoi != null)
+                ShowInfoCard(_currentPoi);
+        });
+    }
+
+    void ApplyLocalizedTexts()
+    {
+        SearchEntry.Placeholder = LocalizationService.T("HomeSearchPlaceholder");
+        MyLocationLabel.Text = LocalizationService.T("HomeMyLocation");
+        DragToCloseLabel.Text = LocalizationService.T("HomeDragToClose");
+        CloseCardLabel.Text = LocalizationService.T("Close");
+        PlayButton.Text = LocalizationService.T("Play");
+        PauseButton.Text = LocalizationService.T("Pause");
     }
 
     async void OnPlayClicked(object? sender, EventArgs e)

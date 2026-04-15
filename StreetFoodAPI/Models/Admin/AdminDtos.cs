@@ -83,3 +83,7 @@ public record PoiAudioListenStatsDto(
     string? PoiName,
     long ListenSamples,
     double? AvgDurationSeconds);
+
+public record HourlyActiveUsersDto(
+    int HourOfDay,
+    long UserCount);

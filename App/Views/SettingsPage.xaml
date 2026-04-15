@@ -7,20 +7,20 @@
         <VerticalStackLayout Padding="18,40,18,24" Spacing="14">
             <Border StrokeThickness="0" BackgroundColor="Transparent" Padding="0,0,0,8">
                 <VerticalStackLayout Spacing="2">
-                    <Label Text="Cài đặt" FontSize="34" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}"/>
-                    <Label Text="Tùy chỉnh trải nghiệm phù hợp với bạn" FontSize="13" TextColor="{StaticResource TextMuted}"/>
+                    <Label x:Name="SettingsTitleLabel" FontSize="34" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}"/>
+                    <Label x:Name="SettingsSubtitleLabel" FontSize="13" TextColor="{StaticResource TextMuted}"/>
                 </VerticalStackLayout>
             </Border>
 
             <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
                 <VerticalStackLayout Spacing="14">
                     <VerticalStackLayout Spacing="6">
-                        <Label Text="Tự động phát audio khi ở gần"
+                        <Label x:Name="AutoAudioTitleLabel"
                                FontAttributes="Bold"
                                FontSize="16"
                                TextColor="{StaticResource TextPrimary}"
                                LineBreakMode="WordWrap"/>
-                        <Label Text="Tự phát audio khi bạn đi vào phạm vi của quán trên bản đồ."
+                        <Label x:Name="AutoAudioDescLabel"
                                FontSize="13"
                                TextColor="{StaticResource TextMuted}"
                                LineBreakMode="WordWrap"/>
@@ -36,8 +36,8 @@
 
             <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Ngôn ngữ ứng dụng" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource TextPrimary}"/>
-                    <Label Text="Chọn ngôn ngữ bạn muốn dùng để nhận nội dung phù hợp."
+                    <Label x:Name="LanguageTitleLabel" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource TextPrimary}"/>
+                    <Label x:Name="LanguageDescLabel"
                            FontSize="13"
                            TextColor="{StaticResource TextMuted}"/>
 
@@ -55,8 +55,8 @@
 
             <Border StrokeShape="RoundRectangle 24" Padding="16" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
                 <VerticalStackLayout Spacing="6">
-                    <Label Text="Gợi ý trải nghiệm" FontAttributes="Bold" FontSize="15" TextColor="{StaticResource Primary}"/>
-                    <Label Text="Vào trang gợi ý để xem quán gần nhất và mở nhanh trang chi tiết."
+                    <Label x:Name="SuggestHintTitleLabel" FontAttributes="Bold" FontSize="15" TextColor="{StaticResource Primary}"/>
+                    <Label x:Name="SuggestHintDescLabel"
                            FontSize="12"
                            TextColor="{StaticResource TextMuted}"/>
                 </VerticalStackLayout>

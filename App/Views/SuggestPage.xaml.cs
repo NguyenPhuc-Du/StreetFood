@@ -15,12 +15,26 @@ public partial class SuggestPage : ContentPage
     {
         InitializeComponent();
         BindingContext = this;
+        ApplyLocalizedTexts();
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        ApplyLocalizedTexts();
         await LoadSuggestions();
+    }
+
+    protected override void OnDisappearing()
+    {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
+        base.OnDisappearing();
+    }
+
+    void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(ApplyLocalizedTexts);
     }
 
     private async Task LoadSuggestions()
@@ -35,7 +49,7 @@ public partial class SuggestPage : ContentPage
         {
             LoadingIndicator.IsRunning = false;
             LoadingIndicator.IsVisible = false;
-            SubTitleLabel.Text = "Chưa cấp quyền vị trí.";
+            SubTitleLabel.Text = LocalizationService.T("SuggestNoPermission");
             return;
         }
 
@@ -82,13 +96,13 @@ public partial class SuggestPage : ContentPage
 
             if (loc == null)
             {
-                SubTitleLabel.Text = "Không lấy được vị trí.";
+                SubTitleLabel.Text = LocalizationService.T("SuggestNoLocation");
                 return;
             }
 
             if (pois.Count == 0)
             {
-                SubTitleLabel.Text = "Không có dữ liệu quán ăn.";
+                SubTitleLabel.Text = LocalizationService.T("SuggestNoData");
                 return;
             }
 
@@ -109,12 +123,12 @@ public partial class SuggestPage : ContentPage
                 Suggestions.Add(item);
             }
 
-            SubTitleLabel.Text = "Chạm vào quán để mở chi tiết.";
+            SubTitleLabel.Text = LocalizationService.T("SuggestTapHint");
             SuggestionsList.IsVisible = true;
         }
         catch
         {
-            SubTitleLabel.Text = "Lỗi khi tải gợi ý.";
+            SubTitleLabel.Text = LocalizationService.T("SuggestLoadError");
         }
         finally
         {
@@ -135,5 +149,13 @@ public partial class SuggestPage : ContentPage
         public Poi Poi { get; set; } = default!;
         public double DistanceMeters { get; set; }
         public string DistanceText { get; set; } = "";
+    }
+
+    void ApplyLocalizedTexts()
+    {
+        SuggestBadgeLabel.Text = LocalizationService.T("SuggestBadge");
+        SuggestTitleLabel.Text = LocalizationService.T("SuggestTitle");
+        if (!SuggestionsList.IsVisible)
+            SubTitleLabel.Text = LocalizationService.T("SuggestLoading");
     }
 }

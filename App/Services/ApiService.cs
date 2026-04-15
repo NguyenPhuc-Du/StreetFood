@@ -202,6 +202,34 @@ public class ApiService
         catch { }
     }
 
+    public async Task<Dictionary<int, int>> GetPoiHeatPriorityAsync(int days = 30)
+    {
+        var result = new Dictionary<int, int>();
+        if (!IsOnline()) return result;
+        var safeDays = Math.Clamp(days, 1, 180);
+        try
+        {
+            var url = $"{ApiPoiUrl}/heat-priority?days={safeDays}";
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                return result;
+
+            var json = await response.Content.ReadAsStringAsync();
+            var rows = JsonSerializer.Deserialize<List<PoiHeatPriorityRow>>(json, _options) ?? new List<PoiHeatPriorityRow>();
+            foreach (var row in rows)
+            {
+                if (row.PoiId <= 0) continue;
+                result[row.PoiId] = Math.Max(0, row.HeatScore);
+            }
+        }
+        catch
+        {
+            return result;
+        }
+
+        return result;
+    }
+
     private static bool IsOnline() => NetworkReachability.HasUsableConnection;
 
     private static async Task EnsureCacheInitializedAsync()
@@ -241,4 +269,10 @@ public class ApiService
         _poisMemory.Clear();
         _detailMemory.Clear();
     }
+}
+
+public sealed class PoiHeatPriorityRow
+{
+    public int PoiId { get; set; }
+    public int HeatScore { get; set; }
 }

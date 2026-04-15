@@ -3,8 +3,8 @@
 
 | Thuộc tính             | Giá trị                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Phiên bản tài liệu** | **2.2**                                                                                                                     |
-| **Ngày cập nhật**      | **2026-04-08**                                                                                                              |
+| **Phiên bản tài liệu** | **2.3**                                                                                                                     |
+| **Ngày cập nhật**      | **2026-04-15**                                                                                                              |
 | **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được)                                                                         |
 | **Mục đích**           | Mô tả yêu cầu sản phẩm; ghi nhận **tiến độ thực tế**, **phiên bản công nghệ**, **tham chiếu file** để nộp đồ án / bàn giao. |
 
@@ -22,8 +22,8 @@
 9. [Thiết kế analytics](#9-thiết-kế-analytics)
 10. [Yêu cầu phi chức năng (NFR)](#10-yêu-cầu-phi-chức-năng-nfr)
 11. [Sơ đồ Use Case](#11-sơ-đồ-use-case)
-12. [Sequence diagram](#12-sequence-diagram-user-user-vào-poi-và-phát-audio)
-13. [Activity diagram](#13-activity-diagram-vendor-gửi-yêu-cầu-âm-thanh-2-cách)
+12. [Sequence diagram](#12-sequence-diagram)
+13. [Activity diagram](#13-activity-diagram)
 14. [Data Flow Diagram (DFD Level 1)](#14-data-flow-diagram-dfd-level-1)
 15. [UI wireframe (MVP)](#15-ui-wireframe-mvp)
 16. [API thực tế](#16-api-overview-đã-triển-khai-trong-repo)
@@ -567,623 +567,617 @@ erDiagram
 
 ## 11. Sơ đồ Use Case
 
-## 11.1 User
+Phần này được chuẩn hóa lại theo phạm vi hiện tại bạn yêu cầu: **App**, **Web Vendor**, **Web Admin**.
 
-```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 55, 'rankSpacing': 55, 'padding': 18, 'htmlLabels': true}}}%%
-flowchart LR
-    User["User"]
+### 11.1 Danh mục Use Case chuẩn
 
-    subgraph U_SYS["StreetFood Mobile App"]
-      direction TB
-      UC1(U1. Quét QR<br/>và cài app)
-      UC2(U2. Xem POI<br/>gần đây)
-      UC3(U3. Nghe audio<br/>tự động)
-      UC4(U4. Tìm kiếm<br/>và lọc)
-      UC4b(U5. Chọn POI trên bản đồ<br/>để nghe chủ động)
-      UC4c(U6. Điều khiển timeline<br/>và tua audio)
-      UC18(U7. Quét JWT QR<br/>kích hoạt app local)
-      UC19(U8. Theo dõi geofence<br/>và log analytics)
-    end
-
-    User --- UC1
-    User --- UC2
-    User --- UC3
-    User --- UC4
-    User --- UC4b
-    User --- UC4c
-    User --- UC18
-    User --- UC19
-
-    classDef actor fill:#ffffff,stroke:#374151,stroke-width:1.6px,color:#111827;
-    classDef usecase fill:#ffffff,stroke:#111827,stroke-width:1.4px,color:#111827;
-    classDef boundary fill:#f9fafb,stroke:#6b7280,stroke-width:1.2px,color:#111827;
-    class User actor;
-    class UC1,UC2,UC3,UC4,UC4b,UC4c,UC18,UC19 usecase;
-    class U_SYS boundary;
-```
-
-## 11.2 Vendor
-
-```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 55, 'rankSpacing': 55, 'padding': 18, 'htmlLabels': true}}}%%
-flowchart LR
-    Vendor["Vendor"]
-
-    subgraph V_SYS["StreetFood Vendor Web"]
-      direction TB
-      UC15(V1. Đăng nhập<br/>Vendor)
-      UC6(V2. Cập nhật thông tin cửa hàng<br/>bao gồm logo)
-      UC16(V3. Quản lý món ăn<br/>thêm sửa ẩn hiển thị)
-      UC17(V4. Gửi yêu cầu âm thanh<br/>theo 2 cách)
-    end
-
-    Vendor --- UC15
-    Vendor --- UC6
-    Vendor --- UC16
-    Vendor --- UC17
-
-    classDef actor fill:#ffffff,stroke:#374151,stroke-width:1.6px,color:#111827;
-    classDef usecase fill:#ffffff,stroke:#111827,stroke-width:1.4px,color:#111827;
-    classDef boundary fill:#f9fafb,stroke:#6b7280,stroke-width:1.2px,color:#111827;
-    class Vendor actor;
-    class UC15,UC6,UC16,UC17 usecase;
-    class V_SYS boundary;
-```
-
-## 11.3 Admin
-
-```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 55, 'rankSpacing': 55, 'padding': 18, 'htmlLabels': true}}}%%
-flowchart LR
-    Admin["Admin"]
-
-    subgraph A_SYS["StreetFood Admin Web"]
-      direction TB
-      UC8(A1. Đăng nhập<br/>Admin)
-      UC9(A2. CRUD nhà hàng<br/>foods audio)
-      UC10(A3. Duyệt yêu cầu<br/>vendor)
-      UC11(A4. Xem analytics<br/>dashboard)
-      UC12(A5. Quản lý tài khoản owner<br/>hide unhide)
-      UC13(A6. Tạo lại audio theo<br/>script đã duyệt)
-      UC14(A7. Theo dõi heatmap<br/>và movement)
-      UC21(A8. Xem danh sách POI<br/>chờ script)
-    end
-
-    Admin --- UC8
-    Admin --- UC9
-    Admin --- UC10
-    Admin --- UC11
-    Admin --- UC12
-    Admin --- UC13
-    Admin --- UC14
-    Admin --- UC21
-
-    classDef actor fill:#ffffff,stroke:#374151,stroke-width:1.6px,color:#111827;
-    classDef usecase fill:#ffffff,stroke:#111827,stroke-width:1.4px,color:#111827;
-    classDef boundary fill:#f9fafb,stroke:#6b7280,stroke-width:1.2px,color:#111827;
-    class Admin actor;
-    class UC8,UC9,UC10,UC11,UC12,UC13,UC14,UC21 usecase;
-    class A_SYS boundary;
-```
-
-### 11.4 Ma trận mapping Use Case -> Sequence/Activity
-
-| Nhóm | Use Case | Sequence liên quan | Activity liên quan |
+| ID | Tác nhân | Use case | Mô tả ngắn |
 | --- | --- | --- | --- |
-| User | `U7 (UC18)` | 12.5 | 13.1 |
-| User | `U2,U3,U5,U6,U8 (UC2,UC3,UC4b,UC4c,UC19)` | 12, 12.1, 12.3, 12.11 | 13.1, 13.9 |
-| Vendor + Admin | `V4,A3,A6,A8 (UC17,UC10,UC13,UC21)` | 12.2, 12.10 | 13, 13.2, 13.7 |
-| Vendor | `V2,V3 (UC6,UC16)` | 12.4, 12.7, 12.8 | 13.3, 13.6 |
-| Web Login | `A1,V1 (UC8,UC15)` | 12.6 | 13.5 |
-| Admin | `A5 (UC12)` | 12.9 | 13.4, 13.8 |
-| Admin | `A2,A4,A7 (UC9,UC11,UC14)` | 12.3, 12.4 | 13.2, 13.4 |
+| UC-M01 | User | Quét QR JWT để vào app | Quét và xác thực JWT QR, lưu trạng thái kích hoạt local. |
+| UC-M02 | User | Xem POI đề xuất | Hiển thị POI trên bản đồ và danh sách gợi ý theo vị trí. |
+| UC-M03 | User | Tìm kiếm | Tìm POI theo tên/địa chỉ/mô tả. |
+| UC-M04 | User | Chọn POI để nghe | Chọn marker/POI để phát audio chủ động. |
+| UC-M05 | System | Theo dõi geofence | Theo dõi vào/ra vùng bán kính POI. |
+| UC-M06 | System | Nghe audio tự động | Auto play audio khi vào vùng POI. |
+| UC-M07 | System | Log analytics | Ghi location, visit start/end, movement, listen duration. |
+| UC-V01 | Vendor | Đăng nhập | Xác thực role vendor. |
+| UC-V02 | Vendor | Cập nhật thông tin cửa hàng | Cập nhật profile quán, logo, giờ mở cửa, điện thoại. |
+| UC-V03 | Vendor | Quản lý món ăn | Thêm/sửa/ẩn/hiện món ăn. |
+| UC-V04 | Vendor | Gửi yêu cầu audio | Gửi script text hoặc audio bundle chờ duyệt. |
+| UC-A01 | Admin | Đăng nhập | Xác thực role admin. |
+| UC-A02 | Admin | Quản lý tài khoản vendor | Xem danh sách và hide/unhide vendor. |
+| UC-A03 | Admin | Phân tích người dùng | Theo dõi người dùng theo khung giờ/hoạt động từ analytics. |
+| UC-A04 | Admin | Phân tích heatmap | Xem mật độ vị trí người dùng trên bản đồ. |
+| UC-A05 | Admin | Phân tích tuyến đi | Xem movement paths/popular paths/route chains. |
+| UC-A06 | Admin | Phân tích thời lượng nghe | Theo dõi thống kê nghe audio theo POI. |
+| UC-A07 | Admin | Tạo tài khoản vendor | Tạo vendor + POI ban đầu từ cổng admin. |
+| UC-A08 | Admin | Phê duyệt yêu cầu vendor | Duyệt/reject yêu cầu script/audio và cập nhật dữ liệu. |
 
+### 11.2 Use Case Diagram - Mobile App
 
+```mermaid
+flowchart LR
+    U[User]
+    S[System]
+    subgraph APP[StreetFood Mobile App]
+      M1(UC-M01 Quét QR JWT để vào app)
+      M2(UC-M02 Xem POI đề xuất)
+      M3(UC-M03 Tìm kiếm POI)
+      M4(UC-M04 Chọn POI để nghe)
+      M5(UC-M05 Theo dõi geofence)
+      M6(UC-M06 Nghe audio tự động)
+      M7(UC-M07 Log analytics)
+    end
+    U --- M1
+    U --- M2
+    U --- M3
+    U --- M4
+    S --- M5
+    S --- M6
+    S --- M7
+    M5 --> M6
+    M5 --> M7
+    M4 --> M7
+    M2 -. "<<include>>" .-> M1
+    M3 -. "<<include>>" .-> M1
+    M4 -. "<<include>>" .-> M1
+    M5 -. "<<include>>" .-> M1
+    M6 -. "<<include>>" .-> M1
+    M7 -. "<<include>>" .-> M1
+```
+
+### 11.2.1 Quy tắc include cho quét QR JWT (Mobile)
+
+- `UC-M01 Quét QR JWT để vào app` là điều kiện bắt buộc trước khi dùng các chức năng còn lại.
+- `UC-M02` đến `UC-M07` đều `<<include>> UC-M01`.
+- Ý nghĩa nghiệp vụ: user chỉ truy cập được Home/Suggest/geofence/audio/log analytics sau khi kích hoạt hợp lệ bằng QR JWT.
+
+### 11.3 Use Case Diagram - Web Vendor
+
+```mermaid
+flowchart LR
+    V[Vendor]
+    subgraph VW[StreetFood Vendor Web]
+      V1(UC-V01 Đăng nhập)
+      V2(UC-V02 Cập nhật thông tin cửa hàng)
+      V3(UC-V03 Quản lý món ăn)
+      V4(UC-V04 Gửi yêu cầu audio)
+    end
+    V --- V1
+    V --- V2
+    V --- V3
+    V --- V4
+    V2 -. "<<include>>" .-> V1
+    V3 -. "<<include>>" .-> V1
+    V4 -. "<<include>>" .-> V1
+```
+
+### 11.4 Use Case Diagram - Web Admin
+
+```mermaid
+flowchart LR
+    A[Admin]
+    subgraph AW[StreetFood Admin Web]
+      A1(UC-A01 Đăng nhập)
+      A2(UC-A02 Quản lý tài khoản vendor)
+      A3(UC-A03 Phân tích người dùng)
+      A4(UC-A04 Phân tích heatmap)
+      A5(UC-A05 Phân tích tuyến đi)
+      A6(UC-A06 Phân tích thời lượng nghe)
+      A7(UC-A07 Tạo tài khoản vendor)
+      A8(UC-A08 Phê duyệt yêu cầu vendor)
+    end
+    A --- A1
+    A --- A2
+    A --- A3
+    A --- A4
+    A --- A5
+    A --- A6
+    A --- A7
+    A --- A8
+    A2 -. "<<include>>" .-> A1
+    A3 -. "<<include>>" .-> A1
+    A4 -. "<<include>>" .-> A1
+    A5 -. "<<include>>" .-> A1
+    A6 -. "<<include>>" .-> A1
+    A7 -. "<<include>>" .-> A1
+    A8 -. "<<include>>" .-> A1
+```
+
+### 11.4.1 Quy tắc include cho đăng nhập
+
+- Với **Vendor Web**: `UC-V02`, `UC-V03`, `UC-V04` đều `<<include>> UC-V01 Đăng nhập`.
+- Với **Admin Web**: `UC-A02` đến `UC-A08` đều `<<include>> UC-A01 Đăng nhập`.
+- Ý nghĩa: người dùng web phải qua bước xác thực trước khi thực thi bất kỳ chức năng nghiệp vụ nào.
+
+### 11.5 Mapping Use Case -> Sequence -> Activity
+
+| Use case | Sequence | Activity |
+| --- | --- | --- |
+| UC-M01 Quét QR JWT để vào app | 12.1 | 13.1 |
+| UC-M02 Xem POI đề xuất | 12.2 | 13.2 |
+| UC-M03 Tìm kiếm | 12.3 | 13.3 |
+| UC-M04 Chọn POI để nghe | 12.4 | 13.4 |
+| UC-M05 Theo dõi geofence | 12.5 | 13.5 |
+| UC-M06 Nghe audio tự động | 12.6 | 13.6 |
+| UC-M07 Log analytics | 12.7 | 13.7 |
+| UC-V01 Đăng nhập vendor | 12.8 | 13.8 |
+| UC-V02 Cập nhật thông tin cửa hàng | 12.9 | 13.9 |
+| UC-V03 Quản lý món ăn | 12.10 | 13.10 |
+| UC-V04 Gửi yêu cầu audio | 12.11 | 13.11 |
+| UC-A01 Đăng nhập admin | 12.12 | 13.12 |
+| UC-A02 Quản lý tài khoản vendor | 12.13 | 13.13 |
+| UC-A03 Phân tích người dùng | 12.14 | 13.14 |
+| UC-A04 Phân tích heatmap | 12.15 | 13.15 |
+| UC-A05 Phân tích tuyến đi | 12.16 | 13.16 |
+| UC-A06 Phân tích thời lượng nghe | 12.17 | 13.17 |
+| UC-A07 Tạo tài khoản vendor | 12.18 | 13.18 |
+| UC-A08 Phê duyệt yêu cầu vendor | 12.19 | 13.19 |
 
 ---
 
-## 12. Sequence diagram [User] (User vào POI và phát audio)
+## 12. Sequence diagram
 
-### 12.0 Thứ tự đọc chuẩn theo tác nhân (User -> Vendor -> Admin)
-
-1. **User:** `12`, `12.1`, `12.5`, `12.11`, `12.3`  
-2. **Vendor:** `12.7`, `12.8`, `12.2`  
-3. **Admin:** `12.6`, `12.9`, `12.10`, `12.4`
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant M as Mobile App (MAUI)
-    participant API as Backend API
-    participant DB as PostgreSQL
-    participant R2 as Cloudflare R2
-
-    U->>M: Mở app + cấp quyền GPS
-    M->>API: GET /api/poi (Accept-Language)
-    API->>DB: Query POI + translation + audio
-    DB-->>API: Data POI
-    API-->>M: Danh sách POI
-
-    loop Mỗi chu kỳ GPS
-      M->>M: Đọc vị trí hiện tại
-      M->>M: Tính khoảng cách đến POI
-    end
-
-    M->>M: User vào bán kính POI
-    M->>R2: Stream audio theo AudioUrl
-    R2-->>M: Audio content
-    M-->>U: Tự động phát audio + hiện info card
-```
-
-## 12.1 Sequence diagram [User] (User chọn POI trên map — on-demand + timeline)
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant M as Mobile App (MAUI)
-    participant R2 as Cloudflare R2
-
-    U->>M: Chạm vào marker POI trên bản đồ
-    M-->>U: Hiện thông tin quán + nút Nghe giới thiệu
-    U->>M: Bấm Nghe / Play
-    M->>M: Load AudioUrl (ngôn ngữ thiết bị)
-    M->>R2: Stream audio
-    R2-->>M: Audio stream
-    M-->>U: Phát audio + hiện timeline (current/total)
-    U->>M: Kéo slider / seek
-    M->>M: Seek đến vị trí mới
-    M-->>U: Tiếp tục phát từ vị trí đã chọn
-```
-
-## 12.2 Sequence diagram [Vendor -> Admin] (Vendor gửi yêu cầu âm thanh 2 cách -> Admin duyệt -> App nhận dữ liệu mới)
-
-```mermaid
-sequenceDiagram
-    participant V as Vendor Web
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-    participant A as Admin Web
-    participant TTS as Azure Speech/Translator
-    participant R2 as Cloudflare R2
-    participant M as Mobile App
-
-    V->>API: Chọn cách gửi request âm thanh
-    alt Cách 1: gửi 1 script ngôn ngữ nguồn
-        V->>API: POST /api/vendor/submit-script
-    else Cách 2: gửi 5 file audio theo ngôn ngữ
-        V->>API: POST /api/vendor/submit-audio-bundle
-    end
-    API->>DB: Insert script_change_requests (pending)
-    API-->>V: 200 Pending
-
-    A->>API: GET /api/Admin/script-requests/pending
-    API-->>A: Danh sách request
-    A->>API: POST /api/Admin/script-requests/{id}/approve
-
-    alt Approve request từ Cách 1 (script nguồn)
-        API->>TTS: Dịch thêm 4 ngôn ngữ + synthesize audio
-        TTS-->>API: Audio files
-        API->>R2: Upload audio files
-        R2-->>API: Public URLs
-        API->>DB: Update restaurant_audio + translations + status approved
-    else Approve request từ Cách 2 (audio bundle)
-        API->>DB: Update restaurant_audio + status approved
-    end
-
-    M->>API: GET /api/poi/{id}
-    API->>DB: Query detail + restaurant_audio
-    DB-->>API: Dữ liệu mới nhất
-    API-->>M: audioUrl/description đã cập nhật
-```
-
-## 12.3 Sequence diagram [User -> Admin] (Telemetry: location -> visit -> movement -> dashboard)
-
-```mermaid
-sequenceDiagram
-    participant M as Mobile App
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-    participant A as Admin Web
-
-    loop Mỗi chu kỳ vị trí
-      M->>API: POST /api/poi/log (deviceId, lat, lng)
-      API->>DB: INSERT location_logs
-    end
-
-    M->>API: POST /api/poi/visit/start
-    API->>DB: INSERT device_visits (entertime)
-    M->>API: POST /api/poi/movement (fromPoiId,toPoiId)
-    API->>DB: INSERT movement_paths
-    M->>API: POST /api/poi/visit/end
-    API->>DB: UPDATE device_visits (exittime,duration)
-
-    A->>API: GET /api/Admin/analytics/heatmap
-    A->>API: GET /api/Admin/analytics/paths
-    A->>API: GET /api/Admin/analytics/popular-paths
-    API->>DB: Aggregate queries
-    DB-->>API: Result sets
-    API-->>A: Dashboard data
-```
-
-## 12.4 Sequence diagram [Admin -> Vendor -> User] (Admin tạo POI + owner, Vendor quản lý món, App hiển thị)
-
-```mermaid
-sequenceDiagram
-    participant A as Admin Web
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-    participant V as Vendor Web
-    participant M as Mobile App
-
-    A->>API: POST /api/Admin/poi-with-owner
-    API->>DB: Insert users(role=vendor), pois, owners
-    DB-->>API: Tạo thành công
-    API-->>A: 200 + thông tin tài khoản owner
-
-    V->>API: POST /api/vendor/foods/create
-    API->>DB: Insert foods theo PoiId của vendor
-    API-->>V: 200 Created
-    V->>API: POST /api/vendor/foods/update
-    API->>DB: Update foods
-    API-->>V: 200 Updated
-
-    M->>API: GET /api/poi/{id}
-    API->>DB: Query poi + foods + details
-    DB-->>API: Dữ liệu đầy đủ
-    API-->>M: Chi tiết quán + danh sách món
-```
-
-## 12.5 Sequence diagram [User] (App kích hoạt JWT local 7 ngày)
+### 12.1 Sequence - UC-M01 Quét QR JWT để vào app
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant M as Mobile App
-    participant QR as QR JWT
-    participant S as Local Storage (Preferences)
+    participant Q as QR JWT
+    participant P as Preferences(Local)
 
-    U->>M: Mở màn quét QR
-    M->>QR: Đọc token JWT từ mã QR
-    M->>M: Verify chữ ký + nbf/exp + issuer/type
-    alt Token hợp lệ
-        M->>S: Lưu hạn kích hoạt local (7 ngày)
-        M-->>U: Vào HomePage
-    else Token không hợp lệ/hết hạn
+    U->>M: Mở app lần đầu
+    M->>U: Mở màn quét QR JWT
+    U->>M: Quét mã
+    M->>Q: Đọc payload JWT
+    M->>M: Verify signature + exp/nbf + issuer/type
+    alt JWT hợp lệ
+        M->>P: Lưu activation local
+        M-->>U: Cho vào app
+    else JWT không hợp lệ
         M-->>U: Báo lỗi và yêu cầu quét lại
     end
 ```
 
-## 12.6 Sequence diagram [Admin/Vendor] (Web login và điều hướng theo role)
+### 12.2 Sequence - UC-M02 Xem POI đề xuất
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant W as Web Login Page
+    participant M as Mobile App
     participant API as StreetFood API
     participant DB as PostgreSQL
 
-    U->>W: Nhập username và password
-    W->>API: POST /api/Auth/login
-    API->>DB: Validate users + role
-    DB-->>API: userId + role
-    API-->>W: 200 + role (admin hoặc vendor)
-
-    alt role = admin
-        W-->>U: Redirect sang Admin Dashboard
-    else role = vendor
-        W-->>U: Redirect sang Vendor Dashboard
-    else login fail
-        W-->>U: Thông báo sai thông tin đăng nhập
-    end
+    U->>M: Mở màn Home/Suggest
+    M->>API: GET /api/poi (Accept-Language)
+    API->>DB: Query POI + translation + audio
+    DB-->>API: Dữ liệu POI
+    API-->>M: Danh sách POI
+    M-->>U: Hiển thị map + danh sách đề xuất
 ```
 
-## 12.7 Sequence diagram [Vendor] (Vendor cập nhật thông tin cửa hàng gồm logo)
+### 12.3 Sequence - UC-M03 Tìm kiếm
 
 ```mermaid
 sequenceDiagram
-    participant V as Vendor Web
-    participant API as StreetFood API
-    participant R2 as Cloudflare R2
-    participant DB as PostgreSQL
+    participant U as User
+    participant M as Mobile App
 
-    opt Có đổi logo mới
-        V->>API: POST /api/vendor/media/upload (logo file)
-        API->>R2: Upload logo
-        R2-->>API: logoUrl
-        API-->>V: 200 + logoUrl
-    end
-
-    V->>API: POST /api/vendor/shop/update-details (name, openHours, phone, logoUrl, ...)
-    API->>DB: UPDATE restaurant_details
-    DB-->>API: Updated
-    API-->>V: 200 Updated
+    U->>M: Nhập từ khóa tìm kiếm
+    M->>M: Lọc danh sách POI theo tên/địa chỉ/mô tả
+    M-->>U: Hiển thị kết quả đã lọc
 ```
 
-## 12.8 Sequence diagram [Vendor] (Vendor quản lý món thêm sửa ẩn hiển thị)
+### 12.4 Sequence - UC-M04 Chọn POI để nghe
 
 ```mermaid
 sequenceDiagram
-    participant V as Vendor Web
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-
-    V->>API: POST /api/vendor/foods/create
-    API->>DB: INSERT foods
-    DB-->>API: Created
-    API-->>V: 200 Created
-
-    V->>API: POST /api/vendor/foods/update
-    API->>DB: UPDATE foods
-    DB-->>API: Updated
-    API-->>V: 200 Updated
-
-    V->>API: POST /api/vendor/foods/delete (ẩn món)
-    API->>DB: UPDATE foods SET ishidden = true
-    DB-->>API: Updated
-    API-->>V: 200 Hidden
-
-    V->>API: POST /api/vendor/foods/restore (hiển thị lại)
-    API->>DB: UPDATE foods SET ishidden = false
-    DB-->>API: Updated
-    API-->>V: 200 Restored
+    participant U as User
+    participant M as Mobile App
+    participant R2 as Audio Storage
+    U->>M: Chọn POI trên map
+    M-->>U: Hiện card chi tiết POI
+    U->>M: Bấm Play
+    M->>R2: Stream AudioUrl
+    R2-->>M: Audio stream
+    M-->>U: Phát audio + điều khiển pause/seek
 ```
 
-## 12.9 Sequence diagram [Admin] (Admin hide và unhide owner account)
-
-```mermaid
-sequenceDiagram
-    participant A as Admin Web
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-
-    A->>API: POST /api/Admin/owners/{userId}/hide
-    API->>DB: UPDATE users SET ishidden = true
-    DB-->>API: Updated
-    API-->>A: 200 Hidden
-
-    A->>API: POST /api/Admin/owners/{userId}/unhide
-    API->>DB: UPDATE users SET ishidden = false
-    DB-->>API: Updated
-    API-->>A: 200 Unhidden
-```
-
-## 12.10 Sequence diagram [Admin] (Admin xem POI chờ script và regenerate audio)
-
-```mermaid
-sequenceDiagram
-    participant A as Admin Web
-    participant API as StreetFood API
-    participant DB as PostgreSQL
-    participant TTS as Azure Speech
-    participant R2 as Cloudflare R2
-
-    A->>API: GET /api/Admin/pois/awaiting-script
-    API->>DB: Query POI chưa có script hoàn chỉnh
-    DB-->>API: Danh sách POI
-    API-->>A: Awaiting script list
-
-    A->>API: POST /api/Admin/poi/{poiId}/regenerate-audio
-    API->>TTS: Synthesize audio theo script hiện tại
-    TTS-->>API: Audio file
-    API->>R2: Upload audio file
-    R2-->>API: Public URL
-    API->>DB: Update restaurant_audio.audio_url
-    API-->>A: 200 Regenerated
-```
-
-## 12.11 Sequence diagram [User -> Admin] (App gửi listen analytics và Admin đọc báo cáo)
+### 12.5 Sequence - UC-M05 Theo dõi geofence
 
 ```mermaid
 sequenceDiagram
     participant M as Mobile App
     participant API as StreetFood API
     participant DB as PostgreSQL
-    participant A as Admin Web
+
+    loop Chu kỳ định vị
+      M->>M: Lấy GPS hiện tại
+      M->>API: POST /api/poi/log (deviceId,lat,lng)
+      API->>DB: INSERT location_logs
+    end
+    M->>M: Tính khoảng cách đến từng POI
+    M->>M: Xác định vào/ra geofence
+```
+
+### 12.6 Sequence - UC-M06 Nghe audio tự động
+
+```mermaid
+sequenceDiagram
+    participant M as Mobile App
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    participant R2 as Audio Storage
+
+    M->>M: Nhận event vào geofence
+    M->>API: POST /api/poi/visit/start
+    API->>DB: INSERT device_visits(entertime)
+    M->>R2: Stream audio POI
+    R2-->>M: Audio
+    M-->>M: Auto play audio
+```
+
+### 12.7 Sequence - UC-M07 Log analytics
+
+```mermaid
+sequenceDiagram
+    participant M as Mobile App
+    participant API as StreetFood API
+    participant DB as PostgreSQL
 
     M->>API: POST /api/analytics/poi-audio-listen
     API->>DB: INSERT poi_audio_listen_events
-    DB-->>API: Saved
-    API-->>M: 200 OK
-
-    A->>API: GET /api/Admin/analytics/poi-audio-listen?days=30
-    API->>DB: Aggregate avg duration theo POI
-    DB-->>API: Result set
-    API-->>A: Listen analytics data
+    M->>API: POST /api/poi/visit/end
+    API->>DB: UPDATE device_visits(exittime,duration)
 ```
 
+### 12.8 Sequence - UC-V01 Đăng nhập vendor
 
+```mermaid
+sequenceDiagram
+    participant V as Vendor Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    V->>API: POST /api/auth/login
+    API->>DB: Validate role=vendor
+    DB-->>API: Vendor hợp lệ
+    API-->>V: Login success
+```
+
+### 12.9 Sequence - UC-V02 Cập nhật thông tin cửa hàng
+
+```mermaid
+sequenceDiagram
+    participant V as Vendor Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    V->>API: POST /api/vendor/shop/update-details
+    API->>DB: UPDATE restaurant_details
+    API-->>V: Updated
+```
+
+### 12.10 Sequence - UC-V03 Quản lý món ăn
+
+```mermaid
+sequenceDiagram
+    participant V as Vendor Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    V->>API: POST /api/vendor/foods/create|update|delete|restore
+    API->>DB: INSERT/UPDATE foods
+    API-->>V: Thành công
+```
+
+### 12.11 Sequence - UC-V04 Gửi yêu cầu audio
+
+```mermaid
+sequenceDiagram
+    participant V as Vendor Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    alt Gửi script text
+      V->>API: POST /api/vendor/submit-script
+    else Gửi audio bundle
+      V->>API: POST /api/vendor/submit-audio-bundle
+    end
+    API->>DB: INSERT script_change_requests(status=pending)
+    API-->>V: Pending
+```
+
+### 12.12 Sequence - UC-A01 Đăng nhập admin
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    A->>API: POST /api/auth/login
+    API->>DB: Validate role=admin
+    API-->>A: Login success
+```
+
+### 12.13 Sequence - UC-A02 Quản lý tài khoản vendor
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    A->>API: GET /api/admin/owners
+    API-->>A: Danh sách vendor
+    A->>API: POST /api/admin/owners/{id}/hide|unhide
+    API->>DB: Update users.ishidden
+```
+
+### 12.14 Sequence - UC-A03 Phân tích người dùng
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    A->>API: GET /api/admin/analytics/user-analysis/hourly-visits
+    API->>DB: Aggregate device_visits theo giờ
+    DB-->>API: Hourly users
+    API-->>A: Dữ liệu phân tích người dùng
+```
+
+### 12.15 Sequence - UC-A04 Phân tích heatmap
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    A->>API: GET /api/admin/analytics/heatmap
+    API->>DB: Aggregate location_logs
+    DB-->>API: Heat points
+    API-->>A: Dữ liệu heatmap
+```
+
+### 12.16 Sequence - UC-A05 Phân tích tuyến đi
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    A->>API: GET /api/admin/analytics/paths
+    A->>API: GET /api/admin/analytics/popular-paths
+    A->>API: GET /api/admin/analytics/popular-route-chains
+    API->>DB: Query movement_paths
+    DB-->>API: Route analytics
+    API-->>A: Dữ liệu tuyến đi
+```
+
+### 12.17 Sequence - UC-A06 Phân tích thời lượng nghe
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    A->>API: GET /api/admin/analytics/poi-audio-listen?days=30
+    API->>DB: Aggregate poi_audio_listen_events
+    DB-->>API: Avg listen duration
+    API-->>A: Dữ liệu thời lượng nghe
+```
+
+### 12.18 Sequence - UC-A07 Tạo tài khoản vendor
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    A->>API: POST /api/admin/poi-with-owner
+    API->>DB: Tạo user vendor + POI + owner mapping
+    DB-->>API: Created
+    API-->>A: Kết quả tạo mới
+```
+
+### 12.19 Sequence - UC-A08 Phê duyệt yêu cầu vendor
+
+```mermaid
+sequenceDiagram
+    participant A as Admin Web
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+    participant TTS as Azure Services
+
+    A->>API: GET /api/admin/script-requests/pending
+    A->>API: POST /api/admin/script-requests/{id}/approve
+    alt Request kiểu script text
+      API->>TTS: Translate + TTS
+      API->>DB: Update translations/audio/status
+    else Request kiểu audio bundle
+      API->>DB: Update audio/status
+    end
+    API-->>A: Approved
+```
 
 ---
 
-## 13. Activity diagram (Vendor gửi yêu cầu âm thanh 2 cách)
+## 13. Activity diagram
+
+### 13.1 Activity - UC-M01 Quét QR JWT để vào app
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    S[Vendor đăng nhập] --> A[Mở trang yêu cầu âm thanh]
-    A --> B{Chọn cách gửi}
-    B -- Cách 1 --> C[Nhập 1 script ngôn ngữ nguồn]
-    B -- Cách 2 --> D[Gắn 5 file audio theo ngôn ngữ]
-    C --> E[Submit request]
-    D --> E
-    E --> F[Lưu Script_Change_Request = Pending]
-    F --> G[Admin duyệt request]
-    G --> H{Kết quả duyệt}
-    H -- Approve Cách 1 --> I[Dịch 4 ngôn ngữ còn lại + TTS + cập nhật audio]
-    H -- Approve Cách 2 --> J[Cập nhật audio từ bundle vendor]
-    H -- Reject --> K[Set request = Rejected]
-    I --> L[Set request = Approved]
-    J --> L
-    L --> M[Thông báo kết quả cho Vendor]
-    K --> M
+    M0[Mở app] --> M1{Đã kích hoạt JWT local?}
+    M1 -- Chưa --> M2[Quét QR JWT]
+    M2 --> M3{JWT hợp lệ?}
+    M3 -- Không --> M2
+    M3 -- Có --> M4[Lưu activation local và vào app]
+    M1 -- Đã rồi --> M4
 ```
 
-
-
-## 13.1 Activity diagram (User App end-to-end)
+### 13.2 Activity - UC-M02 Xem POI đề xuất
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    A0[Mở app] --> A1{Đã kích hoạt?}
-    A1 -- Chưa --> A2[Quét JWT QR]
-    A2 --> A3[Lưu hạn local 7 ngày]
-    A1 -- Đã kích hoạt --> A4[Xin quyền GPS]
-    A3 --> A4
-    A4 --> A5[Load POI từ API]
-    A5 --> A6[Hiện map + marker]
-    A6 --> A7{Người dùng thao tác}
-    A7 -- Chạm POI --> A8[Mở thẻ thông tin/chi tiết]
-    A8 --> A9[Play/Pause/Seek audio]
-    A7 -- Đi vào geofence --> A10[Auto show card + play]
-    A10 --> A9
-    A7 -- Di chuyển --> A11[Gửi location_logs + visit start/end + movement]
-    A11 --> A6
+    A0[Mở Home/Suggest] --> A1[Load POI từ API]
+    A1 --> A2[Hiển thị map và danh sách đề xuất]
 ```
 
-
-
-## 13.2 Activity diagram (Admin dashboard + moderation)
+### 13.3 Activity - UC-M03 Tìm kiếm
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    B0[Admin đăng nhập] --> B1[Mở dashboard]
-    B1 --> B2[Đọc KPI + heatmap + routes + listen stats]
-    B2 --> B3{Có request pending?}
-    B3 -- Có --> B4[Mở pendingScripts]
-    B4 --> B5{Approve hay Reject}
-    B5 -- Approve --> B6[Cập nhật DB + audio URLs]
-    B5 -- Reject --> B7[Set status rejected]
-    B6 --> B8[Refresh dashboard]
-    B7 --> B8
-    B3 -- Không --> B8
+    B0[Nhập từ khóa] --> B1[Lọc danh sách POI]
+    B1 --> B2[Hiển thị kết quả]
 ```
 
-
-
-## 13.3 Activity diagram (Vendor quản lý cửa hàng và món ăn)
+### 13.4 Activity - UC-M04 Chọn POI để nghe
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    V0[Vendor đăng nhập] --> V1[Lấy danh sách POI của mình]
-    V1 --> V2[Chọn cửa hàng]
-    V2 --> V3[Cập nhật thông tin cửa hàng gồm logo]
-    V3 --> V4[POST /api/vendor/shop/update-details]
-    V4 --> V5{Quản lý món}
-    V5 -- Thêm món --> V6[POST /api/vendor/foods/create]
-    V5 -- Sửa món --> V7[POST /api/vendor/foods/update]
-    V5 -- Ẩn món --> V8[POST /api/vendor/foods/delete]
-    V5 -- Hiển thị lại món --> V9[POST /api/vendor/foods/restore]
-    V6 --> V10[Reload dữ liệu]
-    V7 --> V10
-    V8 --> V10
-    V9 --> V10
+    C0[Chọn marker/POI] --> C1[Hiện card chi tiết]
+    C1 --> C2[Bấm Play]
+    C2 --> C3[Phát audio + Pause/Seek]
 ```
 
-
-
-## 13.4 Activity diagram (Admin tạo POI + owner và giám sát analytics)
+### 13.5 Activity - UC-M05 Theo dõi geofence
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    C0[Admin đăng nhập] --> C1[Tạo POI + owner]
-    C1 --> C2[Hệ thống sinh user vendor + liên kết owner]
-    C2 --> C3[Theo dõi owner list]
-    C3 --> C4{Có vấn đề tài khoản?}
-    C4 -- Có --> C5[Hide owner account]
-    C4 -- Không --> C6[Giữ hoạt động bình thường]
-    C5 --> C7[Xem dashboard analytics]
-    C6 --> C7
-    C7 --> C8[Đánh giá heatmap, routes, top POI]
+    D0[Đọc GPS chu kỳ] --> D1[Tính khoảng cách đến POI]
+    D1 --> D2{Vào/ra geofence?}
+    D2 --> D3[Phát sinh event geofence]
 ```
 
-## 13.5 Activity diagram (Web login theo role)
+### 13.6 Activity - UC-M06 Nghe audio tự động
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    L0[Mở trang login] --> L1[Nhập username password]
-    L1 --> L2[POST /api/Auth/login]
-    L2 --> L3{Đăng nhập thành công}
-    L3 -- Không --> L4[Hiện lỗi đăng nhập]
-    L4 --> L1
-    L3 -- Có --> L5{Role}
-    L5 -- admin --> L6[Đi tới Admin dashboard]
-    L5 -- vendor --> L7[Đi tới Vendor dashboard]
+    E0[Nhận event vào geofence] --> E1[Mở card POI]
+    E1 --> E2[Tự phát audio]
 ```
 
-## 13.6 Activity diagram (Vendor cập nhật cửa hàng và quản lý món)
+### 13.7 Activity - UC-M07 Log analytics
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    V0[Vendor đăng nhập] --> V1[Chọn cửa hàng]
-    V1 --> V2{Có đổi logo cửa hàng}
-    V2 -- Có --> V3[Upload logo qua media upload]
-    V2 -- Không --> V4[Cập nhật thông tin không đổi logo]
-    V3 --> V4
-    V4 --> V5[POST shop update details]
-    V5 --> V6{Thao tác món}
-    V6 -- Add --> V7[foods create]
-    V6 -- Edit --> V8[foods update]
-    V6 -- Hide --> V9[foods delete]
-    V6 -- Show --> V10[foods restore]
-    V7 --> V11[Reload danh sách món]
-    V8 --> V11
-    V9 --> V11
-    V10 --> V11
+    F0[Ghi location log] --> F1[Ghi visit start]
+    F1 --> F2[Ghi listen duration]
+    F2 --> F3[Ghi visit end/movement]
 ```
 
-## 13.7 Activity diagram (Admin moderation mở rộng)
+### 13.8 Activity - UC-V01 Đăng nhập vendor
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    M0[Admin mở trang moderation] --> M1[Lấy list POI awaiting script]
-    M1 --> M2{Có request pending}
-    M2 -- Có --> M3[Open pending requests]
-    M3 --> M4{Approve hay Reject}
-    M4 -- Approve --> M5[Update DB trạng thái approved]
-    M4 -- Reject --> M6[Update DB trạng thái rejected]
-    M5 --> M7{Cần regenerate audio}
-    M7 -- Có --> M8[Regenerate audio và update URL]
-    M7 -- Không --> M9[Giữ audio hiện tại]
-    M8 --> M10[Kết thúc moderation]
-    M9 --> M10
-    M6 --> M10
-    M2 -- Không --> M10
+    G0[Mở trang login] --> G1[Nhập tài khoản]
+    G1 --> G2[Validate role vendor]
+    G2 --> G3[Vào dashboard vendor]
 ```
 
-## 13.8 Activity diagram (Admin quản lý owner hide unhide)
+### 13.9 Activity - UC-V02 Cập nhật thông tin cửa hàng
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    O0[Admin mở owner list] --> O1[Chọn tài khoản owner]
-    O1 --> O2{Trạng thái tài khoản}
-    O2 -- Active --> O3[Hide account]
-    O2 -- Hidden --> O4[Unhide account]
-    O3 --> O5[Reload owner list]
-    O4 --> O5
+    H0[Mở trang cửa hàng] --> H1[Sửa thông tin]
+    H1 --> H2[Lưu cập nhật]
 ```
 
-## 13.9 Activity diagram (User nghe audio và gửi listen event)
+### 13.10 Activity - UC-V03 Quản lý món ăn
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '14px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60, 'padding': 18, 'htmlLabels': true}}}%%
 flowchart TD
-    P0[User chọn POI hoặc auto play geofence] --> P1[Player load audio]
-    P1 --> P2[Play audio]
-    P2 --> P3{Người dùng thao tác}
-    P3 -- Pause Resume --> P2
-    P3 -- Seek timeline --> P2
-    P3 -- Stop hoặc End --> P4[Tính duration thực nghe]
-    P4 --> P5[POST analytics poi audio listen]
-    P5 --> P6[Server lưu poi_audio_listen_events]
+    I0[Mở quản lý món] --> I1{Thao tác}
+    I1 -- Thêm/Sửa --> I2[Lưu món]
+    I1 -- Ẩn/Hiện --> I3[Đổi trạng thái món]
+```
+
+### 13.11 Activity - UC-V04 Gửi yêu cầu audio
+
+```mermaid
+flowchart TD
+    J0[Mở trang request audio] --> J1{Chọn kiểu request}
+    J1 -- Script --> J2[Submit script]
+    J1 -- Bundle --> J3[Submit bundle]
+    J2 --> J4[Pending]
+    J3 --> J4[Pending]
+```
+
+### 13.12 Activity - UC-A01 Đăng nhập admin
+
+```mermaid
+flowchart TD
+    K0[Mở trang login] --> K1[Nhập tài khoản]
+    K1 --> K2[Validate role admin]
+    K2 --> K3[Vào dashboard admin]
+```
+
+### 13.13 Activity - UC-A02 Quản lý tài khoản vendor
+
+```mermaid
+flowchart TD
+    L0[Mở danh sách vendor] --> L1[Chọn tài khoản]
+    L1 --> L2{Hide hay Unhide}
+    L2 --> L3[Cập nhật trạng thái]
+```
+
+### 13.14 Activity - UC-A03 Phân tích người dùng
+
+```mermaid
+flowchart TD
+    M0[Mở analytics người dùng] --> M1[Tải hourly users]
+    M1 --> M2[Hiển thị biểu đồ người dùng]
+```
+
+### 13.15 Activity - UC-A04 Phân tích heatmap
+
+```mermaid
+flowchart TD
+    N0[Mở analytics heatmap] --> N1[Tải heat points]
+    N1 --> N2[Render heatmap]
+```
+
+### 13.16 Activity - UC-A05 Phân tích tuyến đi
+
+```mermaid
+flowchart TD
+    O0[Mở analytics tuyến đi] --> O1[Tải paths/popular routes]
+    O1 --> O2[Hiển thị tuyến và bảng top routes]
+```
+
+### 13.17 Activity - UC-A06 Phân tích thời lượng nghe
+
+```mermaid
+flowchart TD
+    P0[Mở analytics thời lượng nghe] --> P1[Tải listen stats]
+    P1 --> P2[Hiển thị theo POI]
+```
+
+### 13.18 Activity - UC-A07 Tạo tài khoản vendor
+
+```mermaid
+flowchart TD
+    Q0[Mở form tạo vendor] --> Q1[Nhập thông tin vendor + POI]
+    Q1 --> Q2[Tạo tài khoản]
+    Q2 --> Q3[Hiển thị kết quả]
+```
+
+### 13.19 Activity - UC-A08 Phê duyệt yêu cầu vendor
+
+```mermaid
+flowchart TD
+    R0[Mở pending requests] --> R1[Chọn request]
+    R1 --> R2{Approve/Reject}
+    R2 -- Approve --> R3[Cập nhật audio/translation/status]
+    R2 -- Reject --> R4[Cập nhật status reject]
 ```
 
 
@@ -1439,5 +1433,6 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.0**   | **2026-04-06**  | Bổ sung: phiên bản stack & cổng dev; **bảng tiến độ thực tế**; **API đã triển khai**; chỉnh roadmap trạng thái; bảo mật đối chiếu code; **danh mục tài liệu / file tham chiếu**; lịch sử phiên bản.                                                                                                        |
 | **2.1**   | **2026-04-06**  | Mục **8.2**: nhúng ảnh **ERD** (`Public/Resouces/ERD.png`); cập nhật **8.1** (thêm `device_activations`, `schema_migrations`); chỉnh tiêu đề và ghi chú ERD. Metadata PRD **2.1**.                                                                                                                         |
 | **2.2**   | **2026-04-08**  | Đồng bộ codebase hiện tại: bỏ `StreetFood.Application`; đồng bộ migration mới (loại `app_activation_expires_at` và `device_activations`); mở rộng dữ liệu demo analytics; bổ sung bộ **Use Case + Sequence + Activity** đầy đủ cho App, API, Web Admin, Web Vendor; thêm **ERD dạng Mermaid** tại mục 8.2. |
+| **2.3**   | **2026-04-15**  | Viết lại hoàn chỉnh các mục **Use Case / Sequence / Activity** theo phạm vi nghiệp vụ mới: App (QR JWT, đề xuất POI, search, chọn POI nghe, geofence, analytics log), Vendor (login, cập nhật cửa hàng, quản lý món, gửi yêu cầu audio), Admin (login, quản lý vendor, analytics người dùng/heatmap/tuyến đi/thời lượng nghe, tạo vendor, phê duyệt yêu cầu). |
 
 

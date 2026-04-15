@@ -161,6 +161,82 @@ public class AdminController : ControllerBase
         }
     }
 
+    /// <summary>Số user dùng app theo từng giờ trong ngày (unique deviceId, gộp N ngày).</summary>
+    [HttpGet("analytics/hourly-active-users")]
+    public async Task<IActionResult> GetHourlyActiveUsers([FromQuery] int days = 30)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        days = Math.Clamp(days, 1, 365);
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var rows = await conn.QueryAsync<HourlyActiveUsersDto>(@"
+                WITH h AS (
+                    SELECT generate_series(0, 23) AS hour_of_day
+                ),
+                raw AS (
+                    SELECT
+                        EXTRACT(HOUR FROM l.createdat)::int AS hour_of_day,
+                        COUNT(DISTINCT l.deviceid)::bigint AS user_count
+                    FROM location_logs l
+                    WHERE l.createdat > NOW() - (CAST(@Days AS integer) * INTERVAL '1 day')
+                    GROUP BY EXTRACT(HOUR FROM l.createdat)::int
+                )
+                SELECT
+                    h.hour_of_day AS HourOfDay,
+                    COALESCE(r.user_count, 0)::bigint AS UserCount
+                FROM h
+                LEFT JOIN raw r ON r.hour_of_day = h.hour_of_day
+                ORDER BY h.hour_of_day",
+                new { Days = days });
+            return Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "hourly-active-users");
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Phân tích người dùng theo khung giờ dựa trên device_visits (đếm unique deviceId theo giờ trong N ngày).
+    /// </summary>
+    [HttpGet("analytics/user-analysis/hourly-visits")]
+    public async Task<IActionResult> GetDeviceVisitHourlyUsers([FromQuery] int days = 30)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        days = Math.Clamp(days, 1, 365);
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var rows = await conn.QueryAsync<HourlyActiveUsersDto>(@"
+                WITH h AS (
+                    SELECT generate_series(0, 23) AS hour_of_day
+                ),
+                raw AS (
+                    SELECT
+                        EXTRACT(HOUR FROM v.entertime)::int AS hour_of_day,
+                        COUNT(DISTINCT v.deviceid)::bigint AS user_count
+                    FROM device_visits v
+                    WHERE v.entertime > NOW() - (CAST(@Days AS integer) * INTERVAL '1 day')
+                    GROUP BY EXTRACT(HOUR FROM v.entertime)::int
+                )
+                SELECT
+                    h.hour_of_day AS HourOfDay,
+                    COALESCE(r.user_count, 0)::bigint AS UserCount
+                FROM h
+                LEFT JOIN raw r ON r.hour_of_day = h.hour_of_day
+                ORDER BY h.hour_of_day",
+                new { Days = days });
+            return Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "user-analysis/hourly-visits");
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpGet("analytics/paths")]
     public async Task<IActionResult> GetMovementPaths()
     {

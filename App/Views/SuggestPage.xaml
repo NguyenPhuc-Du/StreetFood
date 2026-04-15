@@ -10,17 +10,16 @@
                     StrokeShape="RoundRectangle 14"
                     Padding="12,6"
                     HorizontalOptions="Start">
-                <Label Text="Gợi ý theo vị trí"
+                <Label x:Name="SuggestBadgeLabel"
                        FontSize="12"
                        FontAttributes="Bold"
                        TextColor="{StaticResource SecondaryDarkText}"/>
             </Border>
-            <Label Text="Đề xuất gần bạn"
+            <Label x:Name="SuggestTitleLabel"
                    FontSize="30"
                    FontAttributes="Bold"
                    TextColor="{StaticResource TextPrimary}"/>
             <Label x:Name="SubTitleLabel"
-                   Text="Đang lấy vị trí..."
                    FontSize="14"
                    TextColor="{StaticResource TextMuted}"
                    LineBreakMode="WordWrap"/>

@@ -387,6 +387,48 @@ public class PoiController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    /// <summary>
+    /// Điểm ưu tiên heatmap theo POI (dùng để resolve khi user đứng trong nhiều POI).
+    /// Tính từ số sample location_logs rơi vào bán kính của từng POI trong N ngày.
+    /// </summary>
+    [HttpGet("heat-priority")]
+    public async Task<IActionResult> GetPoiHeatPriority([FromQuery] int days = 30)
+    {
+        days = Math.Clamp(days, 1, 180);
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var rows = await conn.QueryAsync<PoiHeatPriorityDto>(@"
+                SELECT
+                    p.id AS PoiId,
+                    COUNT(l.deviceid)::int AS HeatScore
+                FROM pois p
+                LEFT JOIN location_logs l
+                    ON l.createdat > NOW() - (CAST(@Days AS integer) * INTERVAL '1 day')
+                    AND (
+                        6371000 * acos(
+                            LEAST(
+                                1.0,
+                                GREATEST(
+                                    -1.0,
+                                    cos(radians(p.latitude)) * cos(radians(l.latitude))
+                                    * cos(radians(l.longitude) - radians(p.longitude))
+                                    + sin(radians(p.latitude)) * sin(radians(l.latitude))
+                                )
+                            )
+                        )
+                    ) <= COALESCE(p.radius, 50)
+                GROUP BY p.id
+                ORDER BY HeatScore DESC, p.id");
+
+            return Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }
 
 public sealed class TrackVisitRequest
@@ -421,4 +463,10 @@ public sealed class MovementPathRequest
     public int FromPoiId { get; set; }
     public int ToPoiId { get; set; }
     public DateTime? AtUtc { get; set; }
+}
+
+public sealed class PoiHeatPriorityDto
+{
+    public int PoiId { get; set; }
+    public int HeatScore { get; set; }
 }

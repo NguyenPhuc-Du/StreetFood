@@ -22,6 +22,8 @@
         baseUrl: base,
         getHeatmap: () => adminFetch('/api/admin/analytics/heatmap'),
         getPoiListenStats: (days) => adminFetch('/api/admin/analytics/poi-audio-listen?days=' + encodeURIComponent(days == null ? 365 : days)),
+        getHourlyActiveUsers: (days) => adminFetch('/api/admin/analytics/hourly-active-users?days=' + encodeURIComponent(days == null ? 30 : days)),
+        getUserAnalysisByVisitHour: (days) => adminFetch('/api/admin/analytics/user-analysis/hourly-visits?days=' + encodeURIComponent(days == null ? 30 : days)),
         getPaths: () => adminFetch('/api/admin/analytics/paths'),
         getPopularPaths: (top) => adminFetch('/api/admin/analytics/popular-paths?top=' + encodeURIComponent(top || 5)),
         getPopularRouteChains: (topRoutes, maxPoisPerRoute) => {

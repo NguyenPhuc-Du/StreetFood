@@ -31,7 +31,6 @@
                     <Image Source="ic_search.svg" HeightRequest="18" WidthRequest="18" Margin="2,0,10,0"/>
                     <Entry Grid.Column="1"
                            x:Name="SearchEntry"
-                           Placeholder="Tìm quán ăn hoặc POI"
                            TextChanged="OnSearchTextChanged"
                            ClearButtonVisibility="WhileEditing"
                            BackgroundColor="Transparent"
@@ -57,7 +56,7 @@
             </Border.GestureRecognizers>
             <HorizontalStackLayout Spacing="8">
                 <Label Text="◎" FontSize="14" TextColor="{StaticResource Primary}" />
-                <Label Text="Vị trí của tôi" TextColor="{StaticResource Primary}" FontAttributes="Bold" FontSize="13"/>
+                <Label x:Name="MyLocationLabel" TextColor="{StaticResource Primary}" FontAttributes="Bold" FontSize="13"/>
             </HorizontalStackLayout>
         </Border>
 
@@ -95,13 +94,13 @@
                                      CornerRadius="3"
                                      HorizontalOptions="Start"
                                      Color="{StaticResource Gray100}"/>
-                            <Label Text="Kéo xuống để đóng thẻ và tắt âm thanh"
+                            <Label x:Name="DragToCloseLabel"
                                    FontSize="11"
                                    TextColor="{StaticResource TextMuted}"
                                    LineBreakMode="WordWrap"/>
                         </VerticalStackLayout>
                         <Label Grid.Column="1"
-                               Text="Đóng"
+                               x:Name="CloseCardLabel"
                                FontSize="13"
                                FontAttributes="Bold"
                                TextColor="{StaticResource Primary}"
@@ -143,7 +142,7 @@
                       ColumnSpacing="12"
                       Padding="12,0,12,12">
                     <Button Grid.Column="0"
-                            Text="Phát"
+                            x:Name="PlayButton"
                             Clicked="OnPlayClicked"
                             HeightRequest="44"
                             BackgroundColor="{StaticResource Secondary}"
@@ -151,7 +150,7 @@
                             FontAttributes="Bold"
                             CornerRadius="14"/>
                     <Button Grid.Column="1"
-                            Text="Tạm dừng"
+                            x:Name="PauseButton"
                             Clicked="OnPauseClicked"
                             HeightRequest="44"
                             BackgroundColor="{StaticResource Gray100}"

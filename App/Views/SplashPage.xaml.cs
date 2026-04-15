@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using App.Services;
 
 namespace App.Views
 {
@@ -8,6 +9,7 @@ namespace App.Views
         public SplashPage()
         {
             InitializeComponent();
+            ApplyLocalizedTexts();
             StartLoading();
         }
 
@@ -23,6 +25,11 @@ namespace App.Views
 
             // Không gán Window.Page = AppShell (crash Android). Splash là modal trên Shell.
             await Navigation.PopModalAsync();
+        }
+
+        void ApplyLocalizedTexts()
+        {
+            LoadingLabel.Text = LocalizationService.T("SplashLoading");
         }
     }
 }
