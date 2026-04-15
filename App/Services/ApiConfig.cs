@@ -6,8 +6,8 @@ public static class ApiConfig
 {
     public const string PrefKey = "streetfood_api_base_url";
 
-    /// <summary>Cổng trùng launchSettings profile http. Đổi IP theo máy chạy API (Cài đặt trong app).</summary>
-    public const string EmbeddedDefaultBaseUrl = "http://172.20.10.4:5191";
+    /// <summary>Mặc định cho Android Emulator → máy host: <c>http://10.0.2.2:5191</c>. Điện thoại thật cùng Wi‑Fi: đổi IP LAN PC trong Cài đặt.</summary>
+    public const string EmbeddedDefaultBaseUrl = "http://10.0.2.2:5191";
 
     public static string GetBaseUrl()
     {
