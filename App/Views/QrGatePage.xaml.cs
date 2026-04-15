@@ -1,5 +1,6 @@
 using ZXing.Net.Maui;
 using ZXing.Net.Maui.Controls;
+using App.Services;
 
 namespace App.Views;
 
@@ -12,11 +13,14 @@ public partial class QrGatePage : ContentPage
     public QrGatePage()
     {
         InitializeComponent();
+        ApplyLocalizedTexts();
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        ApplyLocalizedTexts();
 
         if (ActivationService.IsCurrentlyActivated())
         {
@@ -29,7 +33,7 @@ public partial class QrGatePage : ContentPage
             var cam = await Permissions.RequestAsync<Permissions.Camera>();
             if (cam != PermissionStatus.Granted)
             {
-                ShowError("Cần quyền camera để quét mã QR. Bạn có thể nhập mã thủ công bên dưới.");
+                ShowError(LocalizationService.T("QrNeedCameraPermission"));
                 ManualPanel.IsVisible = true;
                 return;
             }
@@ -49,8 +53,22 @@ public partial class QrGatePage : ContentPage
     protected override bool OnBackButtonPressed()
     {
         Dispatcher.Dispatch(async () =>
-            await DisplayAlertAsync("Cần kích hoạt", "Quét JWT QR hợp lệ để dùng app. Kích hoạt lưu cục bộ 7 ngày.", "OK"));
+            await DisplayAlertAsync(
+                LocalizationService.T("QrNeedActivationTitle"),
+                LocalizationService.T("QrNeedActivationMessage"),
+                LocalizationService.T("Ok")));
         return true;
+    }
+
+    protected override void OnDisappearing()
+    {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
+        base.OnDisappearing();
+    }
+
+    void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(ApplyLocalizedTexts);
     }
 
     void OnBarcodesDetected(object? sender, BarcodeDetectionEventArgs e)
@@ -87,7 +105,7 @@ public partial class QrGatePage : ContentPage
         payload = QrAccess.NormalizePayload(payload);
         if (!QrAccess.TryParseActivation(payload, out var plan, out var err))
         {
-            ShowError(err ?? "Mã không hợp lệ.");
+            ShowError(err ?? LocalizationService.T("InvalidCode"));
             return;
         }
 
@@ -113,5 +131,13 @@ public partial class QrGatePage : ContentPage
         {
             _completed = false;
         }
+    }
+
+    void ApplyLocalizedTexts()
+    {
+        QrTitleLabel.Text = LocalizationService.T("QrTitle");
+        QrManualDescLabel.Text = LocalizationService.T("QrManualDesc");
+        ManualCodeEntry.Placeholder = LocalizationService.T("QrManualPlaceholder");
+        QrConfirmButton.Text = LocalizationService.T("QrConfirm");
     }
 }

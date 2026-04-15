@@ -1,4 +1,5 @@
 using System.Threading;
+using App.Services;
 using App.Views;
 namespace App;
 
@@ -13,6 +14,28 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("poidetail", typeof(PoiDetailPage));
 
         Navigated += OnShellNavigated;
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        ApplyLocalizedTexts();
+    }
+
+    protected override void OnDisappearing()
+    {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
+        base.OnDisappearing();
+    }
+
+    void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(ApplyLocalizedTexts);
+    }
+
+    void ApplyLocalizedTexts()
+    {
+        if (Items.Count == 0 || Items[0] is not TabBar tabBar || tabBar.Items.Count < 3)
+            return;
+        tabBar.Items[0].Title = LocalizationService.T("TabMap");
+        tabBar.Items[1].Title = LocalizationService.T("TabSuggest");
+        tabBar.Items[2].Title = LocalizationService.T("TabSettings");
     }
 
     async void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)

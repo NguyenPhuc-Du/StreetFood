@@ -96,20 +96,13 @@
                 <div class="charts-row">
                     <div class="card chart-card flex-2">
                         <div class="card-header">
-                            <h3>Visitor Volume Trend</h3>
-                            <div class="legend">
-                                <span><span class="dot dark-blue"></span> Current Period</span>
-                                <span><span class="dot light-gray"></span> Last Period</span>
-                            </div>
+                            <h3>User sử dụng app theo khung giờ</h3>
                         </div>
-                        <div class="bar-chart-placeholder">
-                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 40%"></div><span>Mon</span></div>
-                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 60%"></div><span>Tue</span></div>
-                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 50%"></div><span>Wed</span></div>
-                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 80%"></div><span>Thu</span></div>
-                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 90%"></div><span>Fri</span></div>
-                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 65%"></div><span>Sat</span></div>
-                            <div class="bar-group"><div class="bar bg-light"></div><div class="bar bg-dark" style="height: 55%"></div><span>Sun</span></div>
+                        <div class="hourly-usage-wrap">
+                            <div class="hourly-meta">
+                                <p id="hourlyUsageSubtitle">Đang tải dữ liệu 30 ngày gần nhất...</p>
+                            </div>
+                            <div class="hourly-chart" id="hourlyUsageChart"></div>
                         </div>
                     </div>
 
@@ -128,6 +121,18 @@
                             <div class="legend-item"><span><span class="dot light-blue"></span> International</span> <b>28.5%</b></div>
                             <div class="legend-item"><span><span class="dot light-gray"></span> Regional</span> <b>7.3%</b></div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="card chart-card user-analysis-card">
+                    <div class="card-header">
+                        <h3>Phân tích người dùng</h3>
+                    </div>
+                    <div class="hourly-usage-wrap">
+                        <div class="hourly-meta">
+                            <p id="userAnalysisSubtitle">Đang tải dữ liệu device_visits 30 ngày gần nhất...</p>
+                        </div>
+                        <div class="hourly-chart" id="userAnalysisChart"></div>
                     </div>
                 </div>
 
@@ -198,5 +203,78 @@
             </div>
         </main>
     </div>
+    <script src="/config.js"></script>
+    <script src="/js/admin-api.js"></script>
+    <script>
+        (function () {
+            const chartEl = document.getElementById('hourlyUsageChart');
+            const subtitleEl = document.getElementById('hourlyUsageSubtitle');
+            const userAnalysisChartEl = document.getElementById('userAnalysisChart');
+            const userAnalysisSubtitleEl = document.getElementById('userAnalysisSubtitle');
+
+            function hourLabel(hour) {
+                return String(hour).padStart(2, '0') + ':00';
+            }
+
+            function normalizeHourlyRows(rows) {
+                const allRows = Array.from({ length: 24 }, (_, h) => {
+                    const found = rows.find(r => (r.hourOfDay ?? r.HourOfDay) === h);
+                    return {
+                        hour: h,
+                        count: found ? (found.userCount ?? found.UserCount ?? 0) : 0
+                    };
+                });
+                return allRows;
+            }
+
+            function renderChart(rows, targetChartEl, targetSubtitleEl, subtitlePrefix) {
+                const allRows = normalizeHourlyRows(rows);
+                const maxCount = Math.max(...allRows.map(x => x.count), 1);
+                targetChartEl.innerHTML = allRows.map(x => {
+                    const height = Math.max(4, Math.round((x.count / maxCount) * 100));
+                    return '<div class="hour-bar-group" title="' + hourLabel(x.hour) + ': ' + x.count + ' user">' +
+                        '<div class="hour-bar" style="height:' + height + '%"></div>' +
+                        '<span class="hour-label">' + String(x.hour).padStart(2, '0') + '</span>' +
+                        '</div>';
+                }).join('');
+
+                const total = allRows.reduce((sum, x) => sum + x.count, 0);
+                targetSubtitleEl.textContent = subtitlePrefix + total.toLocaleString();
+            }
+
+            async function loadHourlyUsage() {
+                try {
+                    const rows = await window.StreetFoodAdmin.getHourlyActiveUsers(30);
+                    renderChart(
+                        rows || [],
+                        chartEl,
+                        subtitleEl,
+                        'Tổng lượt unique user theo giờ (30 ngày): '
+                    );
+                } catch (err) {
+                    subtitleEl.textContent = 'Không tải được dữ liệu biểu đồ theo giờ.';
+                    chartEl.innerHTML = '<div class="hourly-empty">Không có dữ liệu.</div>';
+                }
+            }
+
+            async function loadUserAnalysisByVisits() {
+                try {
+                    const rows = await window.StreetFoodAdmin.getUserAnalysisByVisitHour(30);
+                    renderChart(
+                        rows || [],
+                        userAnalysisChartEl,
+                        userAnalysisSubtitleEl,
+                        'Device visits unique theo giờ (30 ngày): '
+                    );
+                } catch (err) {
+                    userAnalysisSubtitleEl.textContent = 'Không tải được dữ liệu phân tích người dùng.';
+                    userAnalysisChartEl.innerHTML = '<div class="hourly-empty">Không có dữ liệu.</div>';
+                }
+            }
+
+            loadHourlyUsage();
+            loadUserAnalysisByVisits();
+        })();
+    </script>
 </body>
 </html>

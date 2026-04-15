@@ -44,7 +44,7 @@
             <Grid ColumnDefinitions="*,Auto">
 
                 <Label
-                    Text="Đang tải"
+                    x:Name="LoadingLabel"
                     TextColor="White"
                     FontAttributes="Bold"/>
 

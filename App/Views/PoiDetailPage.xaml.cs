@@ -35,6 +35,7 @@ public partial class PoiDetailPage : ContentPage, IQueryAttributable
         InitializeComponent();
         BindingContext = this;
         _listenMeter = new AudioListenMeter(AudioPlayer, () => PoiId);
+        ApplyLocalizedTexts();
 
         _audioTimer = Dispatcher.CreateTimer();
         _audioTimer.Interval = TimeSpan.FromMilliseconds(500);
@@ -65,6 +66,8 @@ public partial class PoiDetailPage : ContentPage, IQueryAttributable
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        ApplyLocalizedTexts();
         await LoadDetailAsync();
     }
 
@@ -93,9 +96,9 @@ public partial class PoiDetailPage : ContentPage, IQueryAttributable
             PlaceDescription.IsVisible = false;
         }
 
-        PlaceAddress.Text = $"Địa chỉ: {ResolveAddress(detail.Address, detail.Description)}";
-        PlacePhone.Text = $"Số điện thoại: {(string.IsNullOrWhiteSpace(detail.Phone) ? "—" : detail.Phone.Trim())}";
-        PlaceHours.Text = $"Giờ mở cửa: {(string.IsNullOrWhiteSpace(detail.OpeningHours) ? "—" : detail.OpeningHours.Trim())}";
+        PlaceAddress.Text = $"{LocalizationService.T("Address")}: {ResolveAddress(detail.Address, detail.Description)}";
+        PlacePhone.Text = $"{LocalizationService.T("PoiPhone")}: {(string.IsNullOrWhiteSpace(detail.Phone) ? "—" : detail.Phone.Trim())}";
+        PlaceHours.Text = $"{LocalizationService.T("PoiOpenHours")}: {(string.IsNullOrWhiteSpace(detail.OpeningHours) ? "—" : detail.OpeningHours.Trim())}";
 
         PlaceImage.Source = string.IsNullOrEmpty(detail.ImageUrl) ? "logo.png" : detail.ImageUrl;
 
@@ -135,11 +138,37 @@ public partial class PoiDetailPage : ContentPage, IQueryAttributable
 
     protected override void OnDisappearing()
     {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
         StopOfflineSpeech();
         _audioTimer.Stop();
         _listenMeter.StopAndFlushFireAndForget();
         AudioPlayer?.Stop();
         base.OnDisappearing();
+    }
+
+    void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            ApplyLocalizedTexts();
+            if (_currentDetail != null)
+            {
+                PlaceAddress.Text = $"{LocalizationService.T("Address")}: {ResolveAddress(_currentDetail.Address, _currentDetail.Description)}";
+                PlacePhone.Text = $"{LocalizationService.T("PoiPhone")}: {(string.IsNullOrWhiteSpace(_currentDetail.Phone) ? "—" : _currentDetail.Phone.Trim())}";
+                PlaceHours.Text = $"{LocalizationService.T("PoiOpenHours")}: {(string.IsNullOrWhiteSpace(_currentDetail.OpeningHours) ? "—" : _currentDetail.OpeningHours.Trim())}";
+            }
+        });
+    }
+
+    void ApplyLocalizedTexts()
+    {
+        if (_currentDetail == null)
+            HeaderTitle.Text = LocalizationService.T("PoiHeaderDetails");
+        FoodsHeaderLabel.Text = LocalizationService.T("PoiFoods");
+        AudioSectionLabel.Text = LocalizationService.T("PoiAudio");
+        PlayButton.Text = LocalizationService.T("Play");
+        PauseButton.Text = LocalizationService.T("Pause");
+        NavigateButton.Text = LocalizationService.T("PoiNavigate");
     }
 
     private void OnAudioProgressSliderValueChanged(object? sender, ValueChangedEventArgs e)

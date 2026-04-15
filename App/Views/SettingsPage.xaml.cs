@@ -1,13 +1,13 @@
 using Microsoft.Maui.Storage;
 using System.Collections.Generic;
 using System.Globalization;
+using App.Services;
 
 namespace App.Views;
 
 public partial class SettingsPage : ContentPage
 {
     const string AutoAudioKey = "autoAudioEnabled";
-    const string LanguageKey = "appLanguage";
     readonly Dictionary<string, RadioButton> _languageButtons = new();
     readonly HashSet<string> _supportedLanguageCodes = new()
     {
@@ -27,13 +27,14 @@ public partial class SettingsPage : ContentPage
         _languageButtons["ko"] = LangKoRadio;
         _languageButtons["zh"] = LangZhRadio;
 
-        var savedLang = Preferences.Default.Get(LanguageKey, CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+        var savedLang = Preferences.Default.Get(LocalizationService.LanguageKey, CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
         if (!_supportedLanguageCodes.Contains(savedLang))
             savedLang = "vi";
 
         if (_languageButtons.TryGetValue(savedLang, out var selectedButton))
             selectedButton.IsChecked = true;
 
+        ApplyLocalizedTexts();
         _isInitializing = false;
     }
 
@@ -43,6 +44,19 @@ public partial class SettingsPage : ContentPage
         _isInitializing = true;
         AutoAudioSwitch.IsToggled = Preferences.Default.Get(AutoAudioKey, true);
         _isInitializing = false;
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        ApplyLocalizedTexts();
+    }
+
+    protected override void OnDisappearing()
+    {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
+        base.OnDisappearing();
+    }
+
+    void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(ApplyLocalizedTexts);
     }
 
     private void OnAutoAudioSwitchToggled(object? sender, ToggledEventArgs e)
@@ -55,14 +69,20 @@ public partial class SettingsPage : ContentPage
         if (_isInitializing || !e.Value || sender is not RadioButton radio || radio.Value is not string selectedCode)
             return;
 
-        Preferences.Default.Set(LanguageKey, selectedCode);
-        var culture = new CultureInfo(selectedCode);
-        CultureInfo.CurrentUICulture = culture;
-        CultureInfo.CurrentCulture = culture;
-        CultureInfo.DefaultThreadCurrentCulture = culture;
-        CultureInfo.DefaultThreadCurrentUICulture = culture;
+        LocalizationService.SetLanguage(selectedCode);
 
-        await DisplayAlertAsync("Đã lưu", "Ngôn ngữ đã được cập nhật cho dữ liệu hiển thị mới.", "OK");
+        await DisplayAlertAsync(LocalizationService.T("Saved"), LocalizationService.T("LanguageUpdated"), LocalizationService.T("Ok"));
     }
 
+    void ApplyLocalizedTexts()
+    {
+        SettingsTitleLabel.Text = LocalizationService.T("SettingsTitle");
+        SettingsSubtitleLabel.Text = LocalizationService.T("SettingsSubtitle");
+        AutoAudioTitleLabel.Text = LocalizationService.T("SettingsAutoAudioTitle");
+        AutoAudioDescLabel.Text = LocalizationService.T("SettingsAutoAudioDesc");
+        LanguageTitleLabel.Text = LocalizationService.T("SettingsLanguageTitle");
+        LanguageDescLabel.Text = LocalizationService.T("SettingsLanguageDesc");
+        SuggestHintTitleLabel.Text = LocalizationService.T("SettingsSuggestTitle");
+        SuggestHintDescLabel.Text = LocalizationService.T("SettingsSuggestDesc");
+    }
 }

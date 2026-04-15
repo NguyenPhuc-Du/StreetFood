@@ -8,7 +8,7 @@
 
     <Grid RowDefinitions="Auto,*,Auto" Padding="0,0,0,24">
         <VerticalStackLayout Grid.Row="0" Padding="24,52,24,16" Spacing="8">
-            <Label Text="Quét mã QR"
+            <Label x:Name="QrTitleLabel"
                    FontSize="26"
                    FontAttributes="Bold"
                    TextColor="White"
@@ -36,16 +36,15 @@
                     Padding="20"
                     IsVisible="False">
                 <VerticalStackLayout Spacing="14">
-                    <Label Text="Thiết bị không hỗ trợ camera quét (ví dụ Windows). Nhập nội dung mã thủ công."
+                    <Label x:Name="QrManualDescLabel"
                            FontSize="13"
                            TextColor="{StaticResource TextSecondary}"
                            LineBreakMode="WordWrap"/>
                     <Entry x:Name="ManualCodeEntry"
-                           Placeholder="Nhập mã / nội dung QR"
                            TextColor="{StaticResource TextPrimary}"
                            PlaceholderColor="{StaticResource TextMuted}"
                            BackgroundColor="{StaticResource Gray100}"/>
-                    <Button Text="Xác nhận"
+                    <Button x:Name="QrConfirmButton"
                             Clicked="OnManualConfirmClicked"
                             BackgroundColor="{StaticResource Primary}"
                             TextColor="White"

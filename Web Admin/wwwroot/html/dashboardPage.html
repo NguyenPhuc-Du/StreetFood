@@ -16,6 +16,14 @@
         .quick-links a { display: inline-flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--primary-blue); color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px; }
         .quick-links a.secondary { background: #eff6ff; color: var(--primary-blue); border: 1px solid #bfdbfe; }
         .quick-links a i { color: currentColor; display: inline-block; }
+        .analysis-section { margin: 0 28px 28px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+        .analysis-section h2 { font-size: 20px; margin: 0 0 8px; color: #0f172a; }
+        .analysis-subtitle { margin: 0 0 12px; color: var(--text-muted); font-size: 14px; }
+        .hourly-chart { height: 230px; display: grid; grid-template-columns: repeat(24, minmax(14px, 1fr)); align-items: end; gap: 8px; padding: 8px 4px 18px; border-bottom: 1px solid #e2e8f0; }
+        .hour-bar-group { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; }
+        .hour-bar { width: 100%; min-height: 4px; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, #3b82f6 0%, #1e3a8a 100%); }
+        .hour-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .hourly-empty { color: var(--text-muted); font-size: 14px; }
     </style>
 </head>
 <body>
@@ -60,23 +68,48 @@
                 <a href="createPoiOwnerPage.html" class="secondary"><i class="fa-solid fa-plus"></i> Tạo POI</a>
                 <a href="pendingScriptsPage.html" class="secondary"><i class="fa-solid fa-check-double"></i> Phê duyệt</a>
             </div>
+            <section class="analysis-section">
+                <h2>Phân tích người dùng</h2>
+                <div class="hourly-chart" id="userAnalysisChart"></div>
+            </section>
         </div>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/admin-api.js?v=20260415a"></script>
     <script src="/js/logout.js?v=20260406c"></script>
     <script>
         (async function () {
             const err = document.getElementById('dashErr');
+            const userAnalysisChartEl = document.getElementById('userAnalysisChart');
+            function hourLabel(hour) { return String(hour).padStart(2, '0') + ':00'; }
+            function renderHourlyChart(rows) {
+                const allRows = Array.from({ length: 24 }, (_, h) => {
+                    const found = (rows || []).find(r => (r.hourOfDay ?? r.HourOfDay) === h);
+                    return { hour: h, count: found ? (found.userCount ?? found.UserCount ?? 0) : 0 };
+                });
+                const maxCount = Math.max(...allRows.map(x => x.count), 1);
+                userAnalysisChartEl.innerHTML = allRows.map(x => {
+                    const height = Math.max(4, Math.round((x.count / maxCount) * 100));
+                    return '<div class="hour-bar-group" title="' + hourLabel(x.hour) + ': ' + x.count + ' khách">' +
+                        '<div class="hour-bar" style="height:' + height + '%"></div>' +
+                        '<span class="hour-label">' + String(x.hour).padStart(2, '0') + '</span>' +
+                        '</div>';
+                }).join('');
+            }
             try {
-                const d = await window.StreetFoodAdmin.getDashboardSummary();
+                const [d, rows] = await Promise.all([
+                    window.StreetFoodAdmin.getDashboardSummary(),
+                    window.StreetFoodAdmin.getUserAnalysisByVisitHour(30)
+                ]);
                 document.getElementById('sPoi').textContent = d.poiCount ?? d.PoiCount ?? '—';
                 document.getElementById('sVendor').textContent = d.vendorCount ?? d.VendorCount ?? '—';
                 document.getElementById('sPending').textContent = d.pendingScripts ?? d.PendingScripts ?? '—';
                 document.getElementById('sAudio').textContent = d.audioTracks ?? d.AudioTracks ?? '—';
                 document.getElementById('sLoc').textContent = d.locationSamples30d ?? d.LocationSamples30d ?? '—';
+                renderHourlyChart(rows || []);
             } catch (e) {
                 err.textContent = 'Không kết nối được máy chủ API. Hãy chạy StreetFoodAPI và thử lại (HTTPS Admin → API https://localhost:7236).';
+                userAnalysisChartEl.innerHTML = '<div class="hourly-empty">Không có dữ liệu.</div>';
             }
         })();
     </script>

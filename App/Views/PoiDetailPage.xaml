@@ -22,7 +22,6 @@
             </Border>
 
             <Label Grid.Column="1" x:Name="HeaderTitle"
-                   Text="Chi tiết"
                    FontAttributes="Bold"
                    HorizontalTextAlignment="Center"
                    VerticalTextAlignment="Center"
@@ -60,7 +59,7 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <Label Text="Các món ăn" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}"/>
+                <Label x:Name="FoodsHeaderLabel" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}"/>
 
                 <CollectionView ItemsSource="{Binding Foods}">
                     <CollectionView.ItemTemplate>
@@ -85,7 +84,7 @@
 
                 <Border StrokeShape="RoundRectangle 20" Padding="14" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}">
                     <VerticalStackLayout Spacing="10">
-                        <Label Text="Audio cửa hàng" FontAttributes="Bold" FontSize="17" TextColor="{StaticResource TextPrimary}"/>
+                        <Label x:Name="AudioSectionLabel" FontAttributes="Bold" FontSize="17" TextColor="{StaticResource TextPrimary}"/>
 
                         <toolkit:MediaElement x:Name="AudioPlayer"
                                                ShouldAutoPlay="False"
@@ -107,7 +106,7 @@
 
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                             <Button Grid.Column="0"
-                                    Text="Phát"
+                                    x:Name="PlayButton"
                                     BackgroundColor="{StaticResource Primary}"
                                     TextColor="White"
                                     CornerRadius="14"
@@ -115,7 +114,7 @@
                                     Padding="18,10"
                                     Clicked="OnPlayClicked"/>
                             <Button Grid.Column="1"
-                                    Text="Tạm dừng"
+                                    x:Name="PauseButton"
                                     BackgroundColor="{StaticResource Secondary}"
                                     TextColor="{StaticResource SecondaryDarkText}"
                                     CornerRadius="14"
@@ -127,7 +126,6 @@
                 </Border>
 
                 <Button x:Name="NavigateButton"
-                        Text="Đi đến quán"
                         BackgroundColor="{StaticResource Primary}"
                         TextColor="White"
                         FontAttributes="Bold"
