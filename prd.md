@@ -852,7 +852,18 @@ sequenceDiagram
 sequenceDiagram
     participant V as Vendor Web
     participant API as StreetFood API
-    participant DB as PostgreSQL
+    participant R2 as Cloudflare R2
+    U->>M: Chạm marker POI trên map
+    M->>API: GET /api/poi/{id}
+    API-->>M: Detail + AudioUrl
+    M-->>U: Hiện card POI
+    U->>M: Bấm Nghe giới thiệu
+    M->>R2: Stream AudioUrl
+    R2-->>M: Audio stream
+    M-->>U: Phát audio on-demand
+```
+
+### 12.9 FR-M09 - Timeline và seek audio
 
     V->>API: POST /api/vendor/shop/update-details
     API->>DB: UPDATE restaurant_details
@@ -863,7 +874,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant V as Vendor Web
+    participant A as Admin Web
     participant API as StreetFood API
     participant DB as PostgreSQL
 
@@ -907,7 +918,15 @@ sequenceDiagram
 sequenceDiagram
     participant A as Admin Web
     participant API as StreetFood API
+    participant T as Azure Translator
     participant DB as PostgreSQL
+    A->>API: Submit script ngôn ngữ nguồn
+    API->>T: Dịch sang en/zh/ja/ko
+    T-->>API: Bản dịch
+    API->>DB: Upsert POI_Translations
+    DB-->>API: Saved
+    API-->>A: 200 + translations
+```
 
     A->>API: GET /api/admin/owners
     API-->>A: Danh sách vendor
@@ -1180,7 +1199,14 @@ flowchart TD
     R2 -- Reject --> R4[Cập nhật status reject]
 ```
 
+### 13.20 FR-V02 - Request thay đổi audio script
 
+```mermaid
+flowchart TD
+    A[Vendor gửi request audio] --> B[Lưu trạng thái pending]
+    B --> C[Thông báo đã ghi nhận request]
+    C --> D[Vendor theo dõi trạng thái]
+```
 
 ---
 
