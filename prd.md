@@ -852,11 +852,16 @@ sequenceDiagram
 sequenceDiagram
     participant V as Vendor Web
     participant API as StreetFood API
+    participant R2 as Cloudflare R2
     participant DB as PostgreSQL
 
     V->>API: POST /api/vendor/shop/update-details
+    opt Có upload ảnh/logo
+        API->>R2: Lưu media
+        R2-->>API: URL
+    end
     API->>DB: UPDATE restaurant_details
-    API-->>V: Updated
+    API-->>V: Cập nhật thành công
 ```
 
 ### 12.10 Sequence - UC-V03 Quản lý món ăn
@@ -910,9 +915,12 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     A->>API: GET /api/admin/owners
+    API->>DB: Query users (role=vendor)
+    DB-->>API: Danh sách vendor
     API-->>A: Danh sách vendor
     A->>API: POST /api/admin/owners/{id}/hide|unhide
-    API->>DB: Update users.ishidden
+    API->>DB: UPDATE users.ishidden
+    API-->>A: Thành công
 ```
 
 ### 12.14 Sequence - UC-A03 Phân tích người dùng
@@ -1180,7 +1188,14 @@ flowchart TD
     R2 -- Reject --> R4[Cập nhật status reject]
 ```
 
+### 13.20 FR-V02 - Request thay đổi audio script
 
+```mermaid
+flowchart TD
+    A[Vendor gửi request audio] --> B[Lưu trạng thái pending]
+    B --> C[Thông báo đã ghi nhận request]
+    C --> D[Vendor theo dõi trạng thái]
+```
 
 ---
 
