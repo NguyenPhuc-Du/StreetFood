@@ -853,28 +853,22 @@ sequenceDiagram
     participant V as Vendor Web
     participant API as StreetFood API
     participant R2 as Cloudflare R2
-    U->>M: Chạm marker POI trên map
-    M->>API: GET /api/poi/{id}
-    API-->>M: Detail + AudioUrl
-    M-->>U: Hiện card POI
-    U->>M: Bấm Nghe giới thiệu
-    M->>R2: Stream AudioUrl
-    R2-->>M: Audio stream
-    M-->>U: Phát audio on-demand
-```
-
-### 12.9 FR-M09 - Timeline và seek audio
+    participant DB as PostgreSQL
 
     V->>API: POST /api/vendor/shop/update-details
+    opt Có upload ảnh/logo
+        API->>R2: Lưu media
+        R2-->>API: URL
+    end
     API->>DB: UPDATE restaurant_details
-    API-->>V: Updated
+    API-->>V: Cập nhật thành công
 ```
 
 ### 12.10 Sequence - UC-V03 Quản lý món ăn
 
 ```mermaid
 sequenceDiagram
-    participant A as Admin Web
+    participant V as Vendor Web
     participant API as StreetFood API
     participant DB as PostgreSQL
 
@@ -918,20 +912,15 @@ sequenceDiagram
 sequenceDiagram
     participant A as Admin Web
     participant API as StreetFood API
-    participant T as Azure Translator
     participant DB as PostgreSQL
-    A->>API: Submit script ngôn ngữ nguồn
-    API->>T: Dịch sang en/zh/ja/ko
-    T-->>API: Bản dịch
-    API->>DB: Upsert POI_Translations
-    DB-->>API: Saved
-    API-->>A: 200 + translations
-```
 
     A->>API: GET /api/admin/owners
+    API->>DB: Query users (role=vendor)
+    DB-->>API: Danh sách vendor
     API-->>A: Danh sách vendor
     A->>API: POST /api/admin/owners/{id}/hide|unhide
-    API->>DB: Update users.ishidden
+    API->>DB: UPDATE users.ishidden
+    API-->>A: Thành công
 ```
 
 ### 12.14 Sequence - UC-A03 Phân tích người dùng

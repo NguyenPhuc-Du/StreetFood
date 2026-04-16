@@ -24,7 +24,9 @@ public class PoiController : ControllerBase
             return "vi";
         var raw = acceptLang.Split(',')[0].Trim().ToLowerInvariant();
         if (raw.Length < 2) return "vi";
-        return raw[..2];
+        var code = raw[..2];
+        if (code == "zh") return "cn";
+        return code;
     }
 
     [HttpGet]
@@ -50,7 +52,10 @@ public class PoiController : ControllerBase
             INNER JOIN POI_Translations t ON p.Id = t.PoiId
             LEFT JOIN Restaurant_Details d ON p.Id = d.PoiId
             LEFT JOIN Restaurant_Audio a ON p.Id = a.PoiId AND a.LanguageCode = @Lang
-            WHERE t.LanguageCode = @Lang";
+            LEFT JOIN Restaurant_Owners o ON p.Id = o.PoiId
+            LEFT JOIN Users u ON o.UserId = u.Id
+            WHERE t.LanguageCode = @Lang
+              AND (u.Id IS NULL OR COALESCE(u.IsHidden, FALSE) = FALSE)";
 
             var list = (await conn.QueryAsync<PoiDto>(sql, new { Lang = lang })).ToList();
 
@@ -83,7 +88,10 @@ public class PoiController : ControllerBase
                 INNER JOIN POI_Translations t ON p.Id = t.PoiId
                 LEFT JOIN Restaurant_Details d ON p.Id = d.PoiId
                 LEFT JOIN Restaurant_Audio a ON p.Id = a.PoiId AND a.LanguageCode = @Lang
-                WHERE p.Id = @PoiId AND t.LanguageCode = @Lang";
+                LEFT JOIN Restaurant_Owners o ON p.Id = o.PoiId
+                LEFT JOIN Users u ON o.UserId = u.Id
+                WHERE p.Id = @PoiId AND t.LanguageCode = @Lang
+                  AND (u.Id IS NULL OR COALESCE(u.IsHidden, FALSE) = FALSE)";
 
             var detail = (await conn.QueryAsync<PoiDetailDto>(detailSql, new { PoiId = id, Lang = lang })).FirstOrDefault();
 
@@ -367,12 +375,15 @@ public class PoiController : ControllerBase
                 INNER JOIN poi_translations t ON p.id = t.poiid AND t.languagecode = @Lang
                 LEFT JOIN restaurant_details d ON p.id = d.poiid
                 LEFT JOIN restaurant_audio a ON p.id = a.poiid AND a.languagecode = @Lang
+                LEFT JOIN restaurant_owners o ON p.id = o.poiid
+                LEFT JOIN users u ON o.userid = u.id
                 LEFT JOIN (
                     SELECT poiid, COUNT(*)::int AS cnt
                     FROM device_visits
                     WHERE entertime > NOW() - (CAST(@Days AS integer) * INTERVAL '1 day')
                     GROUP BY poiid
                 ) v ON p.id = v.poiid
+                WHERE (u.id IS NULL OR COALESCE(u.ishidden, FALSE) = FALSE)
                 ORDER BY COALESCE(v.cnt, 0) DESC, p.id
                 LIMIT @Top";
 
