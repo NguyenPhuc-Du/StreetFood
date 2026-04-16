@@ -17,22 +17,7 @@ public static class ActivationService
         return DateTime.UtcNow < exp;
     }
 
-    public static DateTime? GetExpiryUtc()
-    {
-        var s = Preferences.Default.Get(ExpiryUtcKey, string.Empty);
-        if (!DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var exp))
-            return null;
-        return exp;
-    }
-
-    public static string? GetPlanLabel()
-    {
-        var v = Preferences.Default.Get(PlanKey, string.Empty);
-        return string.IsNullOrEmpty(v) ? null : v;
-    }
-
-    /// <summary>Đồng bộ hạn kích hoạt từ server sau login hoặc activate-app.</summary>
-    public static void ApplyServerUtc(DateTime expiresUtc, string? planLabel)
+    static void ApplyServerUtc(DateTime expiresUtc, string? planLabel)
     {
         Preferences.Default.Set(ExpiryUtcKey, expiresUtc.ToString("o", CultureInfo.InvariantCulture));
         if (!string.IsNullOrEmpty(planLabel))
@@ -53,12 +38,6 @@ public static class ActivationService
         var exp = DateTime.UtcNow.AddDays(days);
         var label = QrAccess.ResolveDisplayLabel(payload);
         ApplyServerUtc(exp, label);
-    }
-
-    public static void Clear()
-    {
-        Preferences.Default.Remove(ExpiryUtcKey);
-        Preferences.Default.Remove(PlanKey);
     }
 
     /// <summary>Mã cố định mỗi lần cài app; dùng hỗ trợ / đối chiếu khi có API server.</summary>
