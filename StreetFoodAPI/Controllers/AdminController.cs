@@ -85,6 +85,32 @@ public class AdminController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Ước lượng số thiết bị đang dùng app: distinct deviceId có ít nhất một location_log trong cửa sổ thời gian (mặc định 2 phút).
+    /// Không phải số người thật 1–1 (một người = một thiết bị); nếu app tắt vị trí thì không đếm được.
+    /// </summary>
+    [HttpGet("analytics/online-now")]
+    public async Task<IActionResult> GetOnlineNow([FromQuery] int minutes = 2)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        minutes = Math.Clamp(minutes, 1, 120);
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var count = await conn.ExecuteScalarAsync<long>(@"
+                SELECT COUNT(DISTINCT NULLIF(TRIM(deviceid), ''))::bigint
+                FROM location_logs
+                WHERE createdat > NOW() - (CAST(@Minutes AS integer) * INTERVAL '1 minute')",
+                new { Minutes = minutes });
+            return Ok(new OnlineNowDto(count, minutes));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "online-now");
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpPost("poi/{poiId:int}/regenerate-audio")]
     public async Task<IActionResult> RegenerateAudio([FromRoute] int poiId)
     {
