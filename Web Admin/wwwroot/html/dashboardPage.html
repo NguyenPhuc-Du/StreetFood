@@ -112,7 +112,7 @@
                 document.getElementById('sOnline').textContent = online?.uniqueDeviceCount ?? online?.UniqueDeviceCount ?? '—';
                 renderHourlyChart(rows || []);
             } catch (e) {
-                err.textContent = 'Không kết nối được máy chủ API. Hãy chạy StreetFoodAPI và thử lại (HTTPS Admin → API https://localhost:7236).';
+                err.textContent = 'Không kết nối được máy chủ API tại ' + (window.StreetFoodAdmin?.baseUrl || '(chưa cấu hình)') + '. Hãy kiểm tra StreetFoodAPI và ngrok.';
                 userAnalysisChartEl.innerHTML = '<div class="hourly-empty">Không có dữ liệu.</div>';
             }
         })();

@@ -4,6 +4,7 @@
 
     async function adminFetch(path, options = {}) {
         const headers = new Headers(options.headers || {});
+        headers.set('ngrok-skip-browser-warning', 'true');
         if (key) headers.set('X-Admin-Key', key);
         if (!headers.has('Content-Type') && options.body && typeof options.body === 'string')
             headers.set('Content-Type', 'application/json');
