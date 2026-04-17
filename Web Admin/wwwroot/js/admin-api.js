@@ -39,6 +39,7 @@
         hideOwner: (userId) => adminFetch('/api/admin/owners/' + userId + '/hide', { method: 'POST' }),
         unhideOwner: (userId) => adminFetch('/api/admin/owners/' + userId + '/unhide', { method: 'POST' }),
         getDashboardSummary: () => adminFetch('/api/admin/dashboard/summary'),
+        getOnlineNow: (minutes) => adminFetch('/api/admin/analytics/online-now?minutes=' + encodeURIComponent(minutes == null ? 2 : minutes)),
         regenerateAudio: (poiId) => adminFetch('/api/admin/poi/' + poiId + '/regenerate-audio', { method: 'POST' })
     };
 })();

@@ -87,3 +87,6 @@ public record PoiAudioListenStatsDto(
 public record HourlyActiveUsersDto(
     int HourOfDay,
     long UserCount);
+
+/// <summary>Ước lượng thiết bị đang mở app: distinct deviceId có location_log trong cửa sổ phút gần đây.</summary>
+public record OnlineNowDto(long UniqueDeviceCount, int WindowMinutes);

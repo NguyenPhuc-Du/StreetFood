@@ -61,6 +61,7 @@
                 <div class="stat-card"><div class="label">Script chờ xử lý</div><div class="value" id="sPending">—</div><div class="sub">Cần phê duyệt</div></div>
                 <div class="stat-card"><div class="label">Bản ghi âm</div><div class="value" id="sAudio">—</div><div class="sub">Đã tạo cho ứng dụng</div></div>
                 <div class="stat-card"><div class="label">Hoạt động vị trí</div><div class="value" id="sLoc">—</div><div class="sub">30 ngày gần nhất</div></div>
+                <div class="stat-card"><div class="label">Ước lượng đang dùng app</div><div class="value" id="sOnline">—</div></div>
             </div>
             <div class="quick-links">
                 <a href="routeHeatmapPage.html"><i class="fa-solid fa-map"></i> Heatmap & tuyến</a>
@@ -75,7 +76,7 @@
         </div>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js?v=20260415a"></script>
+    <script src="/js/admin-api.js?v=20260417a"></script>
     <script src="/js/logout.js?v=20260406c"></script>
     <script>
         (async function () {
@@ -96,16 +97,19 @@
                         '</div>';
                 }).join('');
             }
+            const onlineMinutes = 2;
             try {
-                const [d, rows] = await Promise.all([
+                const [d, rows, online] = await Promise.all([
                     window.StreetFoodAdmin.getDashboardSummary(),
-                    window.StreetFoodAdmin.getUserAnalysisByVisitHour(30)
+                    window.StreetFoodAdmin.getUserAnalysisByVisitHour(30),
+                    window.StreetFoodAdmin.getOnlineNow(onlineMinutes)
                 ]);
                 document.getElementById('sPoi').textContent = d.poiCount ?? d.PoiCount ?? '—';
                 document.getElementById('sVendor').textContent = d.vendorCount ?? d.VendorCount ?? '—';
                 document.getElementById('sPending').textContent = d.pendingScripts ?? d.PendingScripts ?? '—';
                 document.getElementById('sAudio').textContent = d.audioTracks ?? d.AudioTracks ?? '—';
                 document.getElementById('sLoc').textContent = d.locationSamples30d ?? d.LocationSamples30d ?? '—';
+                document.getElementById('sOnline').textContent = online?.uniqueDeviceCount ?? online?.UniqueDeviceCount ?? '—';
                 renderHourlyChart(rows || []);
             } catch (e) {
                 err.textContent = 'Không kết nối được máy chủ API. Hãy chạy StreetFoodAPI và thử lại (HTTPS Admin → API https://localhost:7236).';
