@@ -44,7 +44,7 @@ public sealed class PremiumService
                     AND to_regclass('public.vendor_payment_orders') IS NOT NULL;", cancellationToken: cancellationToken));
             if (!ready)
                 throw new InvalidOperationException(
-                    "Thiếu bảng premium/payment. Hãy bật Database:ApplySqlScriptsOnStartup=true và chạy migration V5__premium_momo_schema.sql.");
+                    "Thiếu bảng premium/payment. Hãy bật Database:ApplySqlScriptsOnStartup=true và chạy lại bộ migration từ đầu.");
             Interlocked.Exchange(ref _schemaReady, 1);
         }
         catch (Exception ex)
@@ -66,11 +66,20 @@ public sealed class PremiumService
 
         var row = await conn.QueryFirstOrDefaultAsync<PremiumStatusRow>(new CommandDefinition(@"
             SELECT
-                COALESCE(p.is_premium, FALSE) AS IsPremium,
-                COALESCE(ps.plan_name, CASE WHEN COALESCE(p.is_premium, FALSE) THEN 'premium' ELSE 'thuong' END) AS PlanName,
-                COALESCE(p.premium_end_at, ps.end_at) AS EndsAtUtc
+                COALESCE((ps.status = 'active' AND ps.end_at > NOW()), FALSE) AS IsPremium,
+                CASE
+                    WHEN COALESCE((ps.status = 'active' AND ps.end_at > NOW()), FALSE) THEN COALESCE(ps.plan_name, 'premium')
+                    ELSE 'thuong'
+                END AS PlanName,
+                ps.end_at AS EndsAtUtc
             FROM pois p
-            LEFT JOIN poi_premium_subscriptions ps ON ps.poi_id = p.id
+            LEFT JOIN LATERAL (
+                SELECT plan_name, status, end_at
+                FROM poi_premium_subscriptions
+                WHERE poi_id = p.id
+                ORDER BY end_at DESC NULLS LAST
+                LIMIT 1
+            ) ps ON TRUE
             WHERE p.id = @PoiId
             LIMIT 1",
             new { PoiId = poiId },

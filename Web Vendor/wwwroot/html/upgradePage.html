@@ -6,19 +6,6 @@
     <title>Nâng cấp Premium</title>
     <link rel="stylesheet" href="/css/vendorPro.css?v=20260403b">
     <style>
-        .premium-badge {
-            position: fixed;
-            top: 14px;
-            right: 16px;
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: #fff;
-            font-weight: 800;
-            border-radius: 999px;
-            padding: 8px 14px;
-            box-shadow: 0 8px 18px rgba(245, 158, 11, .35);
-            z-index: 20;
-            display: none;
-        }
         .hero-card {
             background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
             border: 1px solid #e6edf7;
@@ -73,7 +60,6 @@
     </style>
 </head>
 <body>
-    <div id="premiumBadge" class="premium-badge">PREMIUM</div>
     <div class="layout">
         <aside class="sidebar">
             <div class="brand">
@@ -131,7 +117,6 @@
         (async function () {
             const msg = document.getElementById('msg');
             const btnPay = document.getElementById('btnPay');
-            const badge = document.getElementById('premiumBadge');
             const planStandard = document.getElementById('planStandard');
             const planPremium = document.getElementById('planPremium');
             let poiId = 0;
@@ -148,13 +133,11 @@
 
             function setStatus(st) {
                 if (st && st.isPremium) {
-                    badge.style.display = 'inline-block';
                     planPremium.classList.add('highlight');
                     planStandard.style.opacity = '.75';
                     btnPay.disabled = true;
                     btnPay.textContent = 'Đã là Premium';
                 } else {
-                    badge.style.display = 'none';
                     planPremium.classList.add('highlight');
                     planStandard.style.opacity = '1';
                     btnPay.disabled = false;
@@ -175,8 +158,8 @@
                 btnPay.disabled = true;
                 clearError();
                 try {
-                    const returnUrl = window.location.origin + window.location.pathname;
-                    const rs = await window.VendorAPI.createPremiumPayment(poiId, returnUrl);
+                    // Let backend decide a safe redirect URL (/payment/return) to avoid stale FE overrides.
+                    const rs = await window.VendorAPI.createPremiumPayment(poiId, '');
                     if (rs?.alreadyPremium) {
                         setStatus({ isPremium: true, premiumEndsAtUtc: rs.premiumEndsAtUtc });
                         return;

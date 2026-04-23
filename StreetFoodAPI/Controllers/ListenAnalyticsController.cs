@@ -1,7 +1,6 @@
-using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 using StreetFood.API.Models;
+using StreetFood.API.Services;
 
 namespace StreetFood.API.Controllers;
 
@@ -9,14 +8,15 @@ namespace StreetFood.API.Controllers;
 [Route("api/analytics")]
 public class ListenAnalyticsController : ControllerBase
 {
-    private readonly string _connStr;
     private readonly ILogger<ListenAnalyticsController> _logger;
-    private static readonly TimeSpan ListenDuplicateWindow = TimeSpan.FromSeconds(15);
+    private readonly ListenEventQueueService _queue;
 
-    public ListenAnalyticsController(IConfiguration config, ILogger<ListenAnalyticsController> logger)
+    public ListenAnalyticsController(
+        ILogger<ListenAnalyticsController> logger,
+        ListenEventQueueService queue)
     {
-        _connStr = config.GetConnectionString("DefaultConnection") ?? "";
         _logger = logger;
+        _queue = queue;
     }
 
     /// <summary>App mobile gửi sau mỗi phiên nghe (tổng giây thực tế đang phát stream).</summary>
@@ -30,41 +30,16 @@ public class ListenAnalyticsController : ControllerBase
 
         try
         {
-            await using var conn = new NpgsqlConnection(_connStr);
-            var exists = await conn.ExecuteScalarAsync<bool>(
-                "SELECT EXISTS(SELECT 1 FROM pois WHERE id = @Id)",
-                new { Id = body.PoiId });
-            if (!exists)
-                return BadRequest("POI không tồn tại.");
-
             var dev = body.DeviceId?.Trim();
             if (!string.IsNullOrEmpty(dev) && dev.Length > 64)
                 dev = dev[..64];
 
-            // De-duplicate retries from unstable networks: same device + poi + duration in a short window.
-            if (!string.IsNullOrEmpty(dev))
-            {
-                var latest = await conn.QueryFirstOrDefaultAsync<(int Duration, DateTime CreatedAt)?>(@"
-                    SELECT duration_seconds AS Duration, created_at AS CreatedAt
-                    FROM poi_audio_listen_events
-                    WHERE poi_id = @PoiId AND device_id = @Dev
-                    ORDER BY created_at DESC
-                    LIMIT 1",
-                    new { PoiId = body.PoiId, Dev = dev });
+            if (_queue.IsDuplicate(body.PoiId, body.DurationSeconds, dev))
+                return Ok(new { accepted = false, reason = "duplicate_window_15s" });
 
-                if (latest.HasValue
-                    && Math.Abs(latest.Value.Duration - body.DurationSeconds) <= 2
-                    && (DateTime.UtcNow - latest.Value.CreatedAt.ToUniversalTime()) < ListenDuplicateWindow)
-                {
-                    return Ok(new { accepted = false, reason = "duplicate_window_15s" });
-                }
-            }
-
-            await conn.ExecuteAsync(@"
-                INSERT INTO poi_audio_listen_events (poi_id, duration_seconds, device_id)
-                VALUES (@PoiId, @Sec, @Dev)",
-                new { PoiId = body.PoiId, Sec = body.DurationSeconds, Dev = string.IsNullOrEmpty(dev) ? null : dev });
-
+            await _queue.EnqueueAsync(
+                new ListenEventQueueItem(body.PoiId, body.DurationSeconds, string.IsNullOrWhiteSpace(dev) ? null : dev),
+                HttpContext.RequestAborted);
             return Ok(new { accepted = true });
         }
         catch (Exception ex)

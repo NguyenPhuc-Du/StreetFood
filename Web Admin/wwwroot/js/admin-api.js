@@ -40,7 +40,7 @@
         hideOwner: (userId) => adminFetch('/api/admin/owners/' + userId + '/hide', { method: 'POST' }),
         unhideOwner: (userId) => adminFetch('/api/admin/owners/' + userId + '/unhide', { method: 'POST' }),
         getDashboardSummary: () => adminFetch('/api/admin/dashboard/summary'),
-        getOnlineNow: (minutes) => adminFetch('/api/admin/analytics/online-now?minutes=' + encodeURIComponent(minutes == null ? 2 : minutes)),
+        getOnlineNow: (seconds) => adminFetch('/api/admin/analytics/online-now?seconds=' + encodeURIComponent(seconds == null ? 5 : seconds)),
         getOpsMetrics: () => adminFetch('/api/admin/ops/metrics'),
         getAudioJobQueue: () => adminFetch('/api/admin/ops/jobs/queue'),
         getRecentAudioJobs: (limit) => adminFetch('/api/admin/ops/jobs/recent?limit=' + encodeURIComponent(limit == null ? 20 : limit)),

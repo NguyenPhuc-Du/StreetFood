@@ -78,7 +78,7 @@
             <div class="card-panel">
                 <h3 class="section-title">POI chờ script từ vendor</h3>
                 <table class="data-table" id="tblAwait">
-                    <thead><tr><th>POI</th><th>Chủ quán</th><th>Trạng thái</th></tr></thead>
+                    <thead><tr><th>POI</th><th>Chủ quán</th><th>Trạng thái</th><th>Gói</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -194,7 +194,11 @@
                     if (s === 'pending_review') return 'badge-warn';
                     return 'badge-warn';
                 }
-                tbA.innerHTML = (awaiting || []).map(a => '<tr><td>' + escapeHtml(a.poiName) + '</td><td>' + escapeHtml(a.ownerUsername) + '</td><td><span class="badge ' + stateClass(a.state) + '">' + escapeHtml(stateLabel(a.state)) + '</span>' + (a.audioCount > 0 ? ' <span style="font-size:12px;color:var(--text-muted);">(' + a.audioCount + ')</span>' : '') + '</td></tr>').join('') || '<tr><td colspan="3">Không có bản ghi.</td></tr>';
+                tbA.innerHTML = (awaiting || []).map(a => {
+                    const isPremium = !!(a.isPremium ?? a.IsPremium);
+                    const plan = isPremium ? '<span class="badge badge-ok">Premium</span>' : '<span class="badge">Thường</span>';
+                    return '<tr><td>' + escapeHtml(a.poiName) + '</td><td>' + escapeHtml(a.ownerUsername) + '</td><td><span class="badge ' + stateClass(a.state) + '">' + escapeHtml(stateLabel(a.state)) + '</span>' + (a.audioCount > 0 ? ' <span style="font-size:12px;color:var(--text-muted);">(' + a.audioCount + ')</span>' : '') + '</td><td>' + plan + '</td></tr>';
+                }).join('') || '<tr><td colspan="4">Không có bản ghi.</td></tr>';
 
                 const tbP = document.querySelector('#tblPending tbody');
                 tbP.innerHTML = (pending || []).map(p => '<tr data-id="' + p.id + '"><td>' + p.id + '</td><td>' + escapeHtml(p.poiName) + '</td><td style="max-width:380px;white-space:normal;word-break:break-word;">' + formatPendingCell(p.newScript) + '</td><td>' + (p.createdAt ? new Date(p.createdAt).toLocaleString() : '') + '</td><td><button type="button" class="btn-primary btn-approve">Phê duyệt</button></td></tr>').join('') || '<tr><td colspan="5">Không có yêu cầu pending.</td></tr>';

@@ -57,11 +57,11 @@
             <div id="dashErr" class="err" style="margin:0 28px;"></div>
             <div class="stats-grid" id="stats">
                 <div class="stat-card"><div class="label">Điểm POI</div><div class="value" id="sPoi">—</div><div class="sub">Tổng số địa điểm</div></div>
+                <div class="stat-card"><div class="label">POI Premium</div><div class="value" id="sPremiumPoi">—</div><div class="sub">Đang hiệu lực</div></div>
                 <div class="stat-card"><div class="label">Chủ quán</div><div class="value" id="sVendor">—</div><div class="sub">Đang hoạt động</div></div>
                 <div class="stat-card"><div class="label">Script chờ xử lý</div><div class="value" id="sPending">—</div><div class="sub">Cần phê duyệt</div></div>
                 <div class="stat-card"><div class="label">Bản ghi âm</div><div class="value" id="sAudio">—</div><div class="sub">Đã tạo cho ứng dụng</div></div>
-                <div class="stat-card"><div class="label">Hoạt động vị trí</div><div class="value" id="sLoc">—</div><div class="sub">30 ngày gần nhất</div></div>
-                <div class="stat-card"><div class="label">Ước lượng đang dùng app</div><div class="value" id="sOnline">—</div></div>
+                <div class="stat-card"><div class="label">Số người đang dùng app</div><div class="value" id="sOnline">—</div></div>
             </div>
             <div class="quick-links">
                 <a href="routeHeatmapPage.html"><i class="fa-solid fa-map"></i> Heatmap & tuyến</a>
@@ -82,6 +82,7 @@
         (async function () {
             const err = document.getElementById('dashErr');
             const userAnalysisChartEl = document.getElementById('userAnalysisChart');
+            const sOnlineEl = document.getElementById('sOnline');
             function hourLabel(hour) { return String(hour).padStart(2, '0') + ':00'; }
             function renderHourlyChart(rows) {
                 const allRows = Array.from({ length: 24 }, (_, h) => {
@@ -97,21 +98,30 @@
                         '</div>';
                 }).join('');
             }
-            const onlineMinutes = 2;
+            const onlineSeconds = 5;
+            async function refreshOnlineNow() {
+                try {
+                    const online = await window.StreetFoodAdmin.getOnlineNow(onlineSeconds);
+                    sOnlineEl.textContent = online?.uniqueDeviceCount ?? online?.UniqueDeviceCount ?? '—';
+                } catch (_) {
+                    sOnlineEl.textContent = '—';
+                }
+            }
+            setInterval(refreshOnlineNow, 5000);
             try {
                 const [d, rows, online] = await Promise.all([
                     window.StreetFoodAdmin.getDashboardSummary(),
                     window.StreetFoodAdmin.getUserAnalysisByVisitHour(30),
-                    window.StreetFoodAdmin.getOnlineNow(onlineMinutes)
+                    window.StreetFoodAdmin.getOnlineNow(onlineSeconds)
                 ]);
                 document.getElementById('sPoi').textContent = d.poiCount ?? d.PoiCount ?? '—';
+                document.getElementById('sPremiumPoi').textContent = d.premiumPoiCount ?? d.PremiumPoiCount ?? '—';
                 document.getElementById('sVendor').textContent = d.vendorCount ?? d.VendorCount ?? '—';
                 document.getElementById('sPending').textContent = d.pendingScripts ?? d.PendingScripts ?? '—';
                 document.getElementById('sAudio').textContent = d.audioTracks ?? d.AudioTracks ?? '—';
-                document.getElementById('sLoc').textContent = d.locationSamples30d ?? d.LocationSamples30d ?? '—';
-                document.getElementById('sOnline').textContent = online?.uniqueDeviceCount ?? online?.UniqueDeviceCount ?? '—';
+                sOnlineEl.textContent = online?.uniqueDeviceCount ?? online?.UniqueDeviceCount ?? '—';
                 renderHourlyChart(rows || []);
-
+                err.textContent = '';
             } catch (e) {
                 err.textContent = 'Không kết nối được máy chủ API tại ' + (window.StreetFoodAdmin?.baseUrl || '(chưa cấu hình)') + '. Hãy kiểm tra StreetFoodAPI và ngrok.';
                 userAnalysisChartEl.innerHTML = '<div class="hourly-empty">Không có dữ liệu.</div>';

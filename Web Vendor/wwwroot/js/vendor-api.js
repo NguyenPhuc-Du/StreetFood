@@ -237,6 +237,23 @@
         }
     }
 
+    async function getPremiumStatus(poiId) {
+        const creds = getCreds();
+        return await vendorFetch('/api/vendor/premium/status', {
+            ...creds,
+            PoiId: Number(poiId)
+        });
+    }
+
+    async function createPremiumPayment(poiId, returnUrl) {
+        const creds = getCreds();
+        return await vendorFetch('/api/vendor/premium/create-payment', {
+            ...creds,
+            PoiId: Number(poiId),
+            ReturnUrl: returnUrl || ''
+        });
+    }
+
     window.VendorAPI = {
         currentPoiId: null,
         listPois,
@@ -249,7 +266,9 @@
         deleteFood,
         restoreFood,
         submitScript,
-        submitAudioBundle
+        submitAudioBundle,
+        getPremiumStatus,
+        createPremiumPayment
     };
 })();
 
