@@ -6,7 +6,7 @@ using StreetFood.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. ĐĂNG KÝ SERVICES (DI Container) ---
+// --- 1. ÄÄ‚NG KÃ SERVICES (DI Container) ---
 
 builder.Services.AddControllers();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
@@ -20,16 +20,17 @@ builder.Services.AddScoped<R2StorageService>();
 builder.Services.Configure<AudioPipelineOptions>(builder.Configuration.GetSection(AudioPipelineOptions.SectionName));
 builder.Services.AddSingleton<AudioPipelineJobStore>();
 builder.Services.AddHostedService<AudioPipelineJobWorker>();
+builder.Services.AddSingleton<PoiIngressQueueService>();
 
-// Cấu hình Database (PostgreSQL)
+// Cáº¥u hÃ¬nh Database (PostgreSQL)
 builder.Services.AddDbContext<StreetFoodDBContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Cấu hình Swagger/OpenAPI (Để có giao diện test tại /swagger)
+// Cáº¥u hÃ¬nh Swagger/OpenAPI (Äá»ƒ cÃ³ giao diá»‡n test táº¡i /swagger)
 builder.Services.AddEndpointsApiExplorer();
 
 
-// Cấu hình Session
+// Cáº¥u hÃ¬nh Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -38,7 +39,7 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// CORS: development cho phép mọi localhost (tránh lệch cổng HTTPS/HTTP)
+// CORS: development cho phÃ©p má»i localhost (trÃ¡nh lá»‡ch cá»•ng HTTPS/HTTP)
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -69,12 +70,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// --- 2. CẤU HÌNH PIPELINE (Middleware) ---
+// --- 2. Cáº¤U HÃŒNH PIPELINE (Middleware) ---
 
-// Kích hoạt giao diện Swagger khi chạy ở môi trường Development
+// KÃ­ch hoáº¡t giao diá»‡n Swagger khi cháº¡y á»Ÿ mÃ´i trÆ°á»ng Development
 
 
-// App MAUI gọi http://IP-LAN:5191 — redirect HTTPS thường đẩy sang cổng 443 và làm lỗi kết nối trên điện thoại.
+// App MAUI gá»i http://IP-LAN:5191 â€” redirect HTTPS thÆ°á»ng Ä‘áº©y sang cá»•ng 443 vÃ  lÃ m lá»—i káº¿t ná»‘i trÃªn Ä‘iá»‡n thoáº¡i.
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 app.UseDefaultFiles();
@@ -82,7 +83,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// THỨ TỰ QUAN TRỌNG: Cors -> Session -> Auth
+// THá»¨ Tá»° QUAN TRá»ŒNG: Cors -> Session -> Auth
 app.UseCors();
 app.UseSession();
 
@@ -94,7 +95,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapMetrics("/api/metrics");
 
-// Kiểm tra nhanh từ trình duyệt điện thoại: http://[IP-PC]:5191/api/health
+// Kiá»ƒm tra nhanh tá»« trÃ¬nh duyá»‡t Ä‘iá»‡n thoáº¡i: http://[IP-PC]:5191/api/health
 app.MapGet("/api/health", () => Results.Text("ok", "text/plain"));
 
 //if (app.Configuration.GetValue("Database:ApplySqlScriptsOnStartup", false))
@@ -102,7 +103,7 @@ app.MapGet("/api/health", () => Results.Text("ok", "text/plain"));
 //    using var scope = app.Services.CreateScope();
 //    var db = scope.ServiceProvider.GetRequiredService<StreetFoodDBContext>();
 //    await DbInitializer.InitializeAsync(db);
-//    Console.WriteLine("[StreetFood] Đã xử lý migration SQL (chỉ chạy file mới).");
+//    Console.WriteLine("[StreetFood] ÄÃ£ xá»­ lÃ½ migration SQL (chá»‰ cháº¡y file má»›i).");
 //}
 
 await app.RunAsync();

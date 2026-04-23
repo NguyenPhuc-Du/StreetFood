@@ -93,6 +93,7 @@ public class VendorScriptController : ControllerBase
         [FromForm] string? username,
         [FromForm] string? password,
         [FromForm] int poiId,
+        [FromForm] string? scriptText,
         IFormFile? audio_vi,
         IFormFile? audio_en,
         IFormFile? audio_cn,
@@ -190,7 +191,8 @@ public class VendorScriptController : ControllerBase
             var payload = JsonSerializer.Serialize(new
             {
                 type = "vendor_audio_bundle",
-                urls = urlsObj
+                urls = urlsObj,
+                scriptText = string.IsNullOrWhiteSpace(scriptText) ? null : scriptText.Trim()
             });
 
             await conn.ExecuteAsync(@"

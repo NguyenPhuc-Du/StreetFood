@@ -190,7 +190,7 @@
         });
     }
 
-    async function submitAudioBundle(poiId, files) {
+    async function submitAudioBundle(poiId, files, scriptText) {
         const creds = getCreds();
         if (typeof window.STREETFOOD_API !== 'string' || !window.STREETFOOD_API) {
             throw new Error('Thiếu cấu hình STREETFOOD_API.');
@@ -204,6 +204,9 @@
         fd.append('audio_cn', files.cn);
         fd.append('audio_ja', files.ja);
         fd.append('audio_ko', files.ko);
+        if (scriptText && String(scriptText).trim()) {
+            fd.append('scriptText', String(scriptText).trim());
+        }
 
         const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const timeoutMs = 120000;
@@ -249,4 +252,6 @@
         submitAudioBundle
     };
 })();
+
+
 

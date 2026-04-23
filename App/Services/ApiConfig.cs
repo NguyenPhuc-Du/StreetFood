@@ -8,9 +8,9 @@ public static class ApiConfig
     public const string EnvBaseUrlKey = "STREETFOOD_API_BASE_URL";
 
     /// <summary>
-    /// URL mặc định khi người dùng chưa lưu gì trong Cài đặt (Preferences).
-    /// Điện thoại thật: nên mở Cài đặt và nhập URL API (LAN, hoặc <c>https://…ngrok-free.app</c> khi tunnel).
-    /// Emulator Android: thường <c>http://10.0.2.2:5191</c> trỏ tới máy host.
+    /// URL mac dinh khi nguoi dung chua luu gi trong Cai dat (Preferences).
+    /// Local dev: dung localhost/LAN cua API.
+    /// Emulator Android: thuong <c>http://10.0.2.2:5191</c> tro toi may host.
     /// </summary>
     public const string EmbeddedDefaultBaseUrl = "https://flatly-creamer-bucket.ngrok-free.dev";
 

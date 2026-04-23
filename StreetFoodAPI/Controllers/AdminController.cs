@@ -27,6 +27,7 @@ public class AdminController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AdminController> _logger;
     private readonly AudioPipelineJobStore _audioJobs;
+    private readonly PoiIngressQueueService _poiIngressQueue;
 
     private static readonly string[] AllLangs = ["vi", "en", "cn", "ja", "ko"];
 
@@ -37,7 +38,8 @@ public class AdminController : ControllerBase
         R2StorageService r2,
         IHttpClientFactory httpClientFactory,
         ILogger<AdminController> logger,
-        AudioPipelineJobStore audioJobs)
+        AudioPipelineJobStore audioJobs,
+        PoiIngressQueueService poiIngressQueue)
     {
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
         _config = config;
@@ -47,6 +49,7 @@ public class AdminController : ControllerBase
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _audioJobs = audioJobs;
+        _poiIngressQueue = poiIngressQueue;
     }
 
     private bool UseAudioJobQueue() => _config.GetValue("AudioPipeline:Enabled", true) && _config.GetValue("AudioPipeline:UseQueue", true);
@@ -201,6 +204,22 @@ public class AdminController : ControllerBase
             _logger.LogError(ex, "ops/jobs/recent");
             return BadRequest(ex.Message);
         }
+    }
+
+    [HttpGet("ops/ingress-queue")]
+    public IActionResult GetPoiIngressQueueSettings()
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        return Ok(_poiIngressQueue.GetSettings());
+    }
+
+    [HttpPost("ops/ingress-queue")]
+    public IActionResult UpdatePoiIngressQueueSettings([FromBody] UpdatePoiIngressQueueRequest? body)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        body ??= new UpdatePoiIngressQueueRequest();
+        var settings = _poiIngressQueue.Update(body.Enabled, body.MinDelayMs, body.MaxDelayMs);
+        return Ok(settings);
     }
 
     [HttpGet("analytics/heatmap")]
@@ -762,8 +781,20 @@ public class AdminController : ControllerBase
             string langCode = req.LanguageCode ?? "vi";
             string script = req.NewScript ?? "";
 
-            if (TryParseVendorAudioBundle(script, out var bundleUrls))
+            if (TryParseVendorAudioBundle(script, out var bundleUrls, out var bundleScript))
             {
+                if (!string.IsNullOrWhiteSpace(bundleScript))
+                {
+                    var translatedBundle = await _translator.TranslateToLanguagesAsync(bundleScript.Trim(), "vi", AllLangs);
+                    foreach (var kv in translatedBundle)
+                    {
+                        await conn.ExecuteAsync(@"
+                            UPDATE POI_Translations SET Description = @Desc
+                            WHERE PoiId = @PoiId AND LanguageCode = @Lang",
+                            new { Desc = kv.Value, PoiId = poiId, Lang = kv.Key }, tx);
+                    }
+                }
+
                 foreach (var lang in AllLangs)
                 {
                     var url = bundleUrls![lang];
@@ -787,7 +818,9 @@ public class AdminController : ControllerBase
                 return Ok(new
                 {
                     poiId,
-                    message = "Đã phê duyệt gói âm thanh: cập nhật restaurant_audio (5 ngôn ngữ). Không chạy Azure TTS.",
+                    message = !string.IsNullOrWhiteSpace(bundleScript)
+                        ? "Đã phê duyệt gói âm thanh + cập nhật script đa ngôn ngữ từ nội dung vendor."
+                        : "Đã phê duyệt gói âm thanh: cập nhật restaurant_audio (5 ngôn ngữ). Không chạy Azure TTS.",
                     audio = new AudioGenerationResult(true, 5, "Gói file vendor — không dùng TTS.")
                 });
             }
@@ -856,9 +889,10 @@ public class AdminController : ControllerBase
     }
 
     // Kiểm tra xem script có phải là gói âm thanh do vendor cung cấp không, định dạng JSON đặc biệt với 5 URL cho 5 ngôn ngữ được gọi bởi hàm trên 
-    private static bool TryParseVendorAudioBundle(string? raw, out Dictionary<string, string>? urls)
+    private static bool TryParseVendorAudioBundle(string? raw, out Dictionary<string, string>? urls, out string? scriptText)
     {
         urls = null;
+        scriptText = null;
         if (string.IsNullOrWhiteSpace(raw)) return false;
         var t = raw.Trim();
         if (!t.StartsWith('{')) return false;
@@ -878,6 +912,13 @@ public class AdminController : ControllerBase
                 if (string.IsNullOrWhiteSpace(u))
                     return false;
                 dict[lang] = u.Trim();
+            }
+
+            if (root.TryGetProperty("scriptText", out var scriptEl))
+            {
+                var s = scriptEl.GetString();
+                if (!string.IsNullOrWhiteSpace(s))
+                    scriptText = s.Trim();
             }
 
             urls = dict;
