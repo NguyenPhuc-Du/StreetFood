@@ -24,6 +24,12 @@
         .hour-bar { width: 100%; min-height: 4px; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, #3b82f6 0%, #1e3a8a 100%); }
         .hour-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
         .hourly-empty { color: var(--text-muted); font-size: 14px; }
+        .ops-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; font-size: 14px; color: #0f172a; }
+        .ops-grid span.muted { color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+        .ops-list { max-height: 200px; overflow: auto; font-size: 13px; }
+        .ops-list table { width: 100%; border-collapse: collapse; }
+        .ops-list th, .ops-list td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        a.metrics-link { font-size: 13px; color: #2563eb; }
     </style>
 </head>
 <body>
@@ -69,6 +75,13 @@
                 <a href="createPoiOwnerPage.html" class="secondary"><i class="fa-solid fa-plus"></i> Tạo POI</a>
                 <a href="pendingScriptsPage.html" class="secondary"><i class="fa-solid fa-check-double"></i> Phê duyệt</a>
             </div>
+            <section class="analysis-section" id="opsSection">
+                <h2>Vận hành (24h)</h2>
+                <p class="analysis-subtitle" id="opsSub">Dữ liệu ingest, hàng đợi TTS, Prometheus.</p>
+                <div class="ops-grid" id="opsGrid"></div>
+                <p style="margin: 12px 0 0;"><a class="metrics-link" id="opsMetricsUrl" href="#" target="_blank" rel="noopener">Mở Prometheus <code>/api/metrics</code></a></p>
+                <div class="ops-list" id="opsJobsList"></div>
+            </section>
             <section class="analysis-section">
                 <h2>Phân tích người dùng</h2>
                 <div class="hourly-chart" id="userAnalysisChart"></div>
@@ -76,7 +89,7 @@
         </div>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js?v=20260417a"></script>
+    <script src="/js/admin-api.js?v=20260423a"></script>
     <script src="/js/logout.js?v=20260406c"></script>
     <script>
         (async function () {
@@ -98,11 +111,19 @@
                 }).join('');
             }
             const onlineMinutes = 2;
+            var baseUrl = (window.StreetFoodAdmin && window.StreetFoodAdmin.baseUrl) ? String(window.StreetFoodAdmin.baseUrl).replace(/\/$/, '') : '';
+            if (baseUrl) {
+                var ml = document.getElementById('opsMetricsUrl');
+                ml.href = baseUrl + '/api/metrics';
+            }
             try {
-                const [d, rows, online] = await Promise.all([
+                const [d, rows, online, m, q, rec] = await Promise.all([
                     window.StreetFoodAdmin.getDashboardSummary(),
                     window.StreetFoodAdmin.getUserAnalysisByVisitHour(30),
-                    window.StreetFoodAdmin.getOnlineNow(onlineMinutes)
+                    window.StreetFoodAdmin.getOnlineNow(onlineMinutes),
+                    window.StreetFoodAdmin.getOpsMetrics().catch(function () { return null; }),
+                    window.StreetFoodAdmin.getAudioJobQueue().catch(function () { return null; }),
+                    window.StreetFoodAdmin.getRecentAudioJobs(8).catch(function () { return []; })
                 ]);
                 document.getElementById('sPoi').textContent = d.poiCount ?? d.PoiCount ?? '—';
                 document.getElementById('sVendor').textContent = d.vendorCount ?? d.VendorCount ?? '—';
@@ -111,6 +132,37 @@
                 document.getElementById('sLoc').textContent = d.locationSamples30d ?? d.LocationSamples30d ?? '—';
                 document.getElementById('sOnline').textContent = online?.uniqueDeviceCount ?? online?.UniqueDeviceCount ?? '—';
                 renderHourlyChart(rows || []);
+
+                if (m || q) {
+                    var g = document.getElementById('opsGrid');
+                    var cells = [];
+                    if (m) {
+                        cells.push({ k: 'Location logs', v: m.locationLogs24h ?? m.LocationLogs24h });
+                        cells.push({ k: 'Movement', v: m.movementPaths24h ?? m.MovementPaths24h });
+                        cells.push({ k: 'Nghe audio', v: m.listenEvents24h ?? m.ListenEvents24h });
+                    }
+                    if (q) {
+                        cells.push({ k: 'Hàng TTS (pending)', v: q.pendingCount ?? q.PendingCount });
+                        cells.push({ k: 'TTS (processing)', v: q.processingCount ?? q.ProcessingCount });
+                        var age = q.oldestReadyWaitSeconds ?? q.OldestReadyWaitSeconds;
+                        if (age != null && !isNaN(age)) cells.push({ k: 'Chờ lâu nhất (s)', v: Math.round(age) });
+                    }
+                    g.innerHTML = cells.map(function (c) {
+                        return '<div><span class="muted">' + c.k + '</span> ' + c.v + '</div>';
+                    }).join('');
+
+                    var list = document.getElementById('opsJobsList');
+                    if (rec && rec.length) {
+                        var rows2 = rec.map(function (j) {
+                            return '<tr><td>' + (j.id ?? j.Id) + '</td><td>' + (j.status ?? j.Status) + '</td><td>' + (j.jobType ?? j.JobType) + '</td><td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (j.lastErrorPreview || j.last_error_preview || '') + '</td></tr>';
+                        }).join('');
+                        list.innerHTML = '<table><thead><tr><th>ID</th><th>Trạng thái</th><th>Loại</th><th>Lỗi (rút gọn)</th></tr></thead><tbody>' + rows2 + '</tbody></table>';
+                    } else {
+                        list.innerHTML = '<div class="hourly-empty">Chưa có job gần đây (hoặc cần quyền admin key).</div>';
+                    }
+                } else {
+                    document.getElementById('opsSub').textContent = 'Cần X-Admin-Key — không tải được vận hành (ops).';
+                }
             } catch (e) {
                 err.textContent = 'Không kết nối được máy chủ API tại ' + (window.StreetFoodAdmin?.baseUrl || '(chưa cấu hình)') + '. Hãy kiểm tra StreetFoodAPI và ngrok.';
                 userAnalysisChartEl.innerHTML = '<div class="hourly-empty">Không có dữ liệu.</div>';

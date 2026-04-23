@@ -3,8 +3,8 @@
 
 | Thuộc tính             | Giá trị                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Phiên bản tài liệu** | **2.3**                                                                                                                     |
-| **Ngày cập nhật**      | **2026-04-15**                                                                                                              |
+| **Phiên bản tài liệu** | **2.4**                                                                                                                     |
+| **Ngày cập nhật**      | **2026-04-17**                                                                                                              |
 | **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được)                                                                         |
 | **Mục đích**           | Mô tả yêu cầu sản phẩm; ghi nhận **tiến độ thực tế**, **phiên bản công nghệ**, **tham chiếu file** để nộp đồ án / bàn giao. |
 
@@ -562,6 +562,55 @@ erDiagram
 - **Độ tin cậy:** hệ thống hoạt động ổn định khi mạng chập chờn.
 - **Offline:** mobile có SQLite cache cho dữ liệu đọc.
 - **Khả dụng:** UX đơn giản, ít thao tác, phản hồi rõ khi lỗi mạng/quyền vị trí.
+
+### 10.1 Automation test (nhiều thiết bị)
+
+- **Mục tiêu:** đảm bảo tính đúng đắn khi nhiều thiết bị cùng hoạt động trên một cụm POI.
+- **Nhóm test bắt buộc:**
+  - **API contract test:** `auth`, `poi`, `analytics`, `vendor`, `admin` (status code, schema response, auth header).
+  - **Concurrency test:** nhiều request song song cho `visit/start`, `visit/end`, `poi/log`, `poi/movement`, `analytics/poi-audio-listen`.
+  - **E2E smoke:** login admin/vendor, tải dashboard, tải heatmap/paths, vendor gửi request script/audio. (Gợi ý k6: `tests/nfr/streetfood-smoke.js` — CI build API: workflow `.github/workflows/nfr-smoke.yml`.) 
+- **Kịch bản nhiều thiết bị mẫu (MVP):**
+  - 20-50 thiết bị giả lập gửi `POST /api/poi/log` theo chu kỳ 3-5 giây.
+  - 10-20 thiết bị đồng thời chuyển POI liên tiếp để tạo `movement_paths`.
+  - 10-20 thiết bị đồng thời gửi `visit/start` và `visit/end` để kiểm tra duration/session.
+- **Ngưỡng pass đề xuất:** lỗi 5xx < 1%, timeout < 2%, P95 endpoint đọc analytics < 800ms trong test tải trung bình.
+
+### 10.2 Xử lý trùng và quản lý hàng đợi (nhiều người cùng 1 POI)
+
+- **Idempotency/anti-duplicate:** server phải chống ghi trùng cho các event lặp nhanh từ cùng thiết bị. (Đã áp dụng cho `POST /api/analytics/poi-audio-listen`: cửa sổ 15s theo `deviceId` + `poiId` + `durationSeconds`.)
+  - `movement`: giữ quy tắc cooldown hiện có (không ghi trùng cùng cặp A->B trong cửa sổ ngắn).
+  - `visit/start`: chỉ cho 1 session mở tại 1 POI cho mỗi `deviceId`; gọi lặp trả `accepted=false` hoặc upsert.
+  - `visit/end`: nếu không có session mở thì trả `accepted=false`, không tạo bản ghi mới.
+  - `listen-event`: giới hạn tần suất gửi từ client (debounce/throttle), server loại bản ghi bất thường.
+- **Queue cho tác vụ nặng:** các tác vụ Translate/TTS/regenerate audio nên chạy bất đồng bộ qua hàng đợi nền (job queue) để tránh nghẽn request realtime. (Bảng `audio_pipeline_jobs`, API `GET /api/Admin/ops/jobs/queue` & `GET /api/Admin/ops/jobs/recent` — TTS từ phê duyệt / tạo POI: `tts_only`; tạo lại MP3: `full_regenerate`. Có `dead_letter` sau 5 lần thử lỗi + backoff; worker `IHostedService`. Tắt: `AudioPipeline:Enabled` hoặc `UseQueue: false` trong cấu hình.)
+  - Trạng thái job tối thiểu: `pending`, `processing`, `success`, `failed`, `retrying`, `dead_letter`.
+  - Có retry backoff và dead-letter cho job lỗi lặp.
+- **Ví dụ 1 POI có nhiều người dùng đồng thời:**
+  - Cho phép nhiều `deviceId` cùng tạo `visit/start` độc lập.
+  - Tính thống kê theo `deviceId` duy nhất khi cần (online-now, active users).
+  - Không để một thiết bị tạo nhiều session mở song song cùng POI.
+
+### 10.3 Monitoring & vận hành
+
+- **Logging chuẩn hóa:** mỗi request gắn `requestId`, `deviceId` (nếu có), endpoint, status code, latency ms.
+- **Metric tối thiểu:**
+  - Throughput theo endpoint (RPS) — bộ thu thập HTTP Prometheus: `GET /api/metrics` (OpenMetrics).
+  - Tỷ lệ lỗi `4xx/5xx`.
+  - P50/P95/P99 latency.
+  - DB connection pool usage + query timeout.
+  - Tỷ lệ thành công job Translate/TTS.
+- **Logging:** middleware `X-Request-Id` (phản hồi cùng header) + mỗi kết thúc request ghi log đạt `status`, thời gian ms, `X-Device-Id` nếu có.
+- **Dashboard vận hành đề xuất:**
+  - API health (`/api/health`) + uptime theo môi trường.
+  - Top endpoint lỗi theo 15m/1h.
+  - Heatmap ingest rate (`location_logs`/phút), movement ingest rate (`movement_paths`/phút).
+  - Queue depth và tuổi job lớn nhất cho pipeline audio.
+- **Alert tối thiểu:**
+  - 5xx > 5% trong 5 phút.
+  - P95 > 1.5s trong 10 phút.
+  - DB timeout tăng đột biến.
+  - Queue backlog vượt ngưỡng (ví dụ > 500 jobs pending > 10 phút).
 
 ---
 
@@ -1299,7 +1348,8 @@ flowchart LR
 
 ## 16. API overview (đã triển khai trong repo)
 
-Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm trong cột **Prefix** (ASP.NET Core `[Route]`).
+Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm trong cột **Prefix** (ASP.NET Core `[Route]`).  
+**Metrics Prometheus (không cần admin key):** `GET /api/metrics` (HTTP histogram + đếm, phục vụ cảnh báo/tải theo NFR).
 
 ### 16.1 Mobile & POI công khai (`PoiController` → `/api/Poi`)
 
@@ -1315,7 +1365,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 
 | Phương thức | Đường dẫn                         | Mô tả                                                                           |
 | ----------- | --------------------------------- | ------------------------------------------------------------------------------- |
-| POST        | `/api/analytics/poi-audio-listen` | App gửi `poiId`, `durationSeconds`, `deviceId` (lưu `poi_audio_listen_events`). |
+| POST        | `/api/analytics/poi-audio-listen` | App gửi `poiId`, `durationSeconds`, `deviceId` (lưu `poi_audio_listen_events`). Trả về `{ accepted: true }` hoặc `{ accepted: false, reason: "duplicate_window_15s" }` nếu trùng cùng thiết bị + POI + cùng `durationSeconds` trong cửa sổ ~15s. |
 
 
 ### 16.3 Xác thực (`AuthController` → `/api/Auth`)
@@ -1338,6 +1388,9 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | GET         | `/api/Admin/analytics/paths`                  | Chuỗi di chuyển gần đây.                                                 |
 | GET         | `/api/Admin/analytics/popular-paths`          | Cặp POI A→B phổ biến.                                                    |
 | GET         | `/api/Admin/analytics/popular-route-chains`   | Chuỗi tối đa N POI.                                                      |
+| GET         | `/api/Admin/ops/metrics`                      | Snapshot vận hành 24h: số bản ghi `location_logs`, `movement_paths`, `poi_audio_listen_events`, thời điểm mới nhất, tổng POI. |
+| GET         | `/api/Admin/ops/jobs/queue`                   | Tóm tắt hàng đợi TTS (pending/processing/retrying, success/dead 24h, tuổi job chờ). |
+| GET         | `/api/Admin/ops/jobs/recent`                 | Danh sách job audio nền gần đây.                                         |
 | POST        | `/api/Admin/poi-with-owner`                   | Tạo user vendor + POI + script khởi tạo (admin).                         |
 | GET         | `/api/Admin/pois/awaiting-script`             | POI chờ script/vendor.                                                   |
 | GET         | `/api/Admin/script-requests/pending`          | Yêu cầu script chờ duyệt.                                                |
@@ -1406,6 +1459,8 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 - Admin **tạo được POI kèm chủ quán** và **theo dõi được** dashboard/heatmap/paths/thời lượng nghe; vendor **bổ sung** foods qua cổng vendor (đúng mô hình phân tách hiện tại).
 - Vendor gửi được request script / gói audio, admin duyệt được.
 - Dashboard hiển thị được các chỉ số tổng hợp (POI, vendor, pending script, audio tracks, mẫu location, v.v.).
+- Concurrency smoke test chạy qua các endpoint analytics/location/visit không gây lỗi hàng loạt (5xx trong ngưỡng).
+- Monitoring có dashboard và alert cơ bản cho API + DB + pipeline audio.
 
 ---
 
@@ -1449,5 +1504,6 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.1**   | **2026-04-06**  | Mục **8.2**: nhúng ảnh **ERD** (`Public/Resouces/ERD.png`); cập nhật **8.1** (thêm `device_activations`, `schema_migrations`); chỉnh tiêu đề và ghi chú ERD. Metadata PRD **2.1**.                                                                                                                         |
 | **2.2**   | **2026-04-08**  | Đồng bộ codebase hiện tại: bỏ `StreetFood.Application`; đồng bộ migration mới (loại `app_activation_expires_at` và `device_activations`); mở rộng dữ liệu demo analytics; bổ sung bộ **Use Case + Sequence + Activity** đầy đủ cho App, API, Web Admin, Web Vendor; thêm **ERD dạng Mermaid** tại mục 8.2. |
 | **2.3**   | **2026-04-15**  | Viết lại hoàn chỉnh các mục **Use Case / Sequence / Activity** theo phạm vi nghiệp vụ mới: App (QR JWT, đề xuất POI, search, chọn POI nghe, geofence, analytics log), Vendor (login, cập nhật cửa hàng, quản lý món, gửi yêu cầu audio), Admin (login, quản lý vendor, analytics người dùng/heatmap/tuyến đi/thời lượng nghe, tạo vendor, phê duyệt yêu cầu). |
+| **2.4**   | **2026-04-17**  | Bổ sung chi tiết vận hành cho MVP: **automation test nhiều thiết bị**, quy tắc **xử lý trùng + quản lý hàng đợi** khi đồng thời cao (đặc biệt theo POI/device), và khung **monitoring + alerting**; mở rộng tiêu chí nghiệm thu tương ứng. |
 
 

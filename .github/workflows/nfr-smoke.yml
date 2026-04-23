@@ -1,0 +1,26 @@
+name: NFR (build API)
+
+on:
+  push:
+    paths:
+      - 'StreetFoodAPI/**'
+      - 'StreetFood.Domain/**'
+      - 'StreetFood.Infrastructure/**'
+      - '.github/workflows/nfr-smoke.yml'
+  pull_request:
+    paths:
+      - 'StreetFoodAPI/**'
+      - 'StreetFood.Domain/**'
+      - 'StreetFood.Infrastructure/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build API
+        run: dotnet build StreetFoodAPI/StreetFood.API.csproj -c Release
+      # Tải k6 (NFR) chạy cục bộ: tests/nfr/streetfood-smoke.js

@@ -111,7 +111,7 @@
         </div>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/admin-api.js?v=20260423a"></script>
     <script src="/js/logout.js?v=20260406c"></script>
     <script>
         const err = document.getElementById('err');
@@ -207,7 +207,12 @@
                         try {
                             const res = await window.StreetFoodAdmin.approveScript(id);
                             await load();
-                            if (res && res.audio && res.audio.message) {
+                            if (res && res.audio) {
+                                if (res.audio.queued && (res.audio.jobId != null)) {
+                                    const jm = 'Phê duyệt thành công. TTS đã xếp hàng nền (job #' + res.audio.jobId + ').';
+                                    showActionMessage(jm, 'ok');
+                                    showModal('Phê duyệt thành công', jm);
+                                } else if (res.audio.message) {
                                 const isOk = (res.audio.success === true);
                                 const noAudioYet = Number(res.audio.filesWritten || 0) === 0;
                                 const tone = (isOk && !noAudioYet) ? 'ok' : 'warn';
@@ -217,6 +222,10 @@
                                 }
                                 showActionMessage(msg, tone);
                                 showModal('Phê duyệt thành công', msg);
+                                } else {
+                                    showActionMessage('Phê duyệt thành công.', 'ok');
+                                    showModal('Phê duyệt thành công', 'Yêu cầu script đã được phê duyệt.');
+                                }
                             } else {
                                 showActionMessage('Phê duyệt thành công.', 'ok');
                                 showModal('Phê duyệt thành công', 'Yêu cầu script đã được phê duyệt.');
@@ -251,7 +260,11 @@
             try {
                 const r = await window.StreetFoodAdmin.regenerateAudio(id);
                 regenMsg.style.color = '#047857';
-                regenMsg.textContent = r.message || JSON.stringify(r);
+                if (r && (r.status === 'queued' || r.jobId != null)) {
+                    regenMsg.textContent = 'Đã xếp hàng tạo lại âm thanh (job #' + (r.jobId ?? r.JobId) + '). Xem bảng vận hành trên dashboard.';
+                } else {
+                    regenMsg.textContent = r.message || r.Message || JSON.stringify(r);
+                }
             } catch (e) {
                 regenMsg.style.color = '#b91c1c';
                 regenMsg.textContent = e.message || String(e);

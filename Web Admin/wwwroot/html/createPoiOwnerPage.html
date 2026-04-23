@@ -148,7 +148,7 @@
         </div>
     </div>
     <script src="/config.js"></script>
-    <script src="/js/admin-api.js?v=20260406f"></script>
+    <script src="/js/admin-api.js?v=20260423a"></script>
     <script src="/js/logout.js?v=20260406c"></script>
     <script>
         const sp = [document.getElementById('sp1'), document.getElementById('sp2'), document.getElementById('sp3')];
@@ -234,7 +234,11 @@
             try {
                 const r = await window.StreetFoodAdmin.createPoiWithOwner(body);
                 let popupText = 'Tạo POI và tài khoản chủ quán thành công.\nUserId: ' + r.userId + '\nPoiId: ' + r.poiId;
-                if (r.audio && r.audio.message) popupText += '\n\nÂm thanh: ' + r.audio.message;
+                if (r.audio && r.audio.queued && r.audio.jobId != null) {
+                    popupText += '\n\nTTS: đã xếp hàng nền, job #' + r.audio.jobId;
+                } else if (r.audio && r.audio.message) {
+                    popupText += '\n\nÂm thanh: ' + r.audio.message;
+                }
                 showModal('Tạo thành công', popupText);
             } catch (e) {
                 showModal('Không thể tạo POI', e.message || String(e));
