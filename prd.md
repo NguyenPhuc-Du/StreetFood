@@ -170,7 +170,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 | ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-A01 CRUD đầy đủ qua UI    | **Một phần**     | Có **tạo POI + tài khoản chủ quán** (`createPoiOwnerPage.html`); không có bộ CRUD POI/foods riêng đầy đủ như wireframe 15.2 “tab Foods/Audio” cổ điển — dùng API + luồng vendor cho phần còn lại. |
 | FR-A02 Upload audio          | **Tùy cấu hình** | TTS/regenerate qua API (`regenerate-audio`); vendor có thể gửi **gói 5 URL** (`submit-audio-bundle`).                                                                                             |
-| FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html`, `routeHeatmapPage.html` (heatmap, paths, popular paths/chains), **Thời lượng nghe** `poiListenStatsPage.html`.                                                              |
+| FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html`, `routeHeatmapPage.html` (heatmap, paths, popular paths/chains), **Thời lượng nghe** `poiListenStatsPage.html`, chỉ số **người dùng đang hoạt động** qua `/api/Admin/analytics/online-now`. |
 | FR-A04 Duyệt script          | **Đã có**        | `pendingScriptsPage.html`; phê duyệt + TTS/dịch theo `AdminController`.                                                                                                                           |
 
 
@@ -286,6 +286,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 ### FR-A03: Dashboard analytics
 
 - Most visited restaurants.
+- Số người dùng đang hoạt động (online now, cập nhật theo cửa sổ thời gian ngắn).
 - Heatmap vị trí người dùng.
 - Most popular routes giữa POIs.
 - Average visit duration.
@@ -309,6 +310,12 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 - Không được tự thay audio trực tiếp.
 - Theo dõi trạng thái: pending/approved/rejected.
 
+### FR-V03: Nâng cấp Premium
+
+- Vendor xem trạng thái gói premium của POI đang quản lý.
+- Tạo phiên thanh toán MoMo để nâng cấp premium.
+- Sau khi thanh toán thành công (IPN/return), hệ thống cập nhật trạng thái premium và bật quyền tính năng tương ứng.
+
 ---
 
 ## 5. User stories
@@ -327,11 +334,12 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 - Là vendor, tôi muốn chỉnh thông tin nhà hàng của mình để thông tin luôn chính xác.
 - Là vendor, tôi muốn gửi yêu cầu đổi script audio và chờ admin duyệt.
+- Là vendor, tôi muốn nâng cấp gói Premium để mở quyền tính năng nâng cao cho nhà hàng của tôi.
 
 ### 5.3 Admin
 
-- Là admin, tôi muốn quản lý toàn bộ nhà hàng/món/audio trên một dashboard.
-- Là admin, tôi muốn xem analytics để tối ưu vận hành.
+- Là admin, tôi muốn quản lý POI và tài khoản chủ quán để kiểm soát dữ liệu hệ thống.
+- Là admin, tôi muốn xem analytics và số người dùng đang hoạt động theo thời gian thực để tối ưu vận hành.
 - Là admin, tôi muốn duyệt yêu cầu vendor theo quy trình rõ ràng.
 
 ---
@@ -634,7 +642,7 @@ Phần này được chuẩn hóa lại theo phạm vi hiện tại bạn yêu c
 | UC-V05 | Vendor | Nâng cấp Premium | Tạo thanh toán MoMo, nhận callback/IPN và cập nhật trạng thái premium. |
 | UC-A01 | Admin | Đăng nhập | Xác thực role admin. |
 | UC-A02 | Admin | Quản lý tài khoản vendor | Xem danh sách và hide/unhide vendor. |
-| UC-A03 | Admin | Phân tích người dùng | Theo dõi người dùng theo khung giờ/hoạt động từ analytics. |
+| UC-A03 | Admin | Phân tích người dùng | Theo dõi người dùng theo khung giờ và chỉ số online-now (đang hoạt động) từ analytics. |
 | UC-A04 | Admin | Phân tích heatmap | Xem mật độ vị trí người dùng trên bản đồ. |
 | UC-A05 | Admin | Phân tích tuyến đi | Xem movement paths/popular paths/route chains. |
 | UC-A06 | Admin | Phân tích thời lượng nghe | Theo dõi thống kê nghe audio theo POI. |
@@ -711,7 +719,7 @@ flowchart LR
     subgraph AW[StreetFood Admin Web]
       A1(UC-A01 Đăng nhập)
       A2(UC-A02 Quản lý tài khoản vendor)
-      A3(UC-A03 Phân tích người dùng)
+      A3(UC-A03 Phân tích người dùng + online-now)
       A4(UC-A04 Phân tích heatmap)
       A5(UC-A05 Phân tích tuyến đi)
       A6(UC-A06 Phân tích thời lượng nghe)
@@ -759,7 +767,7 @@ flowchart LR
 | UC-V05 Nâng cấp Premium | 12.12 | 13.12 |
 | UC-A01 Đăng nhập admin | 12.13 | 13.13 |
 | UC-A02 Quản lý tài khoản vendor | 12.14 | 13.14 |
-| UC-A03 Phân tích người dùng | 12.15 | 13.15 |
+| UC-A03 Phân tích người dùng + online-now | 12.15 | 13.15 |
 | UC-A04 Phân tích heatmap | 12.16 | 13.16 |
 | UC-A05 Phân tích tuyến đi | 12.17 | 13.17 |
 | UC-A06 Phân tích thời lượng nghe | 12.18 | 13.18 |
@@ -1007,7 +1015,11 @@ sequenceDiagram
     A->>API: GET /api/admin/analytics/user-analysis/hourly-visits
     API->>DB: Aggregate device_visits theo giờ
     DB-->>API: Hourly users
-    API-->>A: Dữ liệu phân tích người dùng
+    API-->>A: Dữ liệu phân tích người dùng theo giờ
+    A->>API: GET /api/admin/analytics/online-now?seconds=5
+    API->>DB: Đếm thiết bị có hoạt động trong cửa sổ 5 giây
+    DB-->>API: Online now
+    API-->>A: Dữ liệu người dùng đang hoạt động
 ```
 
 ### 12.16 Sequence - UC-A04 Phân tích heatmap
@@ -1229,7 +1241,8 @@ flowchart TD
 ```mermaid
 flowchart TD
     M0[Mở analytics người dùng] --> M1[Tải hourly users]
-    M1 --> M2[Hiển thị biểu đồ người dùng]
+    M1 --> M2[Tải online-now]
+    M2 --> M3[Hiển thị biểu đồ người dùng + chỉ số đang hoạt động]
 ```
 
 ### 13.16 Activity - UC-A04 Phân tích heatmap
