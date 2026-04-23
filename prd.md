@@ -181,6 +181,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 | ----------------------------- | ---------- | ---------------------------------------------------------------- |
 | FR-V01 Sửa shop / menu        | **Đã có**  | `VendorShopController` (foods CRUD, update details)              |
 | FR-V02 Request script / audio | **Đã có**  | `VendorScriptController`: `submit-script`, `submit-audio-bundle` |
+| FR-V03 Nâng cấp Premium       | **Đã có**  | MoMo payment + IPN kích hoạt premium cho POI vendor.             |
 
 
 ---
@@ -549,7 +550,9 @@ erDiagram
 
 ### 9.3 Chu kỳ cập nhật
 
-- Near real-time (1-5 phút) cho dashboard vận hành.
+- Near real-time cho dashboard vận hành:
+  - Chỉ số "Số người đang dùng app" (`/api/Admin/analytics/online-now`) dùng cửa sổ **5 giây** và client refresh mỗi 5 giây.
+  - API giữ snapshot cache 5 giây để ổn định tải.
 - Daily aggregation cho báo cáo xu hướng.
 
 ---
@@ -628,6 +631,7 @@ Phần này được chuẩn hóa lại theo phạm vi hiện tại bạn yêu c
 | UC-V02 | Vendor | Cập nhật thông tin cửa hàng | Cập nhật profile quán, logo, giờ mở cửa, điện thoại. |
 | UC-V03 | Vendor | Quản lý món ăn | Thêm/sửa/ẩn/hiện món ăn. |
 | UC-V04 | Vendor | Gửi yêu cầu audio | Gửi script text hoặc audio bundle chờ duyệt. |
+| UC-V05 | Vendor | Nâng cấp Premium | Tạo thanh toán MoMo, nhận callback/IPN và cập nhật trạng thái premium. |
 | UC-A01 | Admin | Đăng nhập | Xác thực role admin. |
 | UC-A02 | Admin | Quản lý tài khoản vendor | Xem danh sách và hide/unhide vendor. |
 | UC-A03 | Admin | Phân tích người dùng | Theo dõi người dùng theo khung giờ/hoạt động từ analytics. |
@@ -686,14 +690,17 @@ flowchart LR
       V2(UC-V02 Cập nhật thông tin cửa hàng)
       V3(UC-V03 Quản lý món ăn)
       V4(UC-V04 Gửi yêu cầu audio)
+      V5(UC-V05 Nâng cấp Premium)
     end
     V --- V1
     V --- V2
     V --- V3
     V --- V4
+    V --- V5
     V2 -. "<<include>>" .-> V1
     V3 -. "<<include>>" .-> V1
     V4 -. "<<include>>" .-> V1
+    V5 -. "<<include>>" .-> V1
 ```
 
 ### 11.4 Use Case Diagram - Web Admin
@@ -730,7 +737,7 @@ flowchart LR
 
 ### 11.4.1 Quy tắc include cho đăng nhập
 
-- Với **Vendor Web**: `UC-V02`, `UC-V03`, `UC-V04` đều `<<include>> UC-V01 Đăng nhập`.
+- Với **Vendor Web**: `UC-V02`, `UC-V03`, `UC-V04`, `UC-V05` đều `<<include>> UC-V01 Đăng nhập`.
 - Với **Admin Web**: `UC-A02` đến `UC-A08` đều `<<include>> UC-A01 Đăng nhập`.
 - Ý nghĩa: người dùng web phải qua bước xác thực trước khi thực thi bất kỳ chức năng nghiệp vụ nào.
 
@@ -749,14 +756,15 @@ flowchart LR
 | UC-V02 Cập nhật thông tin cửa hàng | 12.9 | 13.9 |
 | UC-V03 Quản lý món ăn | 12.10 | 13.10 |
 | UC-V04 Gửi yêu cầu audio | 12.11 | 13.11 |
-| UC-A01 Đăng nhập admin | 12.12 | 13.12 |
-| UC-A02 Quản lý tài khoản vendor | 12.13 | 13.13 |
-| UC-A03 Phân tích người dùng | 12.14 | 13.14 |
-| UC-A04 Phân tích heatmap | 12.15 | 13.15 |
-| UC-A05 Phân tích tuyến đi | 12.16 | 13.16 |
-| UC-A06 Phân tích thời lượng nghe | 12.17 | 13.17 |
-| UC-A07 Tạo tài khoản vendor | 12.18 | 13.18 |
-| UC-A08 Phê duyệt yêu cầu vendor | 12.19 | 13.19 |
+| UC-V05 Nâng cấp Premium | 12.12 | 13.12 |
+| UC-A01 Đăng nhập admin | 12.13 | 13.13 |
+| UC-A02 Quản lý tài khoản vendor | 12.14 | 13.14 |
+| UC-A03 Phân tích người dùng | 12.15 | 13.15 |
+| UC-A04 Phân tích heatmap | 12.16 | 13.16 |
+| UC-A05 Phân tích tuyến đi | 12.17 | 13.17 |
+| UC-A06 Phân tích thời lượng nghe | 12.18 | 13.18 |
+| UC-A07 Tạo tài khoản vendor | 12.19 | 13.19 |
+| UC-A08 Phê duyệt yêu cầu vendor | 12.20 | 13.20 |
 
 ---
 
@@ -937,7 +945,28 @@ sequenceDiagram
     API-->>V: Pending
 ```
 
-### 12.12 Sequence - UC-A01 Đăng nhập admin
+### 12.12 Sequence - UC-V05 Nâng cấp Premium vendor (MoMo)
+
+```mermaid
+sequenceDiagram
+    participant V as Vendor Web
+    participant API as StreetFood API
+    participant M as MoMo
+    participant DB as PostgreSQL
+
+    V->>API: POST /api/vendor/premium/create-payment
+    API->>DB: Validate vendor owns POI + check premium status
+    API->>M: Create payment (redirectUrl, ipnUrl)
+    M-->>API: payUrl
+    API-->>V: payUrl
+    V->>M: Open payUrl và thanh toán
+    M->>API: POST /api/vendor/premium/momo-ipn
+    API->>DB: Mark paid + activate premium subscription
+    M->>API: Redirect returnUrl (/payment/return hoặc fallback /?query)
+    API-->>V: Redirect về dashboard vendor
+```
+
+### 12.13 Sequence - UC-A01 Đăng nhập admin
 
 ```mermaid
 sequenceDiagram
@@ -950,7 +979,7 @@ sequenceDiagram
     API-->>A: Login success
 ```
 
-### 12.13 Sequence - UC-A02 Quản lý tài khoản vendor
+### 12.14 Sequence - UC-A02 Quản lý tài khoản vendor
 
 ```mermaid
 sequenceDiagram
@@ -967,7 +996,7 @@ sequenceDiagram
     API-->>A: Thành công
 ```
 
-### 12.14 Sequence - UC-A03 Phân tích người dùng
+### 12.15 Sequence - UC-A03 Phân tích người dùng
 
 ```mermaid
 sequenceDiagram
@@ -981,7 +1010,7 @@ sequenceDiagram
     API-->>A: Dữ liệu phân tích người dùng
 ```
 
-### 12.15 Sequence - UC-A04 Phân tích heatmap
+### 12.16 Sequence - UC-A04 Phân tích heatmap
 
 ```mermaid
 sequenceDiagram
@@ -995,7 +1024,7 @@ sequenceDiagram
     API-->>A: Dữ liệu heatmap
 ```
 
-### 12.16 Sequence - UC-A05 Phân tích tuyến đi
+### 12.17 Sequence - UC-A05 Phân tích tuyến đi
 
 ```mermaid
 sequenceDiagram
@@ -1011,7 +1040,7 @@ sequenceDiagram
     API-->>A: Dữ liệu tuyến đi
 ```
 
-### 12.17 Sequence - UC-A06 Phân tích thời lượng nghe
+### 12.18 Sequence - UC-A06 Phân tích thời lượng nghe
 
 ```mermaid
 sequenceDiagram
@@ -1025,7 +1054,7 @@ sequenceDiagram
     API-->>A: Dữ liệu thời lượng nghe
 ```
 
-### 12.18 Sequence - UC-A07 Tạo tài khoản vendor
+### 12.19 Sequence - UC-A07 Tạo tài khoản vendor
 
 ```mermaid
 sequenceDiagram
@@ -1039,7 +1068,7 @@ sequenceDiagram
     API-->>A: Kết quả tạo mới
 ```
 
-### 12.19 Sequence - UC-A08 Phê duyệt yêu cầu vendor
+### 12.20 Sequence - UC-A08 Phê duyệt yêu cầu vendor
 
 ```mermaid
 sequenceDiagram
@@ -1163,7 +1192,21 @@ flowchart TD
     J3 --> J4[Pending]
 ```
 
-### 13.12 Activity - UC-A01 Đăng nhập admin
+### 13.12 Activity - UC-V05 Nâng cấp Premium vendor
+
+```mermaid
+flowchart TD
+    P0[Mở trang nâng cấp] --> P1[Kiểm tra trạng thái premium hiện tại]
+    P1 --> P2[Bấm thanh toán MoMo]
+    P2 --> P3[API tạo phiên thanh toán]
+    P3 --> P4[Redirect sang cổng MoMo]
+    P4 --> P5{Thanh toán thành công?}
+    P5 -- Có --> P6[MoMo gọi IPN + redirect return]
+    P6 --> P7[API kích hoạt premium và chuyển về dashboard vendor]
+    P5 -- Không --> P8[Giữ trạng thái thường / báo lỗi]
+```
+
+### 13.13 Activity - UC-A01 Đăng nhập admin
 
 ```mermaid
 flowchart TD
@@ -1172,7 +1215,7 @@ flowchart TD
     K2 --> K3[Vào dashboard admin]
 ```
 
-### 13.13 Activity - UC-A02 Quản lý tài khoản vendor
+### 13.14 Activity - UC-A02 Quản lý tài khoản vendor
 
 ```mermaid
 flowchart TD
@@ -1181,7 +1224,7 @@ flowchart TD
     L2 --> L3[Cập nhật trạng thái]
 ```
 
-### 13.14 Activity - UC-A03 Phân tích người dùng
+### 13.15 Activity - UC-A03 Phân tích người dùng
 
 ```mermaid
 flowchart TD
@@ -1189,7 +1232,7 @@ flowchart TD
     M1 --> M2[Hiển thị biểu đồ người dùng]
 ```
 
-### 13.15 Activity - UC-A04 Phân tích heatmap
+### 13.16 Activity - UC-A04 Phân tích heatmap
 
 ```mermaid
 flowchart TD
@@ -1197,7 +1240,7 @@ flowchart TD
     N1 --> N2[Render heatmap]
 ```
 
-### 13.16 Activity - UC-A05 Phân tích tuyến đi
+### 13.17 Activity - UC-A05 Phân tích tuyến đi
 
 ```mermaid
 flowchart TD
@@ -1205,7 +1248,7 @@ flowchart TD
     O1 --> O2[Hiển thị tuyến và bảng top routes]
 ```
 
-### 13.17 Activity - UC-A06 Phân tích thời lượng nghe
+### 13.18 Activity - UC-A06 Phân tích thời lượng nghe
 
 ```mermaid
 flowchart TD
@@ -1213,7 +1256,7 @@ flowchart TD
     P1 --> P2[Hiển thị theo POI]
 ```
 
-### 13.18 Activity - UC-A07 Tạo tài khoản vendor
+### 13.19 Activity - UC-A07 Tạo tài khoản vendor
 
 ```mermaid
 flowchart TD
@@ -1222,7 +1265,7 @@ flowchart TD
     Q2 --> Q3[Hiển thị kết quả]
 ```
 
-### 13.19 Activity - UC-A08 Phê duyệt yêu cầu vendor
+### 13.20 Activity - UC-A08 Phê duyệt yêu cầu vendor
 
 ```mermaid
 flowchart TD
@@ -1232,7 +1275,7 @@ flowchart TD
     R2 -- Reject --> R4[Cập nhật status reject]
 ```
 
-### 13.20 FR-V02 - Request thay đổi audio script
+### 13.21 FR-V02 - Request thay đổi audio script
 
 ```mermaid
 flowchart TD
@@ -1378,6 +1421,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | Phương thức | Đường dẫn                                     | Mô tả                                                                    |
 | ----------- | --------------------------------------------- | ------------------------------------------------------------------------ |
 | GET         | `/api/Admin/dashboard/summary`                | KPI: số POI, vendor, pending script, audio tracks, mẫu location 30 ngày. |
+| GET         | `/api/Admin/analytics/online-now?seconds=`    | Số thiết bị đang dùng app theo cửa sổ giây (mặc định 5s, tối thiểu 5s). |
 | GET         | `/api/Admin/analytics/heatmap`                | Điểm nhiệt từ `location_logs`.                                           |
 | GET         | `/api/Admin/analytics/poi-audio-listen?days=` | Thống kê **thời lượng nghe** trung bình theo POI.                        |
 | GET         | `/api/Admin/analytics/paths`                  | Chuỗi di chuyển gần đây.                                                 |
@@ -1400,17 +1444,24 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 ### 16.5 Vendor (các controller dùng chung prefix `**/api/vendor`**)
 
 
-| Endpoint (POST)                   | Mô tả                                            |
-| --------------------------------- | ------------------------------------------------ |
-| `/api/vendor/pois/list`           | Danh sách POI của vendor.                        |
-| `/api/vendor/shop/update-details` | Cập nhật chi tiết cửa hàng.                      |
-| `/api/vendor/foods/list`          | Danh sách món.                                   |
-| `/api/vendor/foods/create`        | Tạo món.                                         |
-| `/api/vendor/foods/update`        | Cập nhật món.                                    |
-| `/api/vendor/foods/delete`        | Xóa/ẩn món.                                      |
-| `/api/vendor/submit-script`       | Gửi script chờ duyệt (`VendorScriptController`). |
-| `/api/vendor/submit-audio-bundle` | Gửi gói 5 URL audio (5 ngôn ngữ), hỗ trợ kèm `scriptText` để đồng bộ mô tả/script khi admin duyệt. |
-| `/api/vendor/media/upload`        | Upload ảnh (multipart).                          |
+| Endpoint (POST)                     | Mô tả                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| `/api/vendor/pois/list`             | Danh sách POI của vendor.                                             |
+| `/api/vendor/shop/update-details`   | Cập nhật chi tiết cửa hàng.                                           |
+| `/api/vendor/foods/list`            | Danh sách món.                                                        |
+| `/api/vendor/foods/create`          | Tạo món.                                                              |
+| `/api/vendor/foods/update`          | Cập nhật món.                                                         |
+| `/api/vendor/foods/delete`          | Xóa/ẩn món.                                                           |
+| `/api/vendor/premium/status`        | Trạng thái premium của POI vendor.                                    |
+| `/api/vendor/premium/create-payment`| Tạo phiên thanh toán MoMo cho premium (server quyết định redirectUrl).|
+| `/api/vendor/premium/momo-ipn`      | MoMo callback server-to-server (IPN), xác nhận thanh toán.            |
+| `/api/vendor/submit-script`         | Gửi script chờ duyệt (`VendorScriptController`).                      |
+| `/api/vendor/submit-audio-bundle`   | Gửi gói 5 URL audio (5 ngôn ngữ), hỗ trợ kèm `scriptText` để đồng bộ mô tả/script khi admin duyệt. |
+| `/api/vendor/media/upload`          | Upload ảnh (multipart).                                               |
+
+**Luồng return MoMo hiện tại (đã harden):**
+- Return chuẩn: `GET /payment/return` (redirect về trang chủ Web Vendor, giữ nguyên query string).
+- Fallback tương thích link cũ: nếu MoMo quay về root `/?partnerCode=...`, API tự chuyển tiếp sang `/payment/return?...` để tránh 404.
 
 
 > **Ghi chú:** Danh sách trên lấy từ attribute `[HttpGet]`/`[HttpPost]` trong `StreetFoodAPI/Controllers/`. Một số đường dẫn REST “chuẩn CRUD” trong PRD 1.x (ví dụ `GET /api/poi/search`) **chưa** thấy triển khai riêng — tìm kiếm/lọc được đảm nhiệm phía app (`SuggestPage`) trên dữ liệu đã tải hoặc API hiện có.
@@ -1504,5 +1555,3 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.3**   | **2026-04-15**  | Viết lại hoàn chỉnh các mục **Use Case / Sequence / Activity** theo phạm vi nghiệp vụ mới: App (QR JWT, đề xuất POI, search, chọn POI nghe, geofence, analytics log), Vendor (login, cập nhật cửa hàng, quản lý món, gửi yêu cầu audio), Admin (login, quản lý vendor, analytics người dùng/heatmap/tuyến đi/thời lượng nghe, tạo vendor, phê duyệt yêu cầu). |
 | **2.4**   | **2026-04-17**  | Bổ sung chi tiết vận hành cho MVP: **automation test nhiều thiết bị**, quy tắc **xử lý trùng + quản lý hàng đợi** khi đồng thời cao (đặc biệt theo POI/device), và khung **monitoring + alerting**; mở rộng tiêu chí nghiệm thu tương ứng. |
 | **2.5**   | **2026-04-23**  | Cập nhật theo triển khai mới: vendor gửi **gói 5 audio kèm `scriptText`** để đồng bộ script khi duyệt; rút gọn mục **10.2** theo phạm vi MVP đồ án (chống trùng + đồng thời + phản hồi nhanh cho app). |
-
-

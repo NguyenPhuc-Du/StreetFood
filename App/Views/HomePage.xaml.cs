@@ -153,7 +153,7 @@ public partial class HomePage : ContentPage
 
     /// <summary>
     /// POI mà user đang đứng trong bán kính.
-    /// Ưu tiên theo heatmap (cao hơn thì ưu tiên), nếu bằng nhau thì chọn POI gần tâm hơn.
+    /// Ưu tiên Premium trước; nếu cùng gói thì ưu tiên heatmap, sau đó POI gần tâm hơn.
     /// </summary>
     Poi? FindPoiContainingUser(Location userLoc, List<Poi> pois)
     {
@@ -161,7 +161,8 @@ public partial class HomePage : ContentPage
         return pois
             .Select(p => (Poi: p, DistM: DistanceToPoiMeters(userLoc, p)))
             .Where(x => x.DistM <= EffectiveRadiusMeters(x.Poi))
-            .OrderByDescending(x => GetPoiHeatScore(x.Poi.Id))
+            .OrderByDescending(x => x.Poi.IsPremium)
+            .ThenByDescending(x => GetPoiHeatScore(x.Poi.Id))
             .ThenBy(x => x.DistM)
             .Select(x => x.Poi)
             .FirstOrDefault();

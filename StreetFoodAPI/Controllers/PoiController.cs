@@ -50,11 +50,16 @@ public class PoiController : ControllerBase
                 p.address AS Address,
                 t.Description AS Description,
                 d.OpeningHours,
-                a.AudioUrl
+                a.AudioUrl,
+                (ps.poi_id IS NOT NULL) AS IsPremium
             FROM POIs p
             INNER JOIN POI_Translations t ON p.Id = t.PoiId
             LEFT JOIN Restaurant_Details d ON p.Id = d.PoiId
             LEFT JOIN Restaurant_Audio a ON p.Id = a.PoiId AND a.LanguageCode = @Lang
+            LEFT JOIN poi_premium_subscriptions ps
+                ON ps.poi_id = p.id
+                AND ps.status = 'active'
+                AND ps.end_at > NOW()
             LEFT JOIN Restaurant_Owners o ON p.Id = o.PoiId
             LEFT JOIN Users u ON o.UserId = u.Id
             WHERE t.LanguageCode = @Lang
@@ -86,11 +91,16 @@ public class PoiController : ControllerBase
                     p.address AS Address,
                     t.Description AS Description,
                     d.OpeningHours, d.Phone,
-                    a.AudioUrl
+                    a.AudioUrl,
+                    (ps.poi_id IS NOT NULL) AS IsPremium
                 FROM POIs p
                 INNER JOIN POI_Translations t ON p.Id = t.PoiId
                 LEFT JOIN Restaurant_Details d ON p.Id = d.PoiId
                 LEFT JOIN Restaurant_Audio a ON p.Id = a.PoiId AND a.LanguageCode = @Lang
+                LEFT JOIN poi_premium_subscriptions ps
+                    ON ps.poi_id = p.id
+                    AND ps.status = 'active'
+                    AND ps.end_at > NOW()
                 LEFT JOIN Restaurant_Owners o ON p.Id = o.PoiId
                 LEFT JOIN Users u ON o.UserId = u.Id
                 WHERE p.Id = @PoiId AND t.LanguageCode = @Lang
@@ -376,11 +386,16 @@ public class PoiController : ControllerBase
                     t.description,
                     d.openinghours,
                     a.audiourl,
+                    (ps.poi_id IS NOT NULL) AS IsPremium,
                     COALESCE(v.cnt, 0) AS visitcount
                 FROM pois p
                 INNER JOIN poi_translations t ON p.id = t.poiid AND t.languagecode = @Lang
                 LEFT JOIN restaurant_details d ON p.id = d.poiid
                 LEFT JOIN restaurant_audio a ON p.id = a.poiid AND a.languagecode = @Lang
+                LEFT JOIN poi_premium_subscriptions ps
+                    ON ps.poi_id = p.id
+                    AND ps.status = 'active'
+                    AND ps.end_at > NOW()
                 LEFT JOIN restaurant_owners o ON p.id = o.poiid
                 LEFT JOIN users u ON o.userid = u.id
                 LEFT JOIN (

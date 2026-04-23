@@ -13,4 +13,5 @@ public class Poi
     public string? OpeningHours { get; set; } //
     public string? AudioUrl { get; set; }     //
     public int VisitCount { get; set; }
+    public bool IsPremium { get; set; }
 }

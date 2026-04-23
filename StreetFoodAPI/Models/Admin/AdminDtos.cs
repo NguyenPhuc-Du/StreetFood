@@ -49,7 +49,7 @@ public record RouteChainPointDto(int PoiId, double Lat, double Lng, string? Name
 /// <summary>Chuá»—i POI (tá»‘i Ä‘a 5 Ä‘iá»ƒm) ghÃ©p tá»« Movement_Paths.</summary>
 public record PopularRouteChainDto(int TripCount, string Summary, IReadOnlyList<RouteChainPointDto> Points);
 
-public record AwaitingPoiDto(int PoiId, string PoiName, string OwnerUsername, string State, int AudioCount);
+public record AwaitingPoiDto(int PoiId, string PoiName, string OwnerUsername, string State, int AudioCount, bool IsPremium);
 
 public record PendingScriptDto(
     int Id,
@@ -72,6 +72,7 @@ public record OwnerRowDto(
 
 public record DashboardSummaryDto(
     int PoiCount,
+    int PremiumPoiCount,
     int VendorCount,
     int PendingScripts,
     int AudioTracks,

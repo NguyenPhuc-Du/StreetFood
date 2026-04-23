@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFrameworks>net10.0-android</TargetFrameworks>
-		<TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
 
 		<!-- Note for MacCatalyst:
@@ -106,7 +106,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Remove="Platforms\Android\Resources\values\strings.xml" />
+	  <AndroidResource Remove="Platforms\Android\Resources\values\string.xml" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -118,5 +118,11 @@
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 		<PackageReference Include="ZXing.Net.Maui.Controls" Version="0.7.4" />
 	</ItemGroup>
+
+	<!-- Cấu hình dev: điền key/URL trong appsettings.Development.json (gitignore). Mẫu: appsettings.Development.example.json -->
+	<Choose>
+		<When Condition="Exists('$(MSBuildProjectDirectory)\appsettings.Development.json')" />
+		<Otherwise />
+	</Choose>
 
 </Project>

@@ -6,8 +6,6 @@ using StreetFood.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. ÄÄ‚NG KÃ SERVICES (DI Container) ---
-
 builder.Services.AddControllers();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
 {
@@ -17,20 +15,18 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
 builder.Services.AddHttpClient<AzureTranslatorClient>();
 builder.Services.AddScoped<AzureSpeechTtsService>();
 builder.Services.AddScoped<R2StorageService>();
-builder.Services.Configure<AudioPipelineOptions>(builder.Configuration.GetSection(AudioPipelineOptions.SectionName));
-builder.Services.AddSingleton<AudioPipelineJobStore>();
-builder.Services.AddHostedService<AudioPipelineJobWorker>();
+builder.Services.AddSingleton<PremiumService>();
 builder.Services.AddSingleton<PoiIngressQueueService>();
+builder.Services.AddSingleton<ListenEventQueueService>();
+builder.Services.AddHostedService<ListenEventQueueWorker>();
 
-// Cáº¥u hÃ¬nh Database (PostgreSQL)
 builder.Services.AddDbContext<StreetFoodDBContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Cáº¥u hÃ¬nh Swagger/OpenAPI (Äá»ƒ cÃ³ giao diá»‡n test táº¡i /swagger)
 builder.Services.AddEndpointsApiExplorer();
 
 
-// Cáº¥u hÃ¬nh Session
+
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -39,7 +35,6 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// CORS: development cho phÃ©p má»i localhost (trÃ¡nh lá»‡ch cá»•ng HTTPS/HTTP)
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -70,20 +65,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// --- 2. Cáº¤U HÃŒNH PIPELINE (Middleware) ---
-
-// KÃ­ch hoáº¡t giao diá»‡n Swagger khi cháº¡y á»Ÿ mÃ´i trÆ°á»ng Development
-
-
-// App MAUI gá»i http://IP-LAN:5191 â€” redirect HTTPS thÆ°á»ng Ä‘áº©y sang cá»•ng 443 vÃ  lÃ m lá»—i káº¿t ná»‘i trÃªn Ä‘iá»‡n thoáº¡i.
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseRouting();
-
-// THá»¨ Tá»° QUAN TRá»ŒNG: Cors -> Session -> Auth
 app.UseCors();
 app.UseSession();
 
@@ -95,15 +82,37 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapMetrics("/api/metrics");
 
-// Kiá»ƒm tra nhanh tá»« trÃ¬nh duyá»‡t Ä‘iá»‡n thoáº¡i: http://[IP-PC]:5191/api/health
 app.MapGet("/api/health", () => Results.Text("ok", "text/plain"));
+app.MapGet("/", (HttpContext context) =>
+{
+    if (context.Request.Query.ContainsKey("partnerCode")
+        || context.Request.Query.ContainsKey("orderId")
+        || context.Request.Query.ContainsKey("resultCode"))
+    {
+        var qs = context.Request.QueryString.HasValue ? context.Request.QueryString.Value : "";
+        return Results.Redirect($"/payment/return{qs}", permanent: false);
+    }
+
+    return Results.NotFound();
+});
+app.MapGet("/payment/return", (HttpContext context, IConfiguration config) =>
+{
+    var vendorHome = (config["Momo:VendorHomepageUrl"] ?? "https://localhost:7240/html/dashboardShopPage.html").Trim();
+    if (!Uri.TryCreate(vendorHome, UriKind.Absolute, out var target)
+        || (target.Scheme != Uri.UriSchemeHttp && target.Scheme != Uri.UriSchemeHttps))
+    {
+        vendorHome = "https://localhost:7240/html/dashboardShopPage.html";
+    }
+
+    var qs = context.Request.QueryString.HasValue ? context.Request.QueryString.Value : "";
+    return Results.Redirect($"{vendorHome}{qs}", permanent: false);
+});
 
 //if (app.Configuration.GetValue("Database:ApplySqlScriptsOnStartup", false))
 //{
 //    using var scope = app.Services.CreateScope();
 //    var db = scope.ServiceProvider.GetRequiredService<StreetFoodDBContext>();
 //    await DbInitializer.InitializeAsync(db);
-//    Console.WriteLine("[StreetFood] ÄÃ£ xá»­ lÃ½ migration SQL (chá»‰ cháº¡y file má»›i).");
 //}
 
 await app.RunAsync();

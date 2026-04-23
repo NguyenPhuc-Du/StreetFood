@@ -14,4 +14,5 @@ public class PoiDto
     public string? Description { get; set; }
     public string? OpeningHours { get; set; } 
     public string? AudioUrl { get; set; }
+    public bool IsPremium { get; set; }
 }

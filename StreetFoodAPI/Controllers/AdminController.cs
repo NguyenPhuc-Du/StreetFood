@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data;
 using System.Text.Json;
 using Dapper;
@@ -26,10 +27,11 @@ public class AdminController : ControllerBase
     private readonly R2StorageService _r2;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AdminController> _logger;
-    private readonly AudioPipelineJobStore _audioJobs;
     private readonly PoiIngressQueueService _poiIngressQueue;
 
     private static readonly string[] AllLangs = ["vi", "en", "cn", "ja", "ko"];
+    private static readonly ConcurrentDictionary<int, (DateTimeOffset AtUtc, long Count)> OnlineNowCache = new();
+    private static readonly TimeSpan OnlineNowCacheTtl = TimeSpan.FromSeconds(5);
 
     public AdminController(
         IConfiguration config,
@@ -38,7 +40,6 @@ public class AdminController : ControllerBase
         R2StorageService r2,
         IHttpClientFactory httpClientFactory,
         ILogger<AdminController> logger,
-        AudioPipelineJobStore audioJobs,
         PoiIngressQueueService poiIngressQueue)
     {
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
@@ -48,11 +49,8 @@ public class AdminController : ControllerBase
         _r2 = r2;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
-        _audioJobs = audioJobs;
         _poiIngressQueue = poiIngressQueue;
     }
-
-    private bool UseAudioJobQueue() => _config.GetValue("AudioPipeline:Enabled", true) && _config.GetValue("AudioPipeline:UseQueue", true);
 
     private bool IsAdmin()
     {
@@ -81,6 +79,7 @@ public class AdminController : ControllerBase
             var row = await conn.QuerySingleAsync<DashboardSummaryDto>(@"
                 SELECT 
                   (SELECT COUNT(*)::int FROM pois) AS PoiCount,
+                  (SELECT COUNT(*)::int FROM poi_premium_subscriptions ps WHERE ps.status = 'active' AND ps.end_at > NOW()) AS PremiumPoiCount,
                   (SELECT COUNT(*)::int FROM users WHERE role = 'vendor' AND COALESCE(ishidden, FALSE) = FALSE) AS VendorCount,
                   (SELECT COUNT(*)::int FROM script_change_requests WHERE status = 'pending') AS PendingScripts,
                   (SELECT COUNT(*)::int FROM restaurant_audio) AS AudioTracks,
@@ -94,23 +93,31 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Ước lượng số thiết bị đang dùng app: distinct deviceId có ít nhất một location_log trong cửa sổ thời gian (mặc định 2 phút).
+    /// Ước lượng số thiết bị đang dùng app: distinct deviceId có ít nhất một location_log trong cửa sổ thời gian.
     /// Không phải số người thật 1–1 (một người = một thiết bị); nếu app tắt vị trí thì không đếm được.
     /// </summary>
     [HttpGet("analytics/online-now")]
-    public async Task<IActionResult> GetOnlineNow([FromQuery] int minutes = 2)
+    public async Task<IActionResult> GetOnlineNow([FromQuery] int seconds = 5)
     {
         if (AdminUnauthorized() is { } u) return u;
-        minutes = Math.Clamp(minutes, 1, 120);
+        seconds = Math.Clamp(seconds, 5, 7200);
         try
         {
+            var now = DateTimeOffset.UtcNow;
+            if (OnlineNowCache.TryGetValue(seconds, out var cached)
+                && (now - cached.AtUtc) < OnlineNowCacheTtl)
+            {
+                return Ok(new OnlineNowDto(cached.Count, seconds / 60));
+            }
+
             await using var conn = new NpgsqlConnection(_connStr);
             var count = await conn.ExecuteScalarAsync<long>(@"
                 SELECT COUNT(DISTINCT NULLIF(TRIM(deviceid), ''))::bigint
                 FROM location_logs
-                WHERE createdat > NOW() - (CAST(@Minutes AS integer) * INTERVAL '1 minute')",
-                new { Minutes = minutes });
-            return Ok(new OnlineNowDto(count, minutes));
+                WHERE createdat > NOW() - (CAST(@Seconds AS integer) * INTERVAL '1 second')",
+                new { Seconds = seconds });
+            OnlineNowCache[seconds] = (now, count);
+            return Ok(new OnlineNowDto(count, seconds / 60));
         }
         catch (Exception ex)
         {
@@ -156,13 +163,6 @@ public class AdminController : ControllerBase
         if (poiId <= 0) return BadRequest("POI không hợp lệ.");
         try
         {
-            if (UseAudioJobQueue())
-            {
-                var jobId = await _audioJobs.EnqueueTtsPoiAsync(
-                    poiId, AudioPipelineJobStore.ModeFullRegenerate, null);
-                return StatusCode(202, new { jobId, status = "queued", mode = AudioPipelineJobStore.ModeFullRegenerate });
-            }
-
             var r = await _tts.GenerateForPoiAsync(poiId);
             return Ok(r);
         }
@@ -178,32 +178,14 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetAudioJobQueueStats()
     {
         if (AdminUnauthorized() is { } u) return u;
-        try
-        {
-            var s = await _audioJobs.GetQueueStatsAsync();
-            return Ok(s);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "ops/jobs/queue");
-            return BadRequest(ex.Message);
-        }
+        return StatusCode(410, new { message = "audio_pipeline_jobs đã bị gỡ khỏi hệ thống." });
     }
 
     [HttpGet("ops/jobs/recent")]
     public async Task<IActionResult> GetRecentAudioJobs([FromQuery] int limit = 20)
     {
         if (AdminUnauthorized() is { } u) return u;
-        try
-        {
-            var rows = await _audioJobs.GetRecentAsync(limit);
-            return Ok(rows);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "ops/jobs/recent");
-            return BadRequest(ex.Message);
-        }
+        return StatusCode(410, new { message = "audio_pipeline_jobs đã bị gỡ khỏi hệ thống." });
     }
 
     [HttpGet("ops/ingress-queue")]
@@ -627,24 +609,15 @@ public class AdminController : ControllerBase
             object? audio = null;
             if (hasScript)
             {
-                if (UseAudioJobQueue())
+                try
                 {
-                    var jobId = await _audioJobs.EnqueueTtsPoiAsync(
-                        poiId, AudioPipelineJobStore.ModeTtsFromDb, $"create_poi_tts_{poiId}", HttpContext.RequestAborted);
-                    audio = new { queued = true, jobId, mode = AudioPipelineJobStore.ModeTtsFromDb };
+                    var r = await _tts.GenerateForPoiAsync(poiId, HttpContext.RequestAborted);
+                    audio = r;
                 }
-                else
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        var r = await _tts.GenerateForPoiAsync(poiId, HttpContext.RequestAborted);
-                        audio = r;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "TTS sau khi tạo POI");
-                        audio = new AudioGenerationResult(false, 0, ex.Message);
-                    }
+                    _logger.LogError(ex, "TTS sau khi tạo POI");
+                    audio = new AudioGenerationResult(false, 0, ex.Message);
                 }
             }
 
@@ -715,11 +688,16 @@ public class AdminController : ControllerBase
                         WHEN (SELECT COUNT(*)::int FROM restaurant_audio r WHERE r.poiid = p.id) >= 1 THEN 'has_audio'
                         ELSE COALESCE(p.scriptsubmissionstate, 'awaiting_vendor')
                     END AS State,
-                    (SELECT COUNT(*)::int FROM restaurant_audio r WHERE r.poiid = p.id) AS AudioCount
+                    (SELECT COUNT(*)::int FROM restaurant_audio r WHERE r.poiid = p.id) AS AudioCount,
+                    (ps.poi_id IS NOT NULL) AS IsPremium
                 FROM pois p
                 INNER JOIN poi_translations t ON p.id = t.poiid AND t.languagecode = 'vi'
                 INNER JOIN restaurant_owners o ON o.poiid = p.id
                 INNER JOIN users u ON u.id = o.userid AND COALESCE(u.ishidden, FALSE) = FALSE
+                LEFT JOIN poi_premium_subscriptions ps
+                    ON ps.poi_id = p.id
+                    AND ps.status = 'active'
+                    AND ps.end_at > NOW()
                 WHERE p.scriptsubmissionstate IN ('awaiting_vendor', 'pending_review', 'approved')");
             return Ok(rows);
         }
@@ -847,36 +825,20 @@ public class AdminController : ControllerBase
             await tx.CommitAsync();
 
             object? audio;
-            if (UseAudioJobQueue())
+            try
             {
-                var jobId = await _audioJobs.EnqueueTtsPoiAsync(
-                    poiId, AudioPipelineJobStore.ModeTtsFromDb, $"approve_script_{id}", HttpContext.RequestAborted);
-                audio = new
-                {
-                    queued = true,
-                    jobId,
-                    mode = AudioPipelineJobStore.ModeTtsFromDb
-                };
+                audio = await _tts.GenerateForPoiAsync(poiId, HttpContext.RequestAborted);
             }
-            else
+            catch (Exception ex)
             {
-                try
-                {
-                    audio = await _tts.GenerateForPoiAsync(poiId, HttpContext.RequestAborted);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "TTS sau khi phê duyệt script");
-                    audio = new AudioGenerationResult(false, 0, ex.Message);
-                }
+                _logger.LogError(ex, "TTS sau khi phê duyệt script");
+                audio = new AudioGenerationResult(false, 0, ex.Message);
             }
 
             return Ok(new
             {
                 poiId,
-                message = UseAudioJobQueue()
-                    ? "Đã dịch và cập nhật 5 ngôn ngữ; TTS nền đã xếp hàng."
-                    : "Đã dịch và cập nhật 5 ngôn ngữ; âm thanh Azure (nếu cấu hình).",
+                message = "Đã dịch và cập nhật 5 ngôn ngữ; âm thanh Azure (nếu cấu hình).",
                 audio
             });
         }
