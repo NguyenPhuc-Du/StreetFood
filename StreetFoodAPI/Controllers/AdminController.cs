@@ -26,6 +26,7 @@ public class AdminController : ControllerBase
     private readonly R2StorageService _r2;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AdminController> _logger;
+    private readonly AudioPipelineJobStore _audioJobs;
 
     private static readonly string[] AllLangs = ["vi", "en", "cn", "ja", "ko"];
 
@@ -35,7 +36,8 @@ public class AdminController : ControllerBase
         AzureSpeechTtsService tts,
         R2StorageService r2,
         IHttpClientFactory httpClientFactory,
-        ILogger<AdminController> logger)
+        ILogger<AdminController> logger,
+        AudioPipelineJobStore audioJobs)
     {
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
         _config = config;
@@ -44,7 +46,10 @@ public class AdminController : ControllerBase
         _r2 = r2;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _audioJobs = audioJobs;
     }
+
+    private bool UseAudioJobQueue() => _config.GetValue("AudioPipeline:Enabled", true) && _config.GetValue("AudioPipeline:UseQueue", true);
 
     private bool IsAdmin()
     {
@@ -111,18 +116,89 @@ public class AdminController : ControllerBase
         }
     }
 
-    [HttpPost("poi/{poiId:int}/regenerate-audio")]
-    public async Task<IActionResult> RegenerateAudio([FromRoute] int poiId)
+    /// <summary>
+    /// Snapshot vận hành nhanh: ingest 24h + thời điểm event gần nhất.
+    /// Dùng cho monitoring/dashboard nội bộ khi cần kiểm tra hệ thống.
+    /// </summary>
+    [HttpGet("ops/metrics")]
+    public async Task<IActionResult> GetOpsMetrics()
     {
         if (AdminUnauthorized() is { } u) return u;
         try
         {
+            await using var conn = new NpgsqlConnection(_connStr);
+            var row = await conn.QuerySingleAsync<OpsMetricsDto>(@"
+                SELECT
+                    NOW() AT TIME ZONE 'UTC' AS GeneratedAtUtc,
+                    (SELECT COUNT(*)::int FROM pois) AS PoiCount,
+                    (SELECT COUNT(*)::bigint FROM location_logs WHERE createdat > NOW() - INTERVAL '24 hours') AS LocationLogs24h,
+                    (SELECT COUNT(*)::bigint FROM movement_paths WHERE createdat > NOW() - INTERVAL '24 hours') AS MovementPaths24h,
+                    (SELECT COUNT(*)::bigint FROM poi_audio_listen_events WHERE created_at > NOW() - INTERVAL '24 hours') AS ListenEvents24h,
+                    (SELECT MAX(createdat) FROM location_logs) AS LastLocationAtUtc,
+                    (SELECT MAX(createdat) FROM movement_paths) AS LastMovementAtUtc,
+                    (SELECT MAX(created_at) FROM poi_audio_listen_events) AS LastListenAtUtc");
+            return Ok(row);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ops/metrics");
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost("poi/{poiId:int}/regenerate-audio")]
+    public async Task<IActionResult> RegenerateAudio([FromRoute] int poiId)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        if (poiId <= 0) return BadRequest("POI không hợp lệ.");
+        try
+        {
+            if (UseAudioJobQueue())
+            {
+                var jobId = await _audioJobs.EnqueueTtsPoiAsync(
+                    poiId, AudioPipelineJobStore.ModeFullRegenerate, null);
+                return StatusCode(202, new { jobId, status = "queued", mode = AudioPipelineJobStore.ModeFullRegenerate });
+            }
+
             var r = await _tts.GenerateForPoiAsync(poiId);
             return Ok(r);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "RegenerateAudio");
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>Độ sâu hàng đợi TTS và job lỗi (24h).</summary>
+    [HttpGet("ops/jobs/queue")]
+    public async Task<IActionResult> GetAudioJobQueueStats()
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        try
+        {
+            var s = await _audioJobs.GetQueueStatsAsync();
+            return Ok(s);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ops/jobs/queue");
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpGet("ops/jobs/recent")]
+    public async Task<IActionResult> GetRecentAudioJobs([FromQuery] int limit = 20)
+    {
+        if (AdminUnauthorized() is { } u) return u;
+        try
+        {
+            var rows = await _audioJobs.GetRecentAsync(limit);
+            return Ok(rows);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ops/jobs/recent");
             return BadRequest(ex.Message);
         }
     }
@@ -529,17 +605,27 @@ public class AdminController : ControllerBase
                 storageMessage = await SeedPoiStorageAsync(poiId, body.ImageUrl, HttpContext.RequestAborted);
             }
 
-            AudioGenerationResult? audio = null;
+            object? audio = null;
             if (hasScript)
             {
-                try
+                if (UseAudioJobQueue())
                 {
-                    audio = await _tts.GenerateForPoiAsync(poiId);
+                    var jobId = await _audioJobs.EnqueueTtsPoiAsync(
+                        poiId, AudioPipelineJobStore.ModeTtsFromDb, $"create_poi_tts_{poiId}", HttpContext.RequestAborted);
+                    audio = new { queued = true, jobId, mode = AudioPipelineJobStore.ModeTtsFromDb };
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError(ex, "TTS sau khi tạo POI");
-                    audio = new AudioGenerationResult(false, 0, ex.Message);
+                    try
+                    {
+                        var r = await _tts.GenerateForPoiAsync(poiId, HttpContext.RequestAborted);
+                        audio = r;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "TTS sau khi tạo POI");
+                        audio = new AudioGenerationResult(false, 0, ex.Message);
+                    }
                 }
             }
 
@@ -727,21 +813,37 @@ public class AdminController : ControllerBase
 
             await tx.CommitAsync();
 
-            AudioGenerationResult? audio = null;
-            try
+            object? audio;
+            if (UseAudioJobQueue())
             {
-                audio = await _tts.GenerateForPoiAsync(poiId);
+                var jobId = await _audioJobs.EnqueueTtsPoiAsync(
+                    poiId, AudioPipelineJobStore.ModeTtsFromDb, $"approve_script_{id}", HttpContext.RequestAborted);
+                audio = new
+                {
+                    queued = true,
+                    jobId,
+                    mode = AudioPipelineJobStore.ModeTtsFromDb
+                };
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "TTS sau khi phê duyệt script");
-                audio = new AudioGenerationResult(false, 0, ex.Message);
+                try
+                {
+                    audio = await _tts.GenerateForPoiAsync(poiId, HttpContext.RequestAborted);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "TTS sau khi phê duyệt script");
+                    audio = new AudioGenerationResult(false, 0, ex.Message);
+                }
             }
 
             return Ok(new
             {
                 poiId,
-                message = "Đã dịch và cập nhật 5 ngôn ngữ; âm thanh Azure (nếu cấu hình).",
+                message = UseAudioJobQueue()
+                    ? "Đã dịch và cập nhật 5 ngôn ngữ; TTS nền đã xếp hàng."
+                    : "Đã dịch và cập nhật 5 ngôn ngữ; âm thanh Azure (nếu cấu hình).",
                 audio
             });
         }

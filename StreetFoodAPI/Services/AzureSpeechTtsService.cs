@@ -117,6 +117,63 @@ public class AzureSpeechTtsService
         }
 
         var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+        return await SynthesizeToRestaurantAudioAsync(
+            conn, poiId, textsByLang, speechKey, region, publicBase, webRoot, translateJustApplied: true, cancellationToken);
+    }
+
+    /// <summary>
+    /// Chỉ đọc mô tả đã lưu trong <c>poi_translations</c> rồi tạo MP3 — dùng sau hàng đợi (đã dịch trong request phê duyệt tạo POI).
+    /// </summary>
+    public async Task<AudioGenerationResult> GenerateTtsFromDatabaseOnlyAsync(int poiId, CancellationToken cancellationToken = default)
+    {
+        var speechKey = _config["Azure:Speech:Key"];
+        var region = _config["Azure:Speech:Region"] ?? "eastus";
+        var publicBase = (_config["Api:PublicBaseUrl"] ?? "http://localhost:5288").TrimEnd('/');
+
+        await using var conn = new NpgsqlConnection(_connStr);
+        await conn.OpenAsync(cancellationToken);
+
+        var rows = (await conn.QueryAsync<(string Lang, string? Desc)>(new CommandDefinition(@"
+            SELECT languagecode, description
+            FROM poi_translations
+            WHERE poiid = @Id AND languagecode IN ('vi','en','cn','ja','ko')",
+            new { Id = poiId },
+            cancellationToken: cancellationToken))).ToList();
+
+        var textsByLang = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (lang, desc) in rows)
+        {
+            if (string.IsNullOrWhiteSpace(desc)) continue;
+            var t = desc.Trim();
+            if (t.Length > 5000) t = t[..5000];
+            textsByLang[lang] = t;
+        }
+
+        if (!textsByLang.ContainsKey("vi") || string.IsNullOrWhiteSpace(textsByLang["vi"]))
+            return new AudioGenerationResult(false, 0, "Không có mô tả tiếng Việt (poi_translations).");
+
+        if (string.IsNullOrWhiteSpace(speechKey))
+        {
+            _logger.LogWarning("Azure:Speech:Key trống — queue TTS không tạo MP3 (POI {PoiId}).", poiId);
+            return new AudioGenerationResult(true, 0, "Chưa tạo MP3 vì chưa cấu hình Azure Speech Key.");
+        }
+
+        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+        return await SynthesizeToRestaurantAudioAsync(
+            conn, poiId, textsByLang, speechKey, region, publicBase, webRoot, translateJustApplied: false, cancellationToken);
+    }
+
+    private async Task<AudioGenerationResult> SynthesizeToRestaurantAudioAsync(
+        NpgsqlConnection conn,
+        int poiId,
+        Dictionary<string, string> textsByLang,
+        string speechKey,
+        string region,
+        string publicBase,
+        string webRoot,
+        bool translateJustApplied,
+        CancellationToken cancellationToken)
+    {
         var audioDir = Path.Combine(webRoot, "audio");
         if (!_r2.IsEnabled)
             Directory.CreateDirectory(audioDir);
@@ -197,8 +254,12 @@ public class AzureSpeechTtsService
         }
 
         var msg = ok > 0
-            ? $"Đã cập nhật 4 bản dịch từ script VI và tạo {ok} file MP3 (5 ngôn ngữ)."
-            : "Đã cập nhật bản dịch; không tạo được file MP3.";
+            ? (translateJustApplied
+                ? $"Đã cập nhật 4 bản dịch từ script VI và tạo {ok} file MP3 (5 ngôn ngữ)."
+                : $"Đã tạo {ok} file MP3 từ mô tả hiện có (hàng đợi TTS).")
+            : (translateJustApplied
+                ? "Đã cập nhật bản dịch; không tạo được file MP3."
+                : "Không tạo được file MP3 từ hàng đợi.");
         if (errors.Count > 0)
             msg += " Chi tiết: " + string.Join("; ", errors.Take(5));
 

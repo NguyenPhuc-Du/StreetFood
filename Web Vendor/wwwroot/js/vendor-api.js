@@ -39,7 +39,8 @@
             res = await fetch(window.STREETFOOD_API + path, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
                 },
                 body: JSON.stringify(body || {}),
                 signal: controller ? controller.signal : undefined
@@ -98,6 +99,9 @@
         try {
             res = await fetch(window.STREETFOOD_API + '/api/vendor/media/upload', {
                 method: 'POST',
+                headers: {
+                    'ngrok-skip-browser-warning': 'true'
+                },
                 body: fd,
                 signal: controller ? controller.signal : undefined
             });
@@ -209,6 +213,9 @@
         try {
             res = await fetch(window.STREETFOOD_API + '/api/vendor/submit-audio-bundle', {
                 method: 'POST',
+                headers: {
+                    'ngrok-skip-browser-warning': 'true'
+                },
                 body: fd,
                 signal: controller ? controller.signal : undefined
             });

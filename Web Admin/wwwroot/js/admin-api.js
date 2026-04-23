@@ -4,6 +4,7 @@
 
     async function adminFetch(path, options = {}) {
         const headers = new Headers(options.headers || {});
+        headers.set('ngrok-skip-browser-warning', 'true');
         if (key) headers.set('X-Admin-Key', key);
         if (!headers.has('Content-Type') && options.body && typeof options.body === 'string')
             headers.set('Content-Type', 'application/json');
@@ -40,6 +41,9 @@
         unhideOwner: (userId) => adminFetch('/api/admin/owners/' + userId + '/unhide', { method: 'POST' }),
         getDashboardSummary: () => adminFetch('/api/admin/dashboard/summary'),
         getOnlineNow: (minutes) => adminFetch('/api/admin/analytics/online-now?minutes=' + encodeURIComponent(minutes == null ? 2 : minutes)),
+        getOpsMetrics: () => adminFetch('/api/admin/ops/metrics'),
+        getAudioJobQueue: () => adminFetch('/api/admin/ops/jobs/queue'),
+        getRecentAudioJobs: (limit) => adminFetch('/api/admin/ops/jobs/recent?limit=' + encodeURIComponent(limit == null ? 20 : limit)),
         regenerateAudio: (poiId) => adminFetch('/api/admin/poi/' + poiId + '/regenerate-audio', { method: 'POST' })
     };
 })();

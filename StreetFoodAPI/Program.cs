@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Prometheus;
+using StreetFood.API.Middleware;
 using StreetFood.API.Services;
 using StreetFood.Infrastructure.Data;
 
@@ -15,6 +17,9 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
 builder.Services.AddHttpClient<AzureTranslatorClient>();
 builder.Services.AddScoped<AzureSpeechTtsService>();
 builder.Services.AddScoped<R2StorageService>();
+builder.Services.Configure<AudioPipelineOptions>(builder.Configuration.GetSection(AudioPipelineOptions.SectionName));
+builder.Services.AddSingleton<AudioPipelineJobStore>();
+builder.Services.AddHostedService<AudioPipelineJobWorker>();
 
 // Cấu hình Database (PostgreSQL)
 builder.Services.AddDbContext<StreetFoodDBContext>(options =>
@@ -81,9 +86,13 @@ app.UseRouting();
 app.UseCors();
 app.UseSession();
 
+app.UseHttpMetrics();
+app.UseMiddleware<RequestIdLoggingMiddleware>();
+
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapMetrics("/api/metrics");
 
 // Kiểm tra nhanh từ trình duyệt điện thoại: http://[IP-PC]:5191/api/health
 app.MapGet("/api/health", () => Results.Text("ok", "text/plain"));

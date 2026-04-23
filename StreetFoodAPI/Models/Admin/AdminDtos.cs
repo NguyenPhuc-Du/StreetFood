@@ -90,3 +90,34 @@ public record HourlyActiveUsersDto(
 
 /// <summary>Ước lượng thiết bị đang mở app: distinct deviceId có location_log trong cửa sổ phút gần đây.</summary>
 public record OnlineNowDto(long UniqueDeviceCount, int WindowMinutes);
+
+/// <summary>Snapshot vận hành nhanh cho API/ingest/DB.</summary>
+public record OpsMetricsDto(
+    DateTime GeneratedAtUtc,
+    int PoiCount,
+    long LocationLogs24h,
+    long MovementPaths24h,
+    long ListenEvents24h,
+    DateTime? LastLocationAtUtc,
+    DateTime? LastMovementAtUtc,
+    DateTime? LastListenAtUtc);
+
+public record AudioJobQueueStatsDto(
+    long PendingCount,
+    long ProcessingCount,
+    long RetryingCount,
+    long Success24h,
+    long Dead24h,
+    double? OldestReadyWaitSeconds);
+
+public class AudioJobListItemDto
+{
+    public long Id { get; set; }
+    public string? IdempotencyKey { get; set; }
+    public string? JobType { get; set; }
+    public string? Status { get; set; }
+    public int AttemptCount { get; set; }
+    public string? LastErrorPreview { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+}
