@@ -3,8 +3,8 @@
 
 | Thuộc tính             | Giá trị                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Phiên bản tài liệu** | **2.4**                                                                                                                     |
-| **Ngày cập nhật**      | **2026-04-17**                                                                                                              |
+| **Phiên bản tài liệu** | **2.5**                                                                                                                     |
+| **Ngày cập nhật**      | **2026-04-23**                                                                                                              |
 | **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được)                                                                         |
 | **Mục đích**           | Mô tả yêu cầu sản phẩm; ghi nhận **tiến độ thực tế**, **phiên bản công nghệ**, **tham chiếu file** để nộp đồ án / bàn giao. |
 
@@ -170,7 +170,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 | ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-A01 CRUD đầy đủ qua UI    | **Một phần**     | Có **tạo POI + tài khoản chủ quán** (`createPoiOwnerPage.html`); không có bộ CRUD POI/foods riêng đầy đủ như wireframe 15.2 “tab Foods/Audio” cổ điển — dùng API + luồng vendor cho phần còn lại. |
 | FR-A02 Upload audio          | **Tùy cấu hình** | TTS/regenerate qua API (`regenerate-audio`); vendor có thể gửi **gói 5 URL** (`submit-audio-bundle`).                                                                                             |
-| FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html`, `routeHeatmapPage.html` (heatmap, paths, popular paths/chains), **Thời lượng nghe** `poiListenStatsPage.html`.                                                              |
+| FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html`, `routeHeatmapPage.html` (heatmap, paths, popular paths/chains), **Thời lượng nghe** `poiListenStatsPage.html`, chỉ số **người dùng đang hoạt động** qua `/api/Admin/analytics/online-now`. |
 | FR-A04 Duyệt script          | **Đã có**        | `pendingScriptsPage.html`; phê duyệt + TTS/dịch theo `AdminController`.                                                                                                                           |
 
 
@@ -286,6 +286,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 ### FR-A03: Dashboard analytics
 
 - Most visited restaurants.
+- Số người dùng đang hoạt động (online now, cập nhật theo cửa sổ thời gian ngắn).
 - Heatmap vị trí người dùng.
 - Most popular routes giữa POIs.
 - Average visit duration.
@@ -309,6 +310,12 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 - Không được tự thay audio trực tiếp.
 - Theo dõi trạng thái: pending/approved/rejected.
 
+### FR-V03: Nâng cấp Premium
+
+- Vendor xem trạng thái gói premium của POI đang quản lý.
+- Tạo phiên thanh toán MoMo để nâng cấp premium.
+- Sau khi thanh toán thành công (IPN/return), hệ thống cập nhật trạng thái premium và bật quyền tính năng tương ứng.
+
 ---
 
 ## 5. User stories
@@ -327,11 +334,12 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 - Là vendor, tôi muốn chỉnh thông tin nhà hàng của mình để thông tin luôn chính xác.
 - Là vendor, tôi muốn gửi yêu cầu đổi script audio và chờ admin duyệt.
+- Là vendor, tôi muốn nâng cấp gói Premium để mở quyền tính năng nâng cao cho nhà hàng của tôi.
 
 ### 5.3 Admin
 
-- Là admin, tôi muốn quản lý toàn bộ nhà hàng/món/audio trên một dashboard.
-- Là admin, tôi muốn xem analytics để tối ưu vận hành.
+- Là admin, tôi muốn quản lý POI và tài khoản chủ quán để kiểm soát dữ liệu hệ thống.
+- Là admin, tôi muốn xem analytics và số người dùng đang hoạt động theo thời gian thực để tối ưu vận hành.
 - Là admin, tôi muốn duyệt yêu cầu vendor theo quy trình rõ ràng.
 
 ---
@@ -579,20 +587,15 @@ erDiagram
   - 10-20 thiết bị đồng thời gửi `visit/start` và `visit/end` để kiểm tra duration/session.
 - **Ngưỡng pass đề xuất:** lỗi 5xx < 1%, timeout < 2%, P95 endpoint đọc analytics < 800ms trong test tải trung bình.
 
-### 10.2 Xử lý trùng và quản lý hàng đợi (nhiều người cùng 1 POI)
+### 10.2 Xử lý trùng và đồng thời (MVP)
 
-- **Idempotency/anti-duplicate:** server phải chống ghi trùng cho các event lặp nhanh từ cùng thiết bị. (Đã áp dụng cho `POST /api/analytics/poi-audio-listen`: cửa sổ 15s theo `deviceId` + `poiId` + `durationSeconds`.)
-  - `movement`: giữ quy tắc cooldown hiện có (không ghi trùng cùng cặp A->B trong cửa sổ ngắn).
-  - `visit/start`: chỉ cho 1 session mở tại 1 POI cho mỗi `deviceId`; gọi lặp trả `accepted=false` hoặc upsert.
+- **Idempotency/anti-duplicate:** server chống ghi trùng cho event lặp nhanh từ cùng thiết bị.
+  - `listen-event`: đã áp dụng cửa sổ 15s theo `deviceId` + `poiId` + `durationSeconds`.
+  - `movement`: giữ cooldown hiện có để tránh ghi trùng cùng cặp A->B trong cửa sổ ngắn.
+  - `visit/start`: chỉ cho 1 session mở tại 1 POI cho mỗi `deviceId`; gọi lặp trả `accepted=false`.
   - `visit/end`: nếu không có session mở thì trả `accepted=false`, không tạo bản ghi mới.
-  - `listen-event`: giới hạn tần suất gửi từ client (debounce/throttle), server loại bản ghi bất thường.
-- **Queue cho tác vụ nặng:** các tác vụ Translate/TTS/regenerate audio nên chạy bất đồng bộ qua hàng đợi nền (job queue) để tránh nghẽn request realtime. (Bảng `audio_pipeline_jobs`, API `GET /api/Admin/ops/jobs/queue` & `GET /api/Admin/ops/jobs/recent` — TTS từ phê duyệt / tạo POI: `tts_only`; tạo lại MP3: `full_regenerate`. Có `dead_letter` sau 5 lần thử lỗi + backoff; worker `IHostedService`. Tắt: `AudioPipeline:Enabled` hoặc `UseQueue: false` trong cấu hình.)
-  - Trạng thái job tối thiểu: `pending`, `processing`, `success`, `failed`, `retrying`, `dead_letter`.
-  - Có retry backoff và dead-letter cho job lỗi lặp.
-- **Ví dụ 1 POI có nhiều người dùng đồng thời:**
-  - Cho phép nhiều `deviceId` cùng tạo `visit/start` độc lập.
-  - Tính thống kê theo `deviceId` duy nhất khi cần (online-now, active users).
-  - Không để một thiết bị tạo nhiều session mở song song cùng POI.
+- **Đồng thời tại 1 POI:** nhiều thiết bị có thể vào cùng lúc, nhưng hệ thống vẫn giữ nhất quán dữ liệu session.
+- **Mục tiêu UX:** API phản hồi nhanh cho app khi đông người; không thêm delay nhân tạo mặc định.
 
 ### 10.3 Monitoring & vận hành
 
@@ -639,7 +642,7 @@ Phần này được chuẩn hóa lại theo phạm vi hiện tại bạn yêu c
 | UC-V05 | Vendor | Nâng cấp Premium | Tạo thanh toán MoMo, nhận callback/IPN và cập nhật trạng thái premium. |
 | UC-A01 | Admin | Đăng nhập | Xác thực role admin. |
 | UC-A02 | Admin | Quản lý tài khoản vendor | Xem danh sách và hide/unhide vendor. |
-| UC-A03 | Admin | Phân tích người dùng | Theo dõi người dùng theo khung giờ/hoạt động từ analytics. |
+| UC-A03 | Admin | Phân tích người dùng | Theo dõi người dùng theo khung giờ và chỉ số online-now (đang hoạt động) từ analytics. |
 | UC-A04 | Admin | Phân tích heatmap | Xem mật độ vị trí người dùng trên bản đồ. |
 | UC-A05 | Admin | Phân tích tuyến đi | Xem movement paths/popular paths/route chains. |
 | UC-A06 | Admin | Phân tích thời lượng nghe | Theo dõi thống kê nghe audio theo POI. |
@@ -716,7 +719,7 @@ flowchart LR
     subgraph AW[StreetFood Admin Web]
       A1(UC-A01 Đăng nhập)
       A2(UC-A02 Quản lý tài khoản vendor)
-      A3(UC-A03 Phân tích người dùng)
+      A3(UC-A03 Phân tích người dùng + online-now)
       A4(UC-A04 Phân tích heatmap)
       A5(UC-A05 Phân tích tuyến đi)
       A6(UC-A06 Phân tích thời lượng nghe)
@@ -764,7 +767,7 @@ flowchart LR
 | UC-V05 Nâng cấp Premium | 12.12 | 13.12 |
 | UC-A01 Đăng nhập admin | 12.13 | 13.13 |
 | UC-A02 Quản lý tài khoản vendor | 12.14 | 13.14 |
-| UC-A03 Phân tích người dùng | 12.15 | 13.15 |
+| UC-A03 Phân tích người dùng + online-now | 12.15 | 13.15 |
 | UC-A04 Phân tích heatmap | 12.16 | 13.16 |
 | UC-A05 Phân tích tuyến đi | 12.17 | 13.17 |
 | UC-A06 Phân tích thời lượng nghe | 12.18 | 13.18 |
@@ -1012,7 +1015,11 @@ sequenceDiagram
     A->>API: GET /api/admin/analytics/user-analysis/hourly-visits
     API->>DB: Aggregate device_visits theo giờ
     DB-->>API: Hourly users
-    API-->>A: Dữ liệu phân tích người dùng
+    API-->>A: Dữ liệu phân tích người dùng theo giờ
+    A->>API: GET /api/admin/analytics/online-now?seconds=5
+    API->>DB: Đếm thiết bị có hoạt động trong cửa sổ 5 giây
+    DB-->>API: Online now
+    API-->>A: Dữ liệu người dùng đang hoạt động
 ```
 
 ### 12.16 Sequence - UC-A04 Phân tích heatmap
@@ -1234,7 +1241,8 @@ flowchart TD
 ```mermaid
 flowchart TD
     M0[Mở analytics người dùng] --> M1[Tải hourly users]
-    M1 --> M2[Hiển thị biểu đồ người dùng]
+    M1 --> M2[Tải online-now]
+    M2 --> M3[Hiển thị biểu đồ người dùng + chỉ số đang hoạt động]
 ```
 
 ### 13.16 Activity - UC-A04 Phân tích heatmap
@@ -1435,6 +1443,8 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | GET         | `/api/Admin/ops/metrics`                      | Snapshot vận hành 24h: số bản ghi `location_logs`, `movement_paths`, `poi_audio_listen_events`, thời điểm mới nhất, tổng POI. |
 | GET         | `/api/Admin/ops/jobs/queue`                   | Tóm tắt hàng đợi TTS (pending/processing/retrying, success/dead 24h, tuổi job chờ). |
 | GET         | `/api/Admin/ops/jobs/recent`                 | Danh sách job audio nền gần đây.                                         |
+| GET         | `/api/Admin/ops/ingress-queue`               | Xem cấu hình điều tiết request theo POI (enabled/min/max delay, contention). |
+| POST        | `/api/Admin/ops/ingress-queue`               | Cập nhật cấu hình điều tiết request theo POI lúc runtime.               |
 | POST        | `/api/Admin/poi-with-owner`                   | Tạo user vendor + POI + script khởi tạo (admin).                         |
 | GET         | `/api/Admin/pois/awaiting-script`             | POI chờ script/vendor.                                                   |
 | GET         | `/api/Admin/script-requests/pending`          | Yêu cầu script chờ duyệt.                                                |
@@ -1459,7 +1469,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | `/api/vendor/premium/create-payment`| Tạo phiên thanh toán MoMo cho premium (server quyết định redirectUrl).|
 | `/api/vendor/premium/momo-ipn`      | MoMo callback server-to-server (IPN), xác nhận thanh toán.            |
 | `/api/vendor/submit-script`         | Gửi script chờ duyệt (`VendorScriptController`).                      |
-| `/api/vendor/submit-audio-bundle`   | Gửi gói 5 URL audio (5 ngôn ngữ).                                     |
+| `/api/vendor/submit-audio-bundle`   | Gửi gói 5 URL audio (5 ngôn ngữ), hỗ trợ kèm `scriptText` để đồng bộ mô tả/script khi admin duyệt. |
 | `/api/vendor/media/upload`          | Upload ảnh (multipart).                                               |
 
 **Luồng return MoMo hiện tại (đã harden):**
@@ -1509,6 +1519,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 - Quy tắc **không cắt ngang** bài on-demand bởi auto geofence được áp dụng như mô tả FR-M04.
 - Admin **tạo được POI kèm chủ quán** và **theo dõi được** dashboard/heatmap/paths/thời lượng nghe; vendor **bổ sung** foods qua cổng vendor (đúng mô hình phân tách hiện tại).
 - Vendor gửi được request script / gói audio, admin duyệt được.
+- Với gói 5 audio từ vendor, nếu có `scriptText` thì khi admin duyệt hệ thống cập nhật `restaurant_audio` và đồng bộ `poi_translations.description` đa ngôn ngữ.
 - Dashboard hiển thị được các chỉ số tổng hợp (POI, vendor, pending script, audio tracks, mẫu location, v.v.).
 - Concurrency smoke test chạy qua các endpoint analytics/location/visit không gây lỗi hàng loạt (5xx trong ngưỡng).
 - Monitoring có dashboard và alert cơ bản cho API + DB + pipeline audio.
@@ -1556,3 +1567,4 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.2**   | **2026-04-08**  | Đồng bộ codebase hiện tại: bỏ `StreetFood.Application`; đồng bộ migration mới (loại `app_activation_expires_at` và `device_activations`); mở rộng dữ liệu demo analytics; bổ sung bộ **Use Case + Sequence + Activity** đầy đủ cho App, API, Web Admin, Web Vendor; thêm **ERD dạng Mermaid** tại mục 8.2. |
 | **2.3**   | **2026-04-15**  | Viết lại hoàn chỉnh các mục **Use Case / Sequence / Activity** theo phạm vi nghiệp vụ mới: App (QR JWT, đề xuất POI, search, chọn POI nghe, geofence, analytics log), Vendor (login, cập nhật cửa hàng, quản lý món, gửi yêu cầu audio), Admin (login, quản lý vendor, analytics người dùng/heatmap/tuyến đi/thời lượng nghe, tạo vendor, phê duyệt yêu cầu). |
 | **2.4**   | **2026-04-17**  | Bổ sung chi tiết vận hành cho MVP: **automation test nhiều thiết bị**, quy tắc **xử lý trùng + quản lý hàng đợi** khi đồng thời cao (đặc biệt theo POI/device), và khung **monitoring + alerting**; mở rộng tiêu chí nghiệm thu tương ứng. |
+| **2.5**   | **2026-04-23**  | Cập nhật theo triển khai mới: vendor gửi **gói 5 audio kèm `scriptText`** để đồng bộ script khi duyệt; rút gọn mục **10.2** theo phạm vi MVP đồ án (chống trùng + đồng thời + phản hồi nhanh cho app). |
