@@ -12,7 +12,7 @@ public static class ApiConfig
     /// Local dev: dung localhost/LAN cua API.
     /// Emulator Android: thuong <c>http://10.0.2.2:5191</c> tro toi may host.
     /// </summary>
-    public const string EmbeddedDefaultBaseUrl = "https://flatly-creamer-bucket.ngrok-free.dev";
+    public const string EmbeddedDefaultBaseUrl = "https://contort-bust-golf.ngrok-free.dev";
 
     public static string GetBaseUrl()
     {

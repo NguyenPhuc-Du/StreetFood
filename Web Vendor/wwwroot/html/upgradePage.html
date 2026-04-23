@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nâng cấp Premium</title>
+    <link rel="stylesheet" href="/css/vendorPro.css?v=20260403b">
+    <style>
+        .premium-badge {
+            position: fixed;
+            top: 14px;
+            right: 16px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            font-weight: 800;
+            border-radius: 999px;
+            padding: 8px 14px;
+            box-shadow: 0 8px 18px rgba(245, 158, 11, .35);
+            z-index: 20;
+            display: none;
+        }
+        .hero-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+            border: 1px solid #e6edf7;
+            border-radius: 18px;
+            padding: 18px 20px;
+            box-shadow: 0 6px 20px rgba(15, 23, 42, .04);
+        }
+        .hero-card h1 { margin-bottom: 6px; }
+        .hero-subtitle { margin: 0; color: #64748b; font-size: 14px; }
+        .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+        .plan-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 18px;
+            background: #fff;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, .04);
+        }
+        .plan-card h3 { margin: 0 0 8px; color: #0f172a; font-size: 22px; }
+        .plan-card.highlight {
+            border-color: #facc15;
+            background: linear-gradient(180deg, #fffef7 0%, #ffffff 100%);
+            box-shadow: 0 12px 28px rgba(245, 158, 11, .14);
+        }
+        .price { font-size: 38px; line-height: 1; font-weight: 900; margin: 10px 0 12px; color: #0f172a; }
+        .feature-list {
+            margin: 0 0 14px;
+            padding-left: 18px;
+            color: #475569;
+            font-size: 14px;
+        }
+        .feature-list li { margin-bottom: 6px; }
+        #btnPay {
+            width: 100%;
+            border-radius: 12px;
+            font-weight: 700;
+            padding: 12px 14px;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+        }
+        #btnPay:disabled { opacity: .7; cursor: not-allowed; }
+        .msg-box {
+            display: none;
+            border: 1px solid #fecaca;
+            background: #fff1f2;
+            color: #b91c1c;
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="premiumBadge" class="premium-badge">PREMIUM</div>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">🍜</div>
+                <div>
+                    <div style="font-weight:800;">StreetFood Vendor</div>
+                    <div class="muted" style="font-size:12px;">Quản lý cửa hàng</div>
+                </div>
+            </div>
+            <nav class="menu">
+                <a href="dashboardShopPage.html">Thông tin cửa hàng</a>
+                <a href="manageProductsPage.html">Quản lý món ăn</a>
+                <a href="requestScriptPage.html">Yêu cầu âm thanh</a>
+                <a class="active" href="upgradePage.html">Nâng cấp</a>
+            </nav>
+            <div class="sidebar-footer">
+                <a class="btn-logout" href="#" onclick="window.VendorLogout?.(); return false;">Đăng xuất</a>
+            </div>
+        </aside>
+        <main class="content">
+            <div class="topbar">
+                <div class="title hero-card">
+                    <h1>Nâng cấp gói cửa hàng</h1>
+                    <p class="hero-subtitle">Mở khóa ưu tiên phát audio và nâng trải nghiệm cho khách của bạn.</p>
+                </div>
+            </div>
+            <div class="stack">
+                <div class="plan-grid">
+                    <div class="plan-card" id="planStandard">
+                        <h3>Gói Thường</h3>
+                        <p class="price">0đ</p>
+                        <ul class="feature-list">
+                            <li>Dùng đầy đủ chức năng quản lý cơ bản.</li>
+                            <li>Phù hợp cửa hàng mới bắt đầu.</li>
+                        </ul>
+                    </div>
+                    <div class="plan-card highlight" id="planPremium">
+                        <h3>Premium</h3>
+                        <p class="price">199.000đ</p>
+                        <ul class="feature-list">
+                            <li>Ưu tiên phát audio khi khách đứng giữa nhiều POI.</li>
+                            <li>Giúp tăng khả năng được nghe giới thiệu cửa hàng.</li>
+                        </ul>
+                        <button id="btnPay" class="btn btn-primary" type="button">Thanh toán với MoMo</button>
+                    </div>
+                </div>
+                <div id="msg" class="msg-box"></div>
+            </div>
+        </main>
+    </div>
+    <script src="/config.js"></script>
+    <script src="/js/logout.js"></script>
+    <script src="/js/vendor-api.js?v=20260423a"></script>
+    <script>
+        (async function () {
+            const msg = document.getElementById('msg');
+            const btnPay = document.getElementById('btnPay');
+            const badge = document.getElementById('premiumBadge');
+            const planStandard = document.getElementById('planStandard');
+            const planPremium = document.getElementById('planPremium');
+            let poiId = 0;
+
+            function showError(text) {
+                msg.style.display = 'block';
+                msg.textContent = text;
+            }
+
+            function clearError() {
+                msg.style.display = 'none';
+                msg.textContent = '';
+            }
+
+            function setStatus(st) {
+                if (st && st.isPremium) {
+                    badge.style.display = 'inline-block';
+                    planPremium.classList.add('highlight');
+                    planStandard.style.opacity = '.75';
+                    btnPay.disabled = true;
+                    btnPay.textContent = 'Đã là Premium';
+                } else {
+                    badge.style.display = 'none';
+                    planPremium.classList.add('highlight');
+                    planStandard.style.opacity = '1';
+                    btnPay.disabled = false;
+                    btnPay.textContent = 'Thanh toán với MoMo';
+                }
+            }
+
+            async function loadStatus() {
+                const firstPoi = await window.VendorAPI.getDefaultPoi();
+                poiId = Number(firstPoi?.poiId ?? firstPoi?.PoiId ?? 0);
+                if (!poiId) throw new Error('Không tìm thấy POI hợp lệ.');
+                const st = await window.VendorAPI.getPremiumStatus(poiId);
+                setStatus(st);
+            }
+
+            btnPay.onclick = async function () {
+                if (!poiId) return;
+                btnPay.disabled = true;
+                clearError();
+                try {
+                    const returnUrl = window.location.origin + window.location.pathname;
+                    const rs = await window.VendorAPI.createPremiumPayment(poiId, returnUrl);
+                    if (rs?.alreadyPremium) {
+                        setStatus({ isPremium: true, premiumEndsAtUtc: rs.premiumEndsAtUtc });
+                        return;
+                    }
+                    if (!rs?.payUrl) throw new Error('Không lấy được đường dẫn thanh toán MoMo.');
+                    window.location.href = rs.payUrl;
+                } catch (e) {
+                    showError(e?.message || String(e));
+                    btnPay.disabled = false;
+                }
+            };
+
+            try {
+                await loadStatus();
+            } catch (e) {
+                showError(e?.message || String(e));
+                btnPay.disabled = true;
+            }
+        })();
+    </script>
+</body>
+</html>
