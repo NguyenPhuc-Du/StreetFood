@@ -32,7 +32,7 @@ public record PathSegmentDto(
     string? FromName,
     string? ToName);
 
-/// <summary>Cặp From→To được ghi nhận nhiều nhất (dùng vẽ tuyến đường).</summary>
+/// <summary>Cáº·p Fromâ†’To Ä‘Æ°á»£c ghi nháº­n nhiá»u nháº¥t (dÃ¹ng váº½ tuyáº¿n Ä‘Æ°á»ng).</summary>
 public record PopularPathDto(
     int FromPoiId,
     int ToPoiId,
@@ -46,7 +46,7 @@ public record PopularPathDto(
 
 public record RouteChainPointDto(int PoiId, double Lat, double Lng, string? Name);
 
-/// <summary>Chuỗi POI (tối đa 5 điểm) ghép từ Movement_Paths.</summary>
+/// <summary>Chuá»—i POI (tá»‘i Ä‘a 5 Ä‘iá»ƒm) ghÃ©p tá»« Movement_Paths.</summary>
 public record PopularRouteChainDto(int TripCount, string Summary, IReadOnlyList<RouteChainPointDto> Points);
 
 public record AwaitingPoiDto(int PoiId, string PoiName, string OwnerUsername, string State, int AudioCount);
@@ -77,7 +77,7 @@ public record DashboardSummaryDto(
     int AudioTracks,
     int LocationSamples30d);
 
-/// <summary>Thống kê thời lượng nghe audio trung bình theo POI (từ poi_audio_listen_events).</summary>
+/// <summary>Thá»‘ng kÃª thá»i lÆ°á»£ng nghe audio trung bÃ¬nh theo POI (tá»« poi_audio_listen_events).</summary>
 public record PoiAudioListenStatsDto(
     int PoiId,
     string? PoiName,
@@ -88,10 +88,10 @@ public record HourlyActiveUsersDto(
     int HourOfDay,
     long UserCount);
 
-/// <summary>Ước lượng thiết bị đang mở app: distinct deviceId có location_log trong cửa sổ phút gần đây.</summary>
+/// <summary>Æ¯á»›c lÆ°á»£ng thiáº¿t bá»‹ Ä‘ang má»Ÿ app: distinct deviceId cÃ³ location_log trong cá»­a sá»• phÃºt gáº§n Ä‘Ã¢y.</summary>
 public record OnlineNowDto(long UniqueDeviceCount, int WindowMinutes);
 
-/// <summary>Snapshot vận hành nhanh cho API/ingest/DB.</summary>
+/// <summary>Snapshot váº­n hÃ nh nhanh cho API/ingest/DB.</summary>
 public record OpsMetricsDto(
     DateTime GeneratedAtUtc,
     int PoiCount,
@@ -120,4 +120,17 @@ public class AudioJobListItemDto
     public string? LastErrorPreview { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+}
+
+public record PoiIngressQueueSettingsDto(
+    bool Enabled,
+    int MinDelayMs,
+    int MaxDelayMs,
+    long ContentionCount);
+
+public class UpdatePoiIngressQueueRequest
+{
+    public bool? Enabled { get; set; }
+    public int? MinDelayMs { get; set; }
+    public int? MaxDelayMs { get; set; }
 }

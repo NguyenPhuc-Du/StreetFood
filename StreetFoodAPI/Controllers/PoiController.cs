@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Dapper;
 using StreetFood.API.Models;
+using StreetFood.API.Services;
 
 namespace StreetFood.API.Controllers;
 
@@ -12,10 +13,12 @@ public class PoiController : ControllerBase
     private readonly string _connStr;
     private static readonly TimeSpan VisitSpamWindow = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan MovementSpamWindow = TimeSpan.FromMinutes(2);
+    private readonly PoiIngressQueueService _poiIngressQueue;
 
-    public PoiController(IConfiguration config)
+    public PoiController(IConfiguration config, PoiIngressQueueService poiIngressQueue)
     {
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
+        _poiIngressQueue = poiIngressQueue;
     }
 
     static string ResolveLang(string? acceptLang)
@@ -149,6 +152,7 @@ public class PoiController : ControllerBase
 
         try
         {
+            using var lease = await _poiIngressQueue.EnterAsync(body.PoiId, HttpContext.RequestAborted);
             await using var conn = new NpgsqlConnection(_connStr);
             var exists = await conn.ExecuteScalarAsync<bool>(
                 "SELECT EXISTS(SELECT 1 FROM pois WHERE id = @Id)",
@@ -165,7 +169,7 @@ public class PoiController : ControllerBase
 
             if (last.HasValue && (enterAt - last.Value.ToUniversalTime()) < VisitSpamWindow)
             {
-                return Ok(new { accepted = false, reason = "cooldown_5m" });
+                return Ok(new { accepted = false, reason = "cooldown_5m", queueDelayMs = lease.TotalDelayMs });
             }
 
             await conn.ExecuteAsync(@"
@@ -173,7 +177,7 @@ public class PoiController : ControllerBase
                 VALUES (@DeviceId, @PoiId, @EnterAt)",
                 new { DeviceId = deviceId, PoiId = body.PoiId, EnterAt = enterAt });
 
-            return Ok(new { accepted = true });
+            return Ok(new { accepted = true, queueDelayMs = lease.TotalDelayMs });
         }
         catch (Exception ex)
         {
@@ -194,6 +198,7 @@ public class PoiController : ControllerBase
 
         try
         {
+            using var lease = await _poiIngressQueue.EnterAsync(body.PoiId, HttpContext.RequestAborted);
             await using var conn = new NpgsqlConnection(_connStr);
             var exists = await conn.ExecuteScalarAsync<bool>(
                 "SELECT EXISTS(SELECT 1 FROM pois WHERE id = @Id)",
@@ -205,7 +210,7 @@ public class PoiController : ControllerBase
                 FROM device_visits
                 WHERE deviceid = @D AND poiid = @P AND exittime IS NULL",
                 new { D = deviceId, P = body.PoiId });
-            if (open > 0) return Ok(new { accepted = false, reason = "already_open" });
+            if (open > 0) return Ok(new { accepted = false, reason = "already_open", queueDelayMs = lease.TotalDelayMs });
 
             var latestExit = await conn.QueryFirstOrDefaultAsync<DateTime?>(@"
                 SELECT exittime
@@ -215,14 +220,14 @@ public class PoiController : ControllerBase
                 LIMIT 1",
                 new { D = deviceId, P = body.PoiId });
             if (latestExit.HasValue && (enterAt - latestExit.Value.ToUniversalTime()) < VisitSpamWindow)
-                return Ok(new { accepted = false, reason = "cooldown_5m" });
+                return Ok(new { accepted = false, reason = "cooldown_5m", queueDelayMs = lease.TotalDelayMs });
 
             await conn.ExecuteAsync(@"
                 INSERT INTO device_visits (deviceid, poiid, entertime)
                 VALUES (@D, @P, @T)",
                 new { D = deviceId, P = body.PoiId, T = enterAt });
 
-            return Ok(new { accepted = true });
+            return Ok(new { accepted = true, queueDelayMs = lease.TotalDelayMs });
         }
         catch (Exception ex)
         {
@@ -243,6 +248,7 @@ public class PoiController : ControllerBase
 
         try
         {
+            using var lease = await _poiIngressQueue.EnterAsync(body.PoiId, HttpContext.RequestAborted);
             await using var conn = new NpgsqlConnection(_connStr);
             var id = await conn.QueryFirstOrDefaultAsync<int?>(@"
                 SELECT id
@@ -252,7 +258,7 @@ public class PoiController : ControllerBase
                 LIMIT 1",
                 new { D = deviceId, P = body.PoiId });
             if (!id.HasValue)
-                return Ok(new { accepted = false, reason = "no_open_session" });
+                return Ok(new { accepted = false, reason = "no_open_session", queueDelayMs = lease.TotalDelayMs });
 
             await conn.ExecuteAsync(@"
                 UPDATE device_visits
@@ -261,7 +267,7 @@ public class PoiController : ControllerBase
                 WHERE id = @Id",
                 new { ExitAt = exitAt, Id = id.Value });
 
-            return Ok(new { accepted = true });
+            return Ok(new { accepted = true, queueDelayMs = lease.TotalDelayMs });
         }
         catch (Exception ex)
         {

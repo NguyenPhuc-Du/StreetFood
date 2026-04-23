@@ -44,6 +44,8 @@
         getOpsMetrics: () => adminFetch('/api/admin/ops/metrics'),
         getAudioJobQueue: () => adminFetch('/api/admin/ops/jobs/queue'),
         getRecentAudioJobs: (limit) => adminFetch('/api/admin/ops/jobs/recent?limit=' + encodeURIComponent(limit == null ? 20 : limit)),
+        getPoiIngressQueue: () => adminFetch('/api/admin/ops/ingress-queue'),
+        updatePoiIngressQueue: (body) => adminFetch('/api/admin/ops/ingress-queue', { method: 'POST', body: JSON.stringify(body || {}) }),
         regenerateAudio: (poiId) => adminFetch('/api/admin/poi/' + poiId + '/regenerate-audio', { method: 'POST' })
     };
 })();
@@ -83,3 +85,5 @@
         injectStreetFoodAdminNav();
     }
 })();
+
+
