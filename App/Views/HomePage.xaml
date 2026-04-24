@@ -85,6 +85,7 @@
                                                   PointerReleased="OnInfoCardPointerReleased"/>
                         <PanGestureRecognizer PanUpdated="OnInfoCardPanUpdated"/>
                         <SwipeGestureRecognizer Direction="Down" Swiped="OnInfoCardSwipedDown"/>
+                        <SwipeGestureRecognizer Direction="Left" Swiped="OnInfoCardSwipedLeft"/>
                     </Grid.GestureRecognizers>
 
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8" VerticalOptions="Center">
@@ -98,6 +99,10 @@
                                    FontSize="11"
                                    TextColor="{StaticResource TextMuted}"
                                    LineBreakMode="WordWrap"/>
+                            <Label x:Name="QueueInfoLabel"
+                                   FontSize="11"
+                                   TextColor="{StaticResource Primary}"
+                                   LineBreakMode="TailTruncation"/>
                         </VerticalStackLayout>
                         <Label Grid.Column="1"
                                x:Name="CloseCardLabel"

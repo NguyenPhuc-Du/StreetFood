@@ -13,6 +13,7 @@ This folder contains k6 load-test scenarios for StreetFood MVP operations.
 - `streetfood-read-load.js`: read-heavy (`/api/health`, `/api/Poi`)
 - `streetfood-write-load.js`: write-heavy (`/api/analytics/poi-audio-listen`)
 - `streetfood-mixed-load.js`: combined read + write
+- `streetfood-poi-concurrency.js`: session concurrency around one POI (`/api/Poi/log`, `/visit/start`, `/movement`, `/visit/end`)
 - `streetfood-smoke.js`: lightweight smoke check (existing script)
 
 ## 3) Load Profiles
@@ -47,6 +48,12 @@ k6 run -e BASE_URL=https://localhost:7236 -e LOAD_LEVEL=200 -e POI_ID=1 tests/nf
 
 ```bash
 k6 run -e BASE_URL=https://<your-ngrok-domain> -e LOAD_LEVEL=50 tests/nfr/streetfood-mixed-load.js
+```
+
+### 20 users at same POI (queue/session test)
+
+```bash
+k6 run -e BASE_URL=https://localhost:7236 -e VUS=20 -e HOLD=90s -e POI_ID=1 -e NEXT_POI_ID=2 tests/nfr/streetfood-poi-concurrency.js
 ```
 
 ## 5) Pass/Fail Baseline

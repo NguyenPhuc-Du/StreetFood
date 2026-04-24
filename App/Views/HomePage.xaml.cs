@@ -42,6 +42,11 @@ public partial class HomePage : ContentPage
     readonly AudioListenMeter _listenMeter;
     readonly Dictionary<int, PoiDetail> _detailByPoiId = new();
     readonly Dictionary<int, int> _poiHeatScoreById = new();
+    readonly Queue<int> _audioPoiQueue = new();
+    readonly HashSet<int> _queuedPoiIds = new();
+    readonly HashSet<int> _skippedPoiIds = new();
+    readonly object _queueSync = new();
+    readonly SemaphoreSlim _playSwitchGate = new(1, 1);
     DateTime _poiHeatUpdatedAtUtc = DateTime.MinValue;
 
     const string LanguageKey = LocalizationService.LanguageKey;
@@ -125,7 +130,6 @@ public partial class HomePage : ContentPage
                         MixiMap.MoveToRegion(MapSpan.FromCenterAndRadius(loc, Distance.FromMeters(500)));
                         isFirstLocation = false;
                     }
-                    ApplyFiltersAndRefreshMap();
                     _ = api.SendLocationLog(_deviceId, loc.Latitude, loc.Longitude);
                     CheckNearby(loc);
                 }
@@ -157,6 +161,11 @@ public partial class HomePage : ContentPage
     /// </summary>
     Poi? FindPoiContainingUser(Location userLoc, List<Poi> pois)
     {
+        return GetNearbyPoiCandidates(userLoc, pois).FirstOrDefault();
+    }
+
+    List<Poi> GetNearbyPoiCandidates(Location userLoc, List<Poi> pois)
+    {
         EnsurePoiHeatFresh();
         return pois
             .Select(p => (Poi: p, DistM: DistanceToPoiMeters(userLoc, p)))
@@ -165,7 +174,7 @@ public partial class HomePage : ContentPage
             .ThenByDescending(x => GetPoiHeatScore(x.Poi.Id))
             .ThenBy(x => x.DistM)
             .Select(x => x.Poi)
-            .FirstOrDefault();
+            .ToList();
     }
 
     int GetPoiHeatScore(int poiId) =>
@@ -197,7 +206,10 @@ public partial class HomePage : ContentPage
         if (userLoc.Accuracy > 0 && userLoc.Accuracy > MaxGpsAccuracyMeters)
             return;
 
-        var activePoi = FindPoiContainingUser(userLoc, filteredPoiList);
+        PruneSkippedQueueByLocation(userLoc);
+        var nearbyPois = GetNearbyPoiCandidates(userLoc, filteredPoiList);
+        var activePoi = nearbyPois.FirstOrDefault();
+        UpdateAudioQueue(nearbyPois);
         HandleVisitAndMovement(activePoi?.Id);
 
         MainThread.BeginInvokeOnMainThread(async () =>
@@ -228,9 +240,7 @@ public partial class HomePage : ContentPage
 
                 if (!string.IsNullOrEmpty(_currentPoi.AudioUrl) && currentAudioPoiId != _currentPoi.Id && CanPlay(_currentPoi.Id))
                 {
-                    currentAudioPoiId = _currentPoi.Id;
-                    _isAutoPlaying = true;
-                    await PlayPoiAudioAsync(_currentPoi);
+                    await PlayPoiAudioWithGateAsync(_currentPoi, autoPlay: true);
                 }
 
                 return;
@@ -275,15 +285,130 @@ public partial class HomePage : ContentPage
             }
 
             if (_dismissedAutoCardForPoiId == activePoi.Id)
+            {
+                await TryPlayNextFromQueueAsync(userLoc);
                 return;
+            }
 
             if (!string.IsNullOrEmpty(activePoi.AudioUrl) && currentAudioPoiId != activePoi.Id && CanPlay(activePoi.Id))
             {
-                currentAudioPoiId = activePoi.Id;
-                _isAutoPlaying = true;
-                await PlayPoiAudioAsync(activePoi);
+                await PlayPoiAudioWithGateAsync(activePoi, autoPlay: true);
             }
         });
+    }
+
+    void UpdateAudioQueue(List<Poi> nearbyPois)
+    {
+        lock (_queueSync)
+        {
+            foreach (var poi in nearbyPois)
+            {
+                if (_skippedPoiIds.Contains(poi.Id)) continue;
+                if (_currentPoi?.Id == poi.Id) continue;
+                if (_queuedPoiIds.Contains(poi.Id)) continue;
+
+                _audioPoiQueue.Enqueue(poi.Id);
+                _queuedPoiIds.Add(poi.Id);
+            }
+        }
+        UpdateQueueInfoLabel();
+    }
+
+    void PruneSkippedQueueByLocation(Location userLoc)
+    {
+        lock (_queueSync)
+        {
+            if (_skippedPoiIds.Count > 0)
+            {
+                foreach (var poiId in _skippedPoiIds.ToList())
+                {
+                    var poi = filteredPoiList.FirstOrDefault(p => p.Id == poiId);
+                    if (poi == null || DistanceToPoiMeters(userLoc, poi) > EffectiveRadiusMeters(poi))
+                        _skippedPoiIds.Remove(poiId);
+                }
+            }
+
+            while (_audioPoiQueue.Count > 0)
+            {
+                var nextId = _audioPoiQueue.Peek();
+                var poi = filteredPoiList.FirstOrDefault(p => p.Id == nextId);
+                if (poi != null && !_skippedPoiIds.Contains(nextId))
+                    break;
+
+                _audioPoiQueue.Dequeue();
+                _queuedPoiIds.Remove(nextId);
+            }
+        }
+        UpdateQueueInfoLabel();
+    }
+
+    async Task<bool> TryPlayNextFromQueueAsync(Location userLoc)
+    {
+        while (true)
+        {
+            int nextId;
+            lock (_queueSync)
+            {
+                if (_audioPoiQueue.Count == 0)
+                    return false;
+                nextId = _audioPoiQueue.Dequeue();
+                _queuedPoiIds.Remove(nextId);
+                if (_skippedPoiIds.Contains(nextId))
+                    continue;
+            }
+
+            var poi = filteredPoiList.FirstOrDefault(p => p.Id == nextId);
+            if (poi == null)
+                continue;
+            if (DistanceToPoiMeters(userLoc, poi) > EffectiveRadiusMeters(poi))
+                continue;
+
+            _currentPoi = poi;
+            _dismissedAutoCardForPoiId = null;
+            ShowInfoCard(poi);
+            _lastTrackedPoiId = poi.Id;
+            _ = api.TrackPoiVisitAsync(_deviceId, poi.Id);
+
+            var autoOn = Preferences.Default.Get(AutoAudioKey, true);
+            if (autoOn && !string.IsNullOrEmpty(poi.AudioUrl) && currentAudioPoiId != poi.Id && CanPlay(poi.Id))
+            {
+                await PlayPoiAudioWithGateAsync(poi, autoPlay: true);
+            }
+            UpdateQueueInfoLabel();
+            return true;
+        }
+    }
+
+    int GetQueueLength()
+    {
+        lock (_queueSync)
+            return _audioPoiQueue.Count;
+    }
+
+    void UpdateQueueInfoLabel()
+    {
+        var count = GetQueueLength();
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            QueueInfoLabel.Text = count > 0
+                ? $"Hàng đợi: {count} POI (vuốt trái để bỏ qua)"
+                : "Hàng đợi: trống";
+        });
+    }
+
+    async Task PlayPoiAudioWithGateAsync(Poi poi, bool autoPlay)
+    {
+        await _playSwitchGate.WaitAsync();
+        try
+        {
+            currentAudioPoiId = poi.Id;
+            _isAutoPlaying = autoPlay;
+            await PlayPoiAudioAsync(poi);
+        }
+        finally
+        {
+            _playSwitchGate.Release();
+        }
     }
 
     void HandleVisitAndMovement(int? newPoiId)
@@ -378,6 +503,7 @@ public partial class HomePage : ContentPage
         _cardPinnedByMapTap = false;
         _isAutoPlaying = false;
         Preferences.Default.Remove(PinnedPoiKey);
+        UpdateQueueInfoLabel();
     }
 
     void TryShowPinnedPoi()
@@ -420,19 +546,18 @@ public partial class HomePage : ContentPage
     {
         SearchEntry.Placeholder = LocalizationService.T("HomeSearchPlaceholder");
         MyLocationLabel.Text = LocalizationService.T("HomeMyLocation");
-        DragToCloseLabel.Text = LocalizationService.T("HomeDragToClose");
+        DragToCloseLabel.Text = $"{LocalizationService.T("HomeDragToClose")} · Vuốt trái để bỏ qua POI";
         CloseCardLabel.Text = LocalizationService.T("Close");
         PlayButton.Text = LocalizationService.T("Play");
         PauseButton.Text = LocalizationService.T("Pause");
+        UpdateQueueInfoLabel();
     }
 
     async void OnPlayClicked(object? sender, EventArgs e)
     {
         if (_currentPoi == null) return;
 
-        await PlayPoiAudioAsync(_currentPoi);
-        currentAudioPoiId = _currentPoi.Id;
-        _isAutoPlaying = false; // phát thủ công
+        await PlayPoiAudioWithGateAsync(_currentPoi, autoPlay: false);
     }
 
     void OnPauseClicked(object? sender, EventArgs e)
@@ -515,6 +640,32 @@ public partial class HomePage : ContentPage
     {
         if (e.Direction == SwipeDirection.Down)
             HideCard(userSwipeDismiss: true);
+    }
+
+    async void OnInfoCardSwipedLeft(object? sender, SwipedEventArgs e)
+    {
+        if (e.Direction != SwipeDirection.Left || _currentPoi == null)
+            return;
+
+        var skippedPoiId = _currentPoi.Id;
+        lock (_queueSync)
+        {
+            _skippedPoiIds.Add(skippedPoiId);
+            _queuedPoiIds.Remove(skippedPoiId);
+        }
+        UpdateQueueInfoLabel();
+        _cardPinnedByMapTap = false;
+        _dismissedAutoCardForPoiId = skippedPoiId;
+
+        _listenMeter.StopAndFlushFireAndForget();
+        AudioPlayer.Stop();
+        currentAudioPoiId = -1;
+        _isAutoPlaying = false;
+
+        if (_currentUserLocation != null && await TryPlayNextFromQueueAsync(_currentUserLocation))
+            return;
+
+        HideCard(userSwipeDismiss: true);
     }
 
     void OnInfoCardPointerPressed(object? sender, PointerEventArgs e)

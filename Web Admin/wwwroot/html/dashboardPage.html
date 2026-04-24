@@ -99,15 +99,44 @@
                 }).join('');
             }
             const onlineSeconds = 5;
+            let onlineTimer = null;
+            let onlineInFlight = false;
+            let onlineDelayMs = 5000;
             async function refreshOnlineNow() {
+                if (onlineInFlight) return;
+                onlineInFlight = true;
                 try {
                     const online = await window.StreetFoodAdmin.getOnlineNow(onlineSeconds);
                     sOnlineEl.textContent = online?.uniqueDeviceCount ?? online?.UniqueDeviceCount ?? '—';
+                    onlineDelayMs = 5000;
                 } catch (_) {
                     sOnlineEl.textContent = '—';
+                    onlineDelayMs = Math.min(30000, onlineDelayMs * 2);
+                } finally {
+                    onlineInFlight = false;
+                    scheduleNextOnlinePoll();
                 }
             }
-            setInterval(refreshOnlineNow, 5000);
+            function scheduleNextOnlinePoll() {
+                if (document.hidden) return;
+                if (onlineTimer != null) clearTimeout(onlineTimer);
+                onlineTimer = setTimeout(() => { void refreshOnlineNow(); }, onlineDelayMs);
+            }
+            function stopOnlinePolling() {
+                if (onlineTimer == null) return;
+                clearTimeout(onlineTimer);
+                onlineTimer = null;
+            }
+            function syncOnlinePolling() {
+                if (document.hidden) {
+                    stopOnlinePolling();
+                    return;
+                }
+                void refreshOnlineNow();
+            }
+            document.addEventListener('visibilitychange', syncOnlinePolling);
+            window.addEventListener('beforeunload', stopOnlinePolling);
+            syncOnlinePolling();
             try {
                 const [d, rows, online] = await Promise.all([
                     window.StreetFoodAdmin.getDashboardSummary(),
