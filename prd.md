@@ -3,9 +3,9 @@
 
 | Thuộc tính             | Giá trị                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Phiên bản tài liệu** | **2.5**                                                                                                                     |
-| **Ngày cập nhật**      | **2026-04-23**                                                                                                              |
-| **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được)                                                                         |
+| **Phiên bản tài liệu** | **2.7**                                                                                                                     |
+| **Ngày cập nhật**      | **2026-04-24**                                                                                                              |
+| **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được; đối chiếu `App/`, `StreetFoodAPI/`, `Web Admin/`, `Web Vendor/`)         |
 | **Mục đích**           | Mô tả yêu cầu sản phẩm; ghi nhận **tiến độ thực tế**, **phiên bản công nghệ**, **tham chiếu file** để nộp đồ án / bàn giao. |
 
 
@@ -47,7 +47,7 @@ PRD tập trung vào nghiệp vụ cốt lõi: phát audio giới thiệu nhà h
 
 StreetFood là hệ thống **mobile + backend + admin/vendor web**:
 
-- Người dùng quét QR để cài app.
+- Người dùng kích hoạt app bằng QR/mã hợp lệ trước khi dùng.
 - App dùng GPS phát hiện nhà hàng lân cận (POI).
 - Khi người dùng đi vào bán kính POI, app tự động phát audio theo ngôn ngữ thiết bị.
 - Người dùng có thể **chọn bất kỳ POI trên bản đồ** (kể cả đang ở xa) để mở thông tin và **phát audio giới thiệu chủ động**, kèm **thanh tiến trình / tua** (seek) theo thời gian thực.
@@ -58,7 +58,7 @@ StreetFood là hệ thống **mobile + backend + admin/vendor web**:
 ### 1.3 Phạm vi phiên bản
 
 - **In scope (MVP):** định vị, hiển thị POI, auto play audio, **chọn POI trên map để nghe on-demand**, **player có thanh mốc thời gian + tua được**, đa ngôn ngữ, quản trị cơ bản POI/foods/audio, analytics cơ bản.
-- **Out of scope:** thanh toán, đặt bàn, loyalty, AI recommendation nâng cao thời gian thực.
+- **Out of scope (user app):** thanh toán/đặt bàn/loyalty trong app khách, AI recommendation nâng cao thời gian thực. **Thanh toán MoMo gói Premium** thuộc **Web Vendor** (đã triển khai; xem `VendorShopController`, `upgradePage.html`).
 
 ### 1.4 Sản phẩm con & phiên bản công nghệ (repo hiện tại)
 
@@ -79,7 +79,7 @@ StreetFood là hệ thống **mobile + backend + admin/vendor web**:
 | ----------------- | ------------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **StreetFoodAPI** | `https://localhost:7236` | `http://localhost:5191` (profile `http` có thể bind `*:5191`) | Client admin/vendor: biến `STREETFOOD_API` trong `Web Admin/wwwroot/config.js` / `Web Vendor/wwwroot/config.js`. |
 | **Web Admin**     | `https://localhost:7238` | `http://localhost:5238`                                       | Trang quản trị: `/html/loginPage.html`, dashboard, heatmap, v.v.                                                 |
-| **Web Vendor**    | `https://l    ocalhost:7240` | `http://localhost:5240`                                       | Cổng chủ quán.                                                                                                   |
+| **Web Vendor**    | `https://localhost:7240`     | `http://localhost:5240`                                       | Cổng chủ quán.                                                                                                   |
 
 
 **Lưu ý triển khai:** Cần chạy **API** và web cùng lúc; HTTPS tránh lỗi mixed content khi admin gọi API HTTPS.
@@ -139,13 +139,13 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 | Mã     | Yêu cầu                                                   | Trạng thái   | Ghi chú                                                                           |
 | ------ | --------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------- |
-| FR-M01 | QR / cổng cài app                                         | **Chưa có**    | `QrGatePage.xaml`                                                                 |
+| FR-M01 | Kích hoạt app bằng QR / mã thủ công                      | **Đã có**      | `QrGatePage.xaml` + `QrAccess.cs` + `ActivationService` (modal khi chưa kích hoạt; JWT HS256 *hoặc* mã dạng `StreetFood` / `30_days_activation` — lưu hạn dùng cục bộ) |
 | FR-M02 | GPS                                                       | **Đã có**    | `HomePage` + quyền vị trí                                                         |
 | FR-M03 | POI trên bản đồ, chạm xem thông tin                       | **Đã có**    | Maps + card POI                                                                   |
-| FR-M04 | Auto audio theo bán kính + cooldown / không cắt on-demand | **Đã có**    | Logic geofence + ưu tiên phát chủ động (theo triển khai hiện tại)                 |
+| FR-M04 | Auto audio theo bán kính + queue lộ trình + skip bằng vuốt trái | **Đã có** | Geofence + ưu tiên Premium/heat/khoảng cách; queue POI trong vùng; vuốt trái bỏ qua POI hiện tại để phát POI kế tiếp; có lock/gate chống race |
 | FR-M05 | Đa ngôn ngữ `vi/en/cn/ja/ko`                              | **Đã có**    | API `Accept-Language`; fallback                                                   |
 | FR-M06 | SQLite cache                                              | **Một phần** | Thư viện `sqlite-net-pcl` có trong project; độ phủ cache POI/audio tùy triển khai |
-| FR-M07 | Tìm kiếm / lọc                                            | **Đã có**    | `SuggestPage` (khoảng cách, v.v.)                                                 |
+| FR-M07 | Gợi ý theo lượt ghé + khoảng cách; tìm theo từ khóa     | **Đã có**    | `SuggestPage` gọi `GET /api/Poi/top` + sắp `VisitCount`/khoảng cách; **Bản đồ** lọc client theo tên/địa chỉ/mô tả (`SearchEntry` trên `HomePage`) |
 | FR-M08 | On-demand nghe ngoài bán kính                             | **Đã có**    | Chọn POI → `PoiDetailPage`                                                        |
 | FR-M09 | Timeline + seek                                           | **Đã có**    | `CommunityToolkit.Maui.MediaElement`                                              |
 | —      | Gửi thống kê thời lượng nghe                              | **Đã có**    | `POST /api/analytics/poi-audio-listen` (`ListenAnalyticsController`)              |
@@ -168,9 +168,9 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 | Mã PRD                       | Trạng thái       | Ghi chú                                                                                                                                                                                           |
 | ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-A01 CRUD đầy đủ qua UI    | **Một phần**     | Có **tạo POI + tài khoản chủ quán** (`createPoiOwnerPage.html`); không có bộ CRUD POI/foods riêng đầy đủ như wireframe 15.2 “tab Foods/Audio” cổ điển — dùng API + luồng vendor cho phần còn lại. |
+| FR-A01 Quản lý dữ liệu & tài khoản | **Một phần** | **Tạo** POI+owner `createPoiOwnerPage.html`; trang `managePOIPage.html` / `manageShopsPage.html` (theo tên); CRUD món/ảnh/audio chi tiết qua **vendor** + `poi-with-owner` / phê duyệt. |
 | FR-A02 Upload audio          | **Tùy cấu hình** | TTS/regenerate qua API (`regenerate-audio`); vendor có thể gửi **gói 5 URL** (`submit-audio-bundle`).                                                                                             |
-| FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html`, `routeHeatmapPage.html` (heatmap, paths, popular paths/chains), **Thời lượng nghe** `poiListenStatsPage.html`, chỉ số **người dùng đang hoạt động** qua `/api/Admin/analytics/online-now`. |
+| FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`; online-now có polling thông minh (pause khi tab ẩn, chống chồng request, backoff khi lỗi/chậm). |
 | FR-A04 Duyệt script          | **Đã có**        | `pendingScriptsPage.html`; phê duyệt + TTS/dịch theo `AdminController`.                                                                                                                           |
 
 
@@ -190,10 +190,11 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 ## 4.1 Mobile App (.NET MAUI)
 
-### FR-M01: Cài đặt qua QR
+### FR-M01: Kích hoạt qua QR (bắt buộc trước khi dùng)
 
-- Người dùng quét QR để mở landing/install flow.
-- Hỗ trợ deep link tới trang cài app tương ứng nền tảng.
+- `AppShell` đẩy modal `QrGatePage` khi chưa kích hoạt (`ActivationService.IsCurrentlyActivated()`).
+- Nội dung mã: **JWT HS256** (issuer `StreetFood`, `typ=activation`, ký bằng shared secret trong `QrAccess`) **hoặc** mã in ấn dạng `StreetFood` / `30_days_activation:…` (tùy chọn kèm `|WEEK` / `|MONTH` / tương đương) — xem `QrAccess.TryParseActivation`.
+- Có thể **nhập tay** cùng payload khi không bật camera; lưu hạn dùng trên **Preferences** (7/30 ngày tùy plan), không cần gọi API.
 
 ### FR-M02: Định vị GPS
 
@@ -205,12 +206,16 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 - Hiển thị marker cho nhà hàng lân cận (và/hoặc toàn bộ POI trong vùng tải dữ liệu).
 - **Bấm marker / chạm POI** mở thẻ thông tin (bottom sheet hoặc card) **không phụ thuộc khoảng cách** — du khách có thể xem quán và quyết định nghe dù đang ở xa.
 
-### FR-M04: Auto trigger audio theo bán kính POI
+### FR-M04: Tự phát audio theo bán kính POI (geofence) + hàng đợi POI
 
-- Khi user vào bán kính POI, tự động hiển thị info card và phát audio.
-- Có cooldown để tránh phát lặp quá dày.
-- Khi ra khỏi vùng POI, dừng/ẩn trạng thái phát tự động.
-- **Tương tác với chế độ chủ động (FR-M08):** Khi user đang phát audio do **chọn POI thủ công**, hệ thống **không tự đổi bài** sang POI khác chỉ vì geofence (tránh cắt ngang trải nghiệm). Auto-play geofence chỉ kích hoạt khi không có phiên phát on-demand đang active, hoặc sau khi user dừng/hoàn tất bài đang nghe — chi tiết ưu tiên do UX quyết định trong spec kỹ thuật.
+- **Chọn POI active:** `FindPoiContainingUser` và `GetNearbyPoiCandidates` sắp theo **Premium** → **heat** → **khoảng cách gần hơn**.
+- **Queue POI theo lộ trình:** app duy trì `_audioPoiQueue` (kèm tập `_queuedPoiIds`, `_skippedPoiIds`) để lưu các POI đang trong vùng theo thứ tự ưu tiên.
+- **Vuốt trái để bỏ qua:** trên info card có `SwipeGestureRecognizer Direction="Left"`; khi vuốt trái POI hiện tại sẽ bị skip tạm thời và app thử phát POI kế tiếp trong queue.
+- **Độ tin cậy GPS:** nếu `Accuracy > 120m` thì bỏ qua auto geofence để tránh kích hoạt sai.
+- **Cooldown:** `CanPlay` 300 giây/POI chống phát lặp.
+- **Pinned mode:** khi user chạm map/pin và ghim card, auto-play chỉ theo POI đã ghim; ra khỏi bán kính thì dừng.
+- **Thread-safe trong app:** cập nhật queue dùng `lock (_queueSync)`; chuyển bài dùng `SemaphoreSlim _playSwitchGate` để tránh race giữa GPS loop, swipe và play thủ công.
+- **Thiết bị đứng giữa 2 POI:** nếu ngoài toàn bộ bán kính thì `activePoi` rỗng; nếu giao nhiều vùng thì vẫn chọn 1 POI thắng theo thứ tự ưu tiên nêu trên.
 
 ### FR-M05: Đa ngôn ngữ
 
@@ -224,10 +229,10 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 - Nếu offline: dùng dữ liệu cache để hiển thị bản đồ và thông tin cơ bản.
 - Audio offline là tùy chọn nâng cao (phase sau); MVP ưu tiên stream.
 
-### FR-M07: Tìm kiếm và lọc
+### FR-M07: Gợi ý (tab **Đề xuất**) và tìm trên bản đồ
 
-- Tìm theo tên nhà hàng.
-- Lọc theo loại món/khung giờ mở cửa/khoảng cách.
+- **Suggest:** tải top POI qua `GET /api/Poi/top`, kết hợp vị trí user để tính khoảng cách, sắp theo `VisitCount` rồi theo gần (`SuggestPage`).
+- **Home map:** thanh tìm **lọc client-side** theo tên, địa chỉ, mô tả trên `poiList` đã tải (không gọi API tìm kiếm riêng).
 
 ### FR-M08: Chọn POI trên bản đồ để nghe on-demand (không cần vào bán kính)
 
@@ -296,7 +301,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 - Danh sách request đổi script.
 - Approve/Reject + lưu lịch sử.
 
-**Triển khai UI (tham chiếu):** `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`, `createPoiOwnerPage.html`, `pendingScriptsPage.html`, `restaurantOwnersPage.html`. Sidebar menu được **đồng bộ bằng** `admin-api.js` (inject DOM).
+**Triển khai UI (tham chiếu):** `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html` (KPI + online-now + biểu đồ theo `device_visits`), `analyticsPage.html` (giờ / online-now), `routeHeatmapPage.html` (heatmap + paths + phổ biến), `poiListenStatsPage.html` (thời lượng nghe theo POI), `createPoiOwnerPage.html` (tạo POI + owner), `pendingScriptsPage.html`, `restaurantOwnersPage.html` (hide/unhide), `managePOIPage.html`, `manageShopsPage.html`. Sidebar: inject DOM trong `admin-api.js`.
 
 ## 4.4 Vendor Web
 
@@ -348,11 +353,14 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 ### 6.1 User flow
 
-**Luồng theo vị trí (geofence):**  
-`Scan QR -> Install App -> Open App -> Grant GPS -> View Map/POIs -> Enter POI Radius -> Auto Play Audio (+ timeline / seek)`
+**Luồng kích hoạt (lần đầu / hết hạn):**  
+`Mở app -> Modal quét/nhập mã -> Kích hoạt local còn hạn -> Tab Bản đồ/Đề xuất`
 
-**Luồng chủ động (du khách / nghe từ xa):**  
-`Open App -> View Map/POIs -> Tap POI -> Xem thông tin -> Nghe giới thiệu (Play) -> Tùy chỉnh bằng thanh thời gian (tua) / Pause`
+**Luồng theo vị trí (geofence):**  
+`Kích hoạt -> Cấp GPS -> Bản đồ: theo dõi ~4s -> Vào bán kính POI (một POI ưu tiên nếu overlap) -> Tự phát audio nếu bật auto + qua cooldown (hoặc TTS)`
+
+**Luồng chủ động (chạm POI / chi tiết):**  
+`Bản đồ: chạm pin -> Ghim thẻ (có thể ngoài bán kính) -> Vào chi tiết / Play -> Thanh thời gian + tua` (route `poidetail` tùy luồng điều hướng)
 
 ### 6.2 Vendor flow
 
@@ -558,10 +566,9 @@ erDiagram
 
 ### 9.3 Chu kỳ cập nhật
 
-- Near real-time cho dashboard vận hành:
-  - Chỉ số "Số người đang dùng app" (`/api/Admin/analytics/online-now`) dùng cửa sổ **5 giây** và client refresh mỗi 5 giây.
-  - API giữ snapshot cache 5 giây để ổn định tải.
-- Daily aggregation cho báo cáo xu hướng.
+- **App → `location_logs` (phục vụ online-now & heatmap):** vòng lặp ~**4 giây** lấy GPS; `SendLocationLog` **tối đa 1 POST thực tế / 12 giây / thiết bị** (`ApiService` cooldown) tới `POST /api/Poi/log` (khi có mạng).
+- **Web admin dashboard — online-now:** polling nền 5 giây khi ổn định, có **pause khi tab ẩn**, **anti-overlap** và **backoff đến 30 giây** khi lỗi/chậm; API cache 5 giây theo tham số.
+- Báo cáo xu hướng: tổng hợp theo ngày / `days` trên các endpoint analytics.
 
 ---
 
@@ -594,8 +601,14 @@ erDiagram
   - `movement`: giữ cooldown hiện có để tránh ghi trùng cùng cặp A->B trong cửa sổ ngắn.
   - `visit/start`: chỉ cho 1 session mở tại 1 POI cho mỗi `deviceId`; gọi lặp trả `accepted=false`.
   - `visit/end`: nếu không có session mở thì trả `accepted=false`, không tạo bản ghi mới.
-- **Đồng thời tại 1 POI:** nhiều thiết bị có thể vào cùng lúc, nhưng hệ thống vẫn giữ nhất quán dữ liệu session.
-- **Mục tiêu UX:** API phản hồi nhanh cho app khi đông người; không thêm delay nhân tạo mặc định.
+- **Đồng thời tại 1 POI (API):**
+  - `PoiIngressQueueService` dùng `SemaphoreSlim` theo `poiId` cho `visit`, `visit/start`, `visit/end` để giữ nhất quán session.
+  - response có `queueDelayMs` để đo thời gian chờ queue.
+  - `ListenEventQueueService` + `ListenEventQueueWorker` xử lý listen-event dạng queue/batch (single reader) và flush DB theo lô.
+- **Đồng thời trong app (multi-thread safety):**
+  - queue POI dùng lock `_queueSync` cho enqueue/dequeue/skip.
+  - chuyển bài audio qua `SemaphoreSlim _playSwitchGate` để tránh gọi chồng `PlayPoiAudioAsync`.
+- **Mục tiêu UX:** khi đông người vẫn ưu tiên ổn định dữ liệu trước; độ trễ có thể tăng khi dồn tải cùng 1 POI (đây là trade-off đã biết).
 
 ### 10.3 Monitoring & vận hành
 
@@ -612,6 +625,11 @@ erDiagram
   - Top endpoint lỗi theo 15m/1h.
   - Heatmap ingest rate (`location_logs`/phút), movement ingest rate (`movement_paths`/phút).
   - Queue depth và tuổi job lớn nhất cho pipeline audio.
+  - Ingress contention/queue delay theo POI: theo dõi từ `GET /api/Admin/ops/ingress-queue` + `queueDelayMs` ở response visit endpoints.
+- **Web Admin polling online-now:**
+  - pause khi tab ẩn (`document.hidden`),
+  - chống request chồng (`onlineInFlight`),
+  - backoff tăng dần tới 30s khi lỗi/chậm, reset về 5s khi thành công.
 - **Alert tối thiểu:**
   - 5xx > 5% trong 5 phút.
   - P95 > 1.5s trong 10 phút.
@@ -628,12 +646,12 @@ Phần này được chuẩn hóa lại theo phạm vi hiện tại bạn yêu c
 
 | ID | Tác nhân | Use case | Mô tả ngắn |
 | --- | --- | --- | --- |
-| UC-M01 | User | Quét QR JWT để vào app | Quét và xác thực JWT QR, lưu trạng thái kích hoạt local. |
-| UC-M02 | User | Xem POI đề xuất | Hiển thị POI trên bản đồ và danh sách gợi ý theo vị trí. |
-| UC-M03 | User | Tìm kiếm | Tìm POI theo tên/địa chỉ/mô tả. |
+| UC-M01 | User | Kích hoạt app bằng QR / mã | Quét hoặc nhập payload hợp lệ (JWT HS256 *hoặc* mã `StreetFood` / `30_days_activation`…), lưu hạn dùng local (`Preferences`). |
+| UC-M02 | User | Xem gợi ý gần bạn | Tab **Đề xuất:** `GET /api/Poi/top` + sắp theo lượt ghé và khoảng cách. Bản đồ tab **Bản đồ** tải `GET /api/Poi`. |
+| UC-M03 | User | Tìm / lọc trên bản đồ | Lọc chuỗi trên danh sách POI đã tải (client-side). |
 | UC-M04 | User | Chọn POI để nghe | Chọn marker/POI để phát audio chủ động. |
-| UC-M05 | System | Theo dõi geofence | Theo dõi vào/ra vùng bán kính POI. |
-| UC-M06 | System | Nghe audio tự động | Auto play audio khi vào vùng POI. |
+| UC-M05 | System / App | Theo dõi vùng POI | Tính `activePoi` (Premium > heat > khoảng cách), visit/movement, `location_log` (server). |
+| UC-M06 | System / App | Nghe audio tự động + queue | Auto-play theo geofence; khi đi qua nhiều quán sẽ xếp queue POI, cho phép vuốt trái bỏ qua POI hiện tại để nghe POI kế tiếp. |
 | UC-M07 | System | Log analytics | Ghi location, visit start/end, movement, listen duration. |
 | UC-V01 | Vendor | Đăng nhập | Xác thực role vendor. |
 | UC-V02 | Vendor | Cập nhật thông tin cửa hàng | Cập nhật profile quán, logo, giờ mở cửa, điện thoại. |
@@ -656,7 +674,7 @@ flowchart LR
     U[User]
     S[System]
     subgraph APP[StreetFood Mobile App]
-      M1(UC-M01 Quét QR JWT để vào app)
+      M1(UC-M01 Kích hoạt app QR/mã)
       M2(UC-M02 Xem POI đề xuất)
       M3(UC-M03 Tìm kiếm POI)
       M4(UC-M04 Chọn POI để nghe)
@@ -682,11 +700,10 @@ flowchart LR
     M7 -. "<<include>>" .-> M1
 ```
 
-### 11.2.1 Quy tắc include cho quét QR JWT (Mobile)
+### 11.2.1 Quy tắc include cho kích hoạt (Mobile)
 
-- `UC-M01 Quét QR JWT để vào app` là điều kiện bắt buộc trước khi dùng các chức năng còn lại.
-- `UC-M02` đến `UC-M07` đều `<<include>> UC-M01`.
-- Ý nghĩa nghiệp vụ: user chỉ truy cập được Home/Suggest/geofence/audio/log analytics sau khi kích hoạt hợp lệ bằng QR JWT.
+- `UC-M01` là điều kiện bắt buộc: shell chỉ mở nội dung chính sau khi kích hoạt cục bộ còn hạn.
+- `UC-M02` … `UC-M07` vẫn đặt quan hệ `<<include>> UC-M01` ở sơ đồ 11.2 theo tài liệu; **kỹ thuật** triển khai hỗ trợ cả **JWT** và **mã văn bản** tĩnh (xem `QrAccess`).
 
 ### 11.3 Use Case Diagram - Web Vendor
 
@@ -758,7 +775,7 @@ flowchart LR
 | UC-M03 Tìm kiếm | 12.3 | 13.3 |
 | UC-M04 Chọn POI để nghe | 12.4 | 13.4 |
 | UC-M05 Theo dõi geofence | 12.5 | 13.5 |
-| UC-M06 Nghe audio tự động | 12.6 | 13.6 |
+| UC-M06 Nghe audio tự động | 12.6a–e | 13.6, 13.6a–c |
 | UC-M07 Log analytics | 12.7 | 13.7 |
 | UC-V01 Đăng nhập vendor | 12.8 | 13.8 |
 | UC-V02 Cập nhật thông tin cửa hàng | 12.9 | 13.9 |
@@ -778,29 +795,37 @@ flowchart LR
 
 ## 12. Sequence diagram
 
-### 12.1 Sequence - UC-M01 Quét QR JWT để vào app
+### 12.1 Sequence - UC-M01 Kích hoạt app (QR / mã thủ công)
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant M as Mobile App
-    participant Q as QR JWT
-    participant P as Preferences(Local)
+    participant Shell as AppShell
+    participant Q as QrGatePage
+    participant Z as ZXing / Camera
+    participant QA as QrAccess
+    participant P as Preferences
 
-    U->>M: Mở app lần đầu
-    M->>U: Mở màn quét QR JWT
-    U->>M: Quét mã
-    M->>Q: Đọc payload JWT
-    M->>M: Verify signature + exp/nbf + issuer/type
-    alt JWT hợp lệ
-        M->>P: Lưu activation local
-        M-->>U: Cho vào app
-    else JWT không hợp lệ
-        M-->>U: Báo lỗi và yêu cầu quét lại
+    U->>Shell: Mở app (navigated)
+    alt Chưa kích hoạt còn hạn
+        Shell->>Q: PushModal QrGatePage
+        Q->>Z: Bật quét (nếu có quyền camera)
+        U->>Q: Quét mã hoặc nhập tay
+        Q->>QA: TryParseActivation(payload)
+        alt JWT 3 phần (HS256, iss/typ/exp/nbf)
+            QA->>QA: Verify HMAC + claims
+        else Mã văn bản (StreetFood / 30_days…)
+            QA->>QA: Gán plan Standard/Week/Month
+        end
+        QA-->>Q: plan hợp lệ
+        Q->>P: ApplyLocalFromQr (hạn 7/30 ngày)
+        Q->>Shell: PopModal — vào tab Bản đồ/Đề xuất
+    else Đã kích hoạt
+        Shell-->>Shell: Không mở modal
     end
 ```
 
-### 12.2 Sequence - UC-M02 Xem POI đề xuất
+### 12.2 Sequence - UC-M02 Gợi ý (tab Đề xuất) và bản đồ (tab Bản đồ)
 
 ```mermaid
 sequenceDiagram
@@ -809,24 +834,30 @@ sequenceDiagram
     participant API as StreetFood API
     participant DB as PostgreSQL
 
-    U->>M: Mở màn Home/Suggest
-    M->>API: GET /api/poi (Accept-Language)
-    API->>DB: Query POI + translation + audio
-    DB-->>API: Dữ liệu POI
-    API-->>M: Danh sách POI
-    M-->>U: Hiển thị map + danh sách đề xuất
+    U->>M: Mở tab Đề xuất
+    M->>M: Request quyền vị trí
+    M->>API: GET /api/Poi/top?… (GetTopPois)
+    M->>M: GetLocationAsync
+    API->>DB: Top POI theo thống kê
+    DB-->>API: Danh sách
+    API-->>M: JSON
+    M-->>U: Danh sách 10 món gợi ý (visit + khoảng cách)
+
+    U->>M: Mở tab Bản đồ
+    M->>API: GET /api/Poi (Accept-Language)
+    API->>DB: POI + translation + audio
+    API-->>M: Tất cả POI (lọc map + search local)
 ```
 
-### 12.3 Sequence - UC-M03 Tìm kiếm
+### 12.3 Sequence - UC-M03 Lọc chuỗi trên bản đồ (client)
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant M as Mobile App
-
-    U->>M: Nhập từ khóa tìm kiếm
-    M->>M: Lọc danh sách POI theo tên/địa chỉ/mô tả
-    M-->>U: Hiển thị kết quả đã lọc
+    participant M as HomePage
+    U->>M: Gõ SearchEntry
+    M->>M: ApplyFiltersAndRefreshMap: filter poiList
+    M-->>U: Pins + danh sách theo tên/địa chỉ/mô tả (không gọi API mới)
 ```
 
 ### 12.4 Sequence - UC-M04 Chọn POI để nghe
@@ -844,41 +875,113 @@ sequenceDiagram
     M-->>U: Phát audio + điều khiển pause/seek
 ```
 
-### 12.5 Sequence - UC-M05 Theo dõi geofence
+### 12.5 Sequence - UC-M05 Vị trí, vùng POI, thăm quán, movement
 
 ```mermaid
 sequenceDiagram
-    participant M as Mobile App
+    participant M as HomePage
     participant API as StreetFood API
     participant DB as PostgreSQL
 
-    loop Chu kỳ định vị
-      M->>M: Lấy GPS hiện tại
-      M->>API: POST /api/poi/log (deviceId,lat,lng)
-      API->>DB: INSERT location_logs
+    loop Mỗi ~4s (có tọa độ)
+        M->>M: GetLocationAsync
+        M->>API: POST /api/Poi/log (tối đa ~1 lần / 12 giây)
+        API->>DB: INSERT location_logs
+        M->>M: FindPoiContainingUser (ưu tiên: Premium, heat, khoảng cách tăng dần)
+        M->>API: TrackPoiVisit khi đổi POI (cooldown 5 phút / POI từ app)
+        M->>API: visit/start, visit/end, movement khi HandleVisitAndMovement
     end
-    M->>M: Tính khoảng cách đến từng POI
-    M->>M: Xác định vào/ra geofence
 ```
 
 ### 12.6 Sequence - UC-M06 Nghe audio tự động
 
+**Ghi chú tích hợp:** Tự phát nằm trong `CheckNearby` (sau `HandleVisitAndMovement`), có queue POI và xử lý thread-safe (`_queueSync`, `_playSwitchGate`).
+
+#### 12.6a Cổng vào + cập nhật queue POI (mỗi lần có tọa độ)
+
 ```mermaid
 sequenceDiagram
-    participant M as Mobile App
+    autonumber
+    participant M as HomePage
     participant API as StreetFood API
-    participant DB as PostgreSQL
-    participant R2 as Audio Storage
-
-    M->>M: Nhận event vào geofence
-    M->>API: POST /api/poi/visit/start
-    API->>DB: INSERT device_visits(entertime)
-    M->>R2: Stream audio POI
-    R2-->>M: Audio
-    M-->>M: Auto play audio
+    M->>M: Có danh sách POI lọc rỗng, thoát
+    M->>M: Trong cửa sổ tạm ngưng 2s sau chạm map, thoát
+    M->>M: Nếu độ lệch GPS vượt 120m, thoát
+    M->>M: nearbyPois = GetNearbyPoiCandidates: Premium, heat, gần tâm
+    M->>M: lock queueSync: Prune skip + enqueue POI mới
+    M->>M: activePoi = nearbyPois đầu tiên
+    M->>API: HandleVisitAndMovement: visit/start, movement, visit/end
+    Note over M,API: Tự phát: xem 12.6b (ghim), 12.6c (ngoài vùng), 12.6d (trong vùng + queue)
 ```
 
-### 12.7 Sequence - UC-M07 Log analytics
+#### 12.6b Đã chạm map để ghim thẻ (_cardPinnedByMapTap)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M as HomePage
+    participant R as Media TTS
+    M->>M: Luôn hiện thẻ theo _currentPoi
+    M->>M: Nếu tắt auto hoặc user ngoài bán kính cần: dừng phát tự
+    alt Tắt auto hoặc ngoài bán kính
+        M->>R: Stop, bỏ currentAudioPoiId, isAutoPlaying
+    else Trong bán kính và tự phát còn bật
+        M->>M: Nếu dismiss: không tự phát lần mới
+        M->>M: Nếu cùng bài/POI, kiểm CanPlay (300 giây cùng poiId)
+        M->>M: await playSwitchGate -> PlayPoiAudioAsync -> release gate
+    end
+```
+
+#### 12.6c Chưa ghim: ngoài mọi bán kính (kể cả "khe" giữa 2 vòng tròn)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M as HomePage
+    M->>M: activePoi rỗng: vị trí không bán kính POI nào
+    M->>M: Có thể bỏ trạng thái dismiss nếu đã thật sự ra hẳn bán kính POI liên quan
+    M->>M: Ẩn thẻ, dừng tự phát, reset lastTracked
+```
+
+#### 12.6d Chưa ghim: trong bán kính + queue chạy kế tiếp
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M as HomePage
+    participant R as Media TTS
+    M->>M: Hiện thẻ activePoi, TrackPoiVisit khi lần đầu theo dõi POI mới
+    M->>M: QueueInfoLabel hiển thị số POI còn trong queue
+    alt Tắt tự phát, hoặc bị chặn dismiss, hoặc bị chặn CanPlay, hoặc cùng audio đang phát
+        M->>M: Có dừng tự: Stop meter và MediaElement nếu cấu hình
+    else Tự phát còn bật, dismiss không chặn, thỏa CanPlay, có dữ liệu
+        M->>M: await playSwitchGate
+        M->>R: PlayPoiAudioAsync, arm ListenMeter, isAutoPlaying
+        M->>M: release playSwitchGate
+    end
+```
+
+#### 12.6e Vuốt trái để bỏ qua POI hiện tại
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant M as HomePage
+    participant R as Media TTS
+    U->>M: Swipe left trên InfoCard
+    M->>M: lock queueSync: add skippedPoiId, remove queuedPoiId
+    M->>R: Stop audio hiện tại, reset state
+    M->>M: TryPlayNextFromQueueAsync theo vị trí hiện tại
+    alt Có POI kế tiếp hợp lệ trong vùng
+        M->>M: ShowInfoCard + TrackPoiVisit
+        M->>R: Play bài kế tiếp (qua playSwitchGate)
+    else Không còn POI hợp lệ
+        M->>M: HideCard
+    end
+```
+
+### 12.7 Sequence - UC-M07 Log analytics (tổng hợp)
 
 ```mermaid
 sequenceDiagram
@@ -886,10 +989,10 @@ sequenceDiagram
     participant API as StreetFood API
     participant DB as PostgreSQL
 
-    M->>API: POST /api/analytics/poi-audio-listen
-    API->>DB: INSERT poi_audio_listen_events
-    M->>API: POST /api/poi/visit/end
-    API->>DB: UPDATE device_visits(exittime,duration)
+    M->>API: POST /api/Poi/log (vị trí, throttle)
+    M->>API: visit / visit:start / visit:end / movement (theo thay đổi vùng)
+    M->>API: POST /api/analytics/poi-audio-listen (khi dừng/flush phiên nghe, dedupe 15s)
+    API->>DB: location_logs, device_visits, movement_paths, poi_audio_listen_events
 ```
 
 ### 12.8 Sequence - UC-V01 Đăng nhập vendor
@@ -1104,32 +1207,35 @@ sequenceDiagram
 
 ## 13. Activity diagram
 
-### 13.1 Activity - UC-M01 Quét QR JWT để vào app
+### 13.1 Activity - UC-M01 Kích hoạt app
 
 ```mermaid
 flowchart TD
-    M0[Mở app] --> M1{Đã kích hoạt JWT local?}
-    M1 -- Chưa --> M2[Quét QR JWT]
-    M2 --> M3{JWT hợp lệ?}
+    M0[Mở app] --> M1{IsCurrentlyActivated?}
+    M1 -- Có --> M4[Vào shell tab Bản đồ/Đề xuất]
+    M1 -- Không --> M2[Modal QrGate: quét hoặc nhập mã]
+    M2 --> M3{TryParseActivation: JWT hoặc mã văn bản?}
     M3 -- Không --> M2
-    M3 -- Có --> M4[Lưu activation local và vào app]
-    M1 -- Đã rồi --> M4
+    M3 -- Có --> M5[ApplyLocalFromQr → Preferences]
+    M5 --> M4
 ```
 
-### 13.2 Activity - UC-M02 Xem POI đề xuất
+### 13.2 Activity - UC-M02 Gợi ý & bản đồ
 
 ```mermaid
 flowchart TD
-    A0[Mở Home/Suggest] --> A1[Load POI từ API]
-    A1 --> A2[Hiển thị map và danh sách đề xuất]
+    A0[Tab Bản đồ] --> A1[GET /api/Poi]
+    A1 --> A2[Map + tìm kiếm local]
+    B0[Tab Đề xuất] --> B1[GET /api/Poi/top + GPS]
+    B1 --> B2[10 POI: visit count + gần nhất]
 ```
 
-### 13.3 Activity - UC-M03 Tìm kiếm
+### 13.3 Activity - UC-M03 Lọc trên bản đồ (client)
 
 ```mermaid
 flowchart TD
-    B0[Nhập từ khóa] --> B1[Lọc danh sách POI]
-    B1 --> B2[Hiển thị kết quả]
+    B0[Nhập từ khóa HomePage] --> B1[Lọc client trên poiList]
+    B1 --> B2[Cập nhật map pins theo bộ lọc]
 ```
 
 ### 13.4 Activity - UC-M04 Chọn POI để nghe
@@ -1141,22 +1247,77 @@ flowchart TD
     C2 --> C3[Phát audio + Pause/Seek]
 ```
 
-### 13.5 Activity - UC-M05 Theo dõi geofence
+### 13.5 Activity - UC-M05 Vùng & telemetry
 
 ```mermaid
 flowchart TD
-    D0[Đọc GPS chu kỳ] --> D1[Tính khoảng cách đến POI]
-    D1 --> D2{Vào/ra geofence?}
-    D2 --> D3[Phát sinh event geofence]
+    D0[Vòng ~4s: lấy GPS] --> D1[POST Poi/log khi qua 12s throttle]
+    D1 --> D2[FindPoiContainingUser: ưu tiên Premium, heat, gần tâm]
+    D2 --> D3[HandleVisitAndMovement: visit, movement]
+```
+
+#### 13.5a Nhiều bán kính giao nhau
+
+```mermaid
+flowchart TD
+    O0[User nằm trong giao nhiều vùng] --> O1[Chỉ một POI active: Premium, heat, gần tâm]
+    O1 --> O2[Không phát lần lượt từng vùng]
 ```
 
 ### 13.6 Activity - UC-M06 Nghe audio tự động
 
+**Tổng quan:** auto geofence hiện có queue POI + skip bằng vuốt trái + gate chống phát chồng.
+
 ```mermaid
 flowchart TD
-    E0[Nhận event vào geofence] --> E1[Mở card POI]
-    E1 --> E2[Tự phát audio]
+    E0[CheckNearby] --> E1{Hợp lệ: có POI, hết suspend, GPS tin cậy?}
+    E1 -- Không --> R[Thoát]
+    E1 -- Có --> Q0[lock queueSync: dọn skip + enqueue nearby]
+    Q0 --> E2{Đang ghim POI?}
+    E2 -- Có: xem 13.6b --> E3[Tự phát theo bán kính ghim]
+    E2 -- Không, ngoài mọi bán kính --> E4[Ẩn thẻ, dừng tự phát: giữa hai vùng]
+    E2 -- Không, trong ít nhất một bán kính --> E5[Chi tiết 13.6a]
+    E3 --> E6[Phát/Stop theo vùng ghim]
 ```
+
+**Luồng 13.6a — chưa ghim, còn trong ít nhất một bán kính (có thể là vùng giao):**
+
+```mermaid
+flowchart TD
+    S0[ShowInfoCard activePoi, TrackPoiVisit nếu đổi POI] --> S1{Tắt tự phát?}
+    S1 -- Có --> S2[Dừng phát, tắt meter, tắt player]
+    S1 -- Không --> S3{Đang dismiss cùng POI?}
+    S3 -- Có --> S4[Không tự phát cho POI này]
+    S3 -- Không --> S5{Thỏa CanPlay, cùng poiId, 300 giây?}
+    S5 -- Không --> S4
+    S5 -- Có, có stream hoặc mô tả TTS --> S6[Wait playSwitchGate, play, release]
+```
+
+**Luồng 13.6b — đã ghim bằng chạm map:**
+
+```mermaid
+flowchart TD
+    T0[Thẻ theo POI đang ghim] --> T1{Còn trong bán kính POI ghim?}
+    T1 -- Không, hoặc tắt auto --> T2[Dừng, reset bài, isAuto tắt]
+    T1 -- Có, bật auto --> T3{Thẻ đang dismiss?}
+    T3 -- Có --> T4[Không tự phát tự động]
+    T3 -- Không --> T5{Thỏa CanPlay, khác bài, có nguồn?}
+    T5 -- Có --> T6[Wait playSwitchGate, play, release]
+    T5 -- Chưa --> T4
+```
+
+**Luồng 13.6c — vuốt trái để nghe POI kế tiếp trong queue:**
+
+```mermaid
+flowchart TD
+    L0[SwipeLeft trên card] --> L1[lock queueSync: đánh dấu skip POI hiện tại]
+    L1 --> L2[Dừng audio hiện tại]
+    L2 --> L3{Queue còn POI hợp lệ trong vùng?}
+    L3 -- Có --> L4[Show card POI kế + TrackPoiVisit + auto play qua gate]
+    L3 -- Không --> L5[HideCard]
+```
+
+**Ghi chú nghiệp vụ:** Queue POI là queue theo **thiết bị** (app local), không phải queue toàn cục giữa nhiều thiết bị.
 
 ### 13.7 Activity - UC-M07 Log analytics
 
@@ -1405,10 +1566,17 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 ### 16.1 Mobile & POI công khai (`PoiController` → `/api/Poi`)
 
 
-| Phương thức | Đường dẫn       | Mô tả                                                |
-| ----------- | --------------- | ---------------------------------------------------- |
-| GET         | `/api/Poi`      | Danh sách POI + audio theo `Accept-Language`.        |
-| GET         | `/api/Poi/{id}` | Chi tiết POI + foods (ẩn món `IsHidden` nếu có cột). |
+| Phương thức | Đường dẫn | Mô tả |
+| --- | --- | --- |
+| GET | `/api/Poi` | Danh sách POI + bản dịch + audio theo `Accept-Language`. |
+| GET | `/api/Poi/{id}` | Chi tiết POI + `Restaurant_Details` + foods (lọc `IsHidden` nếu có). |
+| GET | `/api/Poi/top?top=&days=` | Top POI theo thống kê (dùng tab **Đề xuất**). |
+| GET | `/api/Poi/heat-priority?days=` | Điểm heat ưu tiên cho `FindPoiContainingUser` (tối đa 180 ngày client). |
+| POST | `/api/Poi/visit` | Ghi lượt thăm thưa (cooldown 5 phút/POI từ app). |
+| POST | `/api/Poi/visit/start` | Bắt đầu session thăm tại POI (có ingress queue theo POI, trả thêm `queueDelayMs`). |
+| POST | `/api/Poi/visit/end` | Kết thúc session, cập nhật duration (có ingress queue theo POI, trả thêm `queueDelayMs`). |
+| POST | `/api/Poi/log` | Mẫu vị trí (online-now, heatmap). |
+| POST | `/api/Poi/movement` | Chuyển POI A→B (popular paths / chains). |
 
 
 ### 16.2 Telemetry nghe audio (`ListenAnalyticsController` → `/api/analytics`)
@@ -1419,13 +1587,17 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | POST        | `/api/analytics/poi-audio-listen` | App gửi `poiId`, `durationSeconds`, `deviceId` (lưu `poi_audio_listen_events`). Trả về `{ accepted: true }` hoặc `{ accepted: false, reason: "duplicate_window_15s" }` nếu trùng cùng thiết bị + POI + cùng `durationSeconds` trong cửa sổ ~15s. |
 
 
-### 16.3 Xác thực (`AuthController` → `/api/Auth`)
+### 16.3 Xác thực & tài khoản app (`AuthController` → `/api/Auth`)
 
 
-| Phương thức | Đường dẫn         | Mô tả                                                                                                                          |
-| ----------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| POST        | `/api/Auth/login` | Đăng nhập admin/vendor (bảng `users`).                                                                                         |
-| POST        | `/api/Auth/...`   | Các endpoint app/device cũ còn trong controller (khuyến nghị cleanup để đồng bộ 100% với mô hình kích hoạt JWT local của app). |
+| Phương thức | Đường dẫn | Mô tả |
+| --- | --- | --- |
+| POST | `/api/Auth/login` | Đăng nhập **admin/vendor** (bảng `users`, không bị `ishidden`). |
+| POST | `/api/Auth/register-app` | Đăng ký tài khoản role `app` (dù tính năng có bật trong app hay không). |
+| POST | `/api/Auth/login-app` | Đăng nhập role `app`. |
+| POST | `/api/Auth/activate-app` | Kích hoạt/đồng bộ kích hoạt server-side (bổ sung; song song với kích hoạt QR **cục bộ** trên MAUI). |
+| POST | `/api/Auth/activate-device` | Liên kết thiết bị (nếu dùng). |
+| GET | `/api/Auth/device-status` | Trạng thái thiết bị. |
 
 
 ### 16.4 Quản trị (`AdminController` → `/api/Admin`) — cần `X-Admin-Key` nếu cấu hình `Admin:ApiKey`
@@ -1438,6 +1610,8 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | GET         | `/api/Admin/analytics/heatmap`                | Điểm nhiệt từ `location_logs`.                                           |
 | GET         | `/api/Admin/analytics/poi-audio-listen?days=` | Thống kê **thời lượng nghe** trung bình theo POI.                        |
 | GET         | `/api/Admin/analytics/paths`                  | Chuỗi di chuyển gần đây.                                                 |
+| GET         | `/api/Admin/analytics/hourly-active-users`   | Tổng hợp từ `location_logs` theo giờ.                                   |
+| GET         | `/api/Admin/analytics/user-analysis/hourly-visits` | Tổng hợp từ `device_visits` theo giờ.                              |
 | GET         | `/api/Admin/analytics/popular-paths`          | Cặp POI A→B phổ biến.                                                    |
 | GET         | `/api/Admin/analytics/popular-route-chains`   | Chuỗi tối đa N POI.                                                      |
 | GET         | `/api/Admin/ops/metrics`                      | Snapshot vận hành 24h: số bản ghi `location_logs`, `movement_paths`, `poi_audio_listen_events`, thời điểm mới nhất, tổng POI. |
@@ -1452,6 +1626,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | POST        | `/api/Admin/poi/{poiId}/regenerate-audio`     | Tạo lại MP3 (Azure Speech).                                              |
 | GET         | `/api/Admin/owners`                           | Danh sách chủ quán.                                                      |
 | POST        | `/api/Admin/owners/{userId}/hide`             | Ẩn tài khoản vendor.                                                     |
+| POST        | `/api/Admin/owners/{userId}/unhide`         | Hiện lại tài khoản vendor.                                               |
 
 
 ### 16.5 Vendor (các controller dùng chung prefix `**/api/vendor`**)
@@ -1477,7 +1652,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 - Fallback tương thích link cũ: nếu MoMo quay về root `/?partnerCode=...`, API tự chuyển tiếp sang `/payment/return?...` để tránh 404.
 
 
-> **Ghi chú:** Danh sách trên lấy từ attribute `[HttpGet]`/`[HttpPost]` trong `StreetFoodAPI/Controllers/`. Một số đường dẫn REST “chuẩn CRUD” trong PRD 1.x (ví dụ `GET /api/poi/search`) **chưa** thấy triển khai riêng — tìm kiếm/lọc được đảm nhiệm phía app (`SuggestPage`) trên dữ liệu đã tải hoặc API hiện có.
+> **Ghi chú:** Danh sách trên lấy từ `StreetFoodAPI/Controllers/`. **Tìm theo từ khóa** trên bản đồ: lọc **client-side** trên `HomePage`; tab **Đề xuất** dùng `GET /api/Poi/top`, không có `GET /api/Poi/search` riêng.
 
 ---
 
@@ -1511,17 +1686,19 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 
 ## 19. Tiêu chí nghiệm thu MVP
 
-- User cài app qua QR và mở thành công.
+- User kích hoạt app bằng **QR/mã hợp lệ** (JWT hoặc mã văn bản) và mở được tab Bản đồ/Đề xuất.
 - App hiển thị đúng POI gần vị trí hiện tại.
 - Vào bán kính POI thì audio tự phát đúng ngôn ngữ.
 - User **chạm POI trên bản đồ** khi **ngoài bán kính** vẫn mở được thông tin và **phát được audio** sau khi bấm nghe.
 - Khi đang phát audio, UI có **thời gian đã phát / tổng thời lượng** và **thanh tua**; kéo seek cập nhật đúng vị trí phát (trong giới hạn hỗ trợ của nguồn stream).
 - Quy tắc **không cắt ngang** bài on-demand bởi auto geofence được áp dụng như mô tả FR-M04.
+- Khi đi qua nhiều quán trong vùng, app tạo queue POI theo ưu tiên; user có thể vuốt trái bỏ qua POI hiện tại để nghe POI kế tiếp.
 - Admin **tạo được POI kèm chủ quán** và **theo dõi được** dashboard/heatmap/paths/thời lượng nghe; vendor **bổ sung** foods qua cổng vendor (đúng mô hình phân tách hiện tại).
 - Vendor gửi được request script / gói audio, admin duyệt được.
 - Với gói 5 audio từ vendor, nếu có `scriptText` thì khi admin duyệt hệ thống cập nhật `restaurant_audio` và đồng bộ `poi_translations.description` đa ngôn ngữ.
 - Dashboard hiển thị được các chỉ số tổng hợp (POI, vendor, pending script, audio tracks, mẫu location, v.v.).
 - Concurrency smoke test chạy qua các endpoint analytics/location/visit không gây lỗi hàng loạt (5xx trong ngưỡng).
+- Có kết quả test riêng cho kịch bản nhiều user cùng 1 POI (`tests/nfr/streetfood-poi-concurrency.js`) để đánh giá queue delay và latency thực tế.
 - Monitoring có dashboard và alert cơ bản cho API + DB + pipeline audio.
 
 ---
@@ -1547,10 +1724,11 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **Cấu hình API cho web** | `Web Admin/wwwroot/config.js`, `Web Vendor/wwwroot/config.js`                                                                                                                                                                                                                                                    |
 | **Client gọi API admin** | `Web Admin/wwwroot/js/admin-api.js` (gồm inject sidebar StreetFood)                                                                                                                                                                                                                                              |
 | **API**                  | `StreetFoodAPI/Controllers/*.cs`, `StreetFoodAPI/Program.cs`, `StreetFoodAPI/appsettings.json`                                                                                                                                                                                                                   |
-| **Migration / SQL**      | `StreetFood.Infrastructure/Migrations/` — `**V1__Initial_schema.sql`** (DDL đầy đủ), `**V2__Seed_core_data.sql**` (dữ liệu nền), `**V3__Seed_demo_analytics.sql**` (heatmap/tuyến/thống kê nghe). DB mới: tạo database trống rồi chạy lần lượt hoặc bật `DbInitializer` (nếu được kích hoạt trong `Program.cs`). |
+| **Migration / SQL**      | `StreetFood.Infrastructure/Migrations/` — `**V1__Initial_schema.sql**` (DDL đầy đủ), `**V2__Seed_core_data.sql**`, `**V3__Seed_demo_analytics.sql**`, `**V4__perf_listen_event_indexes.sql**`, `**V5__perf_visit_and_movement_indexes.sql**` (index tối ưu đồng thời). |
 | **App MAUI**             | `App/Views/*.xaml`, `App/AppShell.xaml`                                                                                                                                                                                                                                                                          |
-| **Trang HTML admin**     | `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`, `createPoiOwnerPage.html`, `pendingScriptsPage.html`, `restaurantOwnersPage.html`                                                                                                        |
-| **Trang HTML vendor**    | `Web Vendor/wwwroot/html/` — `dashboardShopPage.html`, `manageProductsPage.html`, `requestScriptPage.html`, …                                                                                                                                                                                                    |
+| **Trang HTML admin**     | `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html`, `analyticsPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`, `createPoiOwnerPage.html`, `pendingScriptsPage.html`, `restaurantOwnersPage.html`, `managePOIPage.html`, `manageShopsPage.html`                                   |
+| **Trang HTML vendor**    | `Web Vendor/wwwroot/html/` — `loginPage.html`, `dashboardShopPage.html`, `manageProductsPage.html`, `addProductPage.html`, `requestScriptPage.html`, `upgradePage.html`, `statisticsShopsPage.html`                                                                                                                |
+| **NFR / Load test**      | `tests/nfr/` — `streetfood-smoke.js`, `streetfood-read-load.js`, `streetfood-write-load.js`, `streetfood-mixed-load.js`, `streetfood-poi-concurrency.js`, `run-capacity.ps1`. |
 | **Sơ đồ ERD**            | Mermaid ERD duy nhất tại [mục 8.2](#82-sơ-đồ-erd-mermaid).                                                                                                                                                                                                                                                       |
 
 
@@ -1568,3 +1746,6 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.3**   | **2026-04-15**  | Viết lại hoàn chỉnh các mục **Use Case / Sequence / Activity** theo phạm vi nghiệp vụ mới: App (QR JWT, đề xuất POI, search, chọn POI nghe, geofence, analytics log), Vendor (login, cập nhật cửa hàng, quản lý món, gửi yêu cầu audio), Admin (login, quản lý vendor, analytics người dùng/heatmap/tuyến đi/thời lượng nghe, tạo vendor, phê duyệt yêu cầu). |
 | **2.4**   | **2026-04-17**  | Bổ sung chi tiết vận hành cho MVP: **automation test nhiều thiết bị**, quy tắc **xử lý trùng + quản lý hàng đợi** khi đồng thời cao (đặc biệt theo POI/device), và khung **monitoring + alerting**; mở rộng tiêu chí nghiệm thu tương ứng. |
 | **2.5**   | **2026-04-23**  | Cập nhật theo triển khai mới: vendor gửi **gói 5 audio kèm `scriptText`** để đồng bộ script khi duyệt; rút gọn mục **10.2** theo phạm vi MVP đồ án (chống trùng + đồng thời + phản hồi nhanh cho app). |
+| **2.6**   | **2026-04-24**  | Đồng bộ toàn PRD với mã nguồn: **kích hoạt** (`QrGatePage`, `QrAccess`, `ActivationService`); **tab Bản đồ / Đề xuất**; `GET /api/Poi/top`, heat-priority, đủ route `Poi` telemetry; **tự phát geofence** (ưu tiên POI, cooldown 300s, GPS 120m, ghim map, không hàng đợi); cập nhật **Sequence/Activity** M01–M07, **API 16.x**, **Admin/Vendor** HTML, **9.3** chu kỳ log; sửa **phạm vi** (MoMo premium vendor). |
+| **2.6.1** | **2026-04-24**  | Sửa **Mermaid** UC-M06: bỏ ký tự gây parse lỗi, `alt/else` tối đa một `else`, tách **12.6a–d** và **13.6/13.5a/13.6a–b**; xóa đoạn văn bản dư do chỉnh sửa. |
+| **2.7**   | **2026-04-24**  | Đồng bộ chức năng mới: **queue POI trên app** khi đi qua nhiều quán, **vuốt trái skip POI** để nghe POI kế tiếp, lock `_queueSync` + gate `_playSwitchGate` chống race; cập nhật **12.6/13.6** theo luồng queue đầy đủ; bổ sung NFR về **ingress queue** API, polling web admin có **anti-overlap + backoff**, thêm migration `V5__perf_visit_and_movement_indexes.sql` và script test `streetfood-poi-concurrency.js`. |

@@ -116,6 +116,7 @@ public class AdminController : ControllerBase
                 FROM location_logs
                 WHERE createdat > NOW() - (CAST(@Seconds AS integer) * INTERVAL '1 second')",
                 new { Seconds = seconds });
+
             OnlineNowCache[seconds] = (now, count);
             return Ok(new OnlineNowDto(count, seconds / 60));
         }

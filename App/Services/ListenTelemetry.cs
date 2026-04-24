@@ -7,6 +7,7 @@ public static class ListenTelemetry
 {
     const int MinSeconds = 3;
     const int MaxSeconds = 3600;
+    static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(20) };
 
     public static void ReportFireAndForget(int poiId, int durationSeconds)
     {
@@ -20,10 +21,9 @@ public static class ListenTelemetry
         if (!NetworkReachability.HasUsableConnection) return;
         try
         {
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
             var url = $"{ApiConfig.GetBaseUrl()}/api/analytics/poi-audio-listen";
             var deviceId = ActivationService.GetOrCreateInstallId();
-            await client.PostAsJsonAsync(url, new
+            await Client.PostAsJsonAsync(url, new
             {
                 poiId,
                 durationSeconds,
