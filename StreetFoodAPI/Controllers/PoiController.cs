@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Npgsql;
 using Dapper;
 using StreetFood.API.Models;
@@ -33,6 +34,7 @@ public class PoiController : ControllerBase
     }
 
     [HttpGet]
+    [OutputCache(PolicyName = "PoiListShort")]
     public async Task<IActionResult> GetPois()
     {
         try
@@ -76,6 +78,7 @@ public class PoiController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [OutputCache(PolicyName = "PoiDetailShort")]
     public async Task<IActionResult> GetPoiDetail([FromRoute] int id)
     {
         try
@@ -365,6 +368,7 @@ public class PoiController : ControllerBase
     /// Top quán theo số lượt vào (device_visits) trong N ngày gần nhất.
     /// </summary>
     [HttpGet("top")]
+    [OutputCache(PolicyName = "PoiTopShort")]
     public async Task<IActionResult> GetTopPois([FromQuery] int top = 10, [FromQuery] int days = 30)
     {
         top = Math.Clamp(top, 1, 20);
@@ -425,6 +429,7 @@ public class PoiController : ControllerBase
     /// Tính từ số sample location_logs rơi vào bán kính của từng POI trong N ngày.
     /// </summary>
     [HttpGet("heat-priority")]
+    [OutputCache(PolicyName = "PoiHeatShort")]
     public async Task<IActionResult> GetPoiHeatPriority([FromQuery] int days = 30)
     {
         days = Math.Clamp(days, 1, 180);

@@ -27,8 +27,10 @@ public partial class AuthController
         if (string.IsNullOrWhiteSpace(_connStr))
             return StatusCode(500, "Máy chủ chưa cấu hình database.");
 
+        var normalizedUsername = request.Username.Trim().ToLowerInvariant();
         try
         {
+            using var lease = await _userIngressQueue.EnterAsync($"user:{normalizedUsername}", HttpContext.RequestAborted);
             await using var conn = new NpgsqlConnection(_connStr);
             var n = await conn.ExecuteScalarAsync<int>(@"
                 SELECT COUNT(*)::int FROM users WHERE lower(trim(username)) = lower(trim(@U))",
@@ -105,8 +107,10 @@ public partial class AuthController
         if (string.IsNullOrWhiteSpace(_connStr))
             return StatusCode(500, "Máy chủ chưa cấu hình database.");
 
+        var normalizedUsername = request.Username.Trim().ToLowerInvariant();
         try
         {
+            using var lease = await _userIngressQueue.EnterAsync($"user:{normalizedUsername}", HttpContext.RequestAborted);
             await using var conn = new NpgsqlConnection(_connStr);
             var row = await conn.QueryFirstOrDefaultAsync<AppUserDbRow>(@"
                 SELECT id, username, app_activation_expires_at

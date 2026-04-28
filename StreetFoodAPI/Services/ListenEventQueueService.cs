@@ -100,9 +100,17 @@ public sealed class ListenEventQueueWorker : BackgroundService
 
                 if (_buffer.Count >= maxBatch || (_buffer.Count > 0 && DateTime.UtcNow >= nextFlushAt))
                 {
-                    await FlushAsync(stoppingToken);
+                    var ok = await FlushAsync(stoppingToken);
                     nextFlushAt = DateTime.UtcNow + flushEvery;
-                    _queue.CleanupRecent();
+                    if (ok)
+                    {
+                        _queue.CleanupRecent();
+                    }
+                    else
+                    {
+                        // Keep buffer for next retry and apply short backoff.
+                        await Task.Delay(500, stoppingToken);
+                    }
                     continue;
                 }
 
@@ -121,13 +129,13 @@ public sealed class ListenEventQueueWorker : BackgroundService
         }
 
         if (_buffer.Count > 0)
-            await FlushAsync(CancellationToken.None);
+            _ = await FlushAsync(CancellationToken.None);
     }
 
-    private async Task FlushAsync(CancellationToken cancellationToken)
+    private async Task<bool> FlushAsync(CancellationToken cancellationToken)
     {
         if (_buffer.Count == 0)
-            return;
+            return true;
 
         try
         {
@@ -144,14 +152,13 @@ public sealed class ListenEventQueueWorker : BackgroundService
                     AS x(poi_id, duration_seconds, device_id)",
                 new { PoiIds = poiIds, Durations = durations, DeviceIds = deviceIds },
                 cancellationToken: cancellationToken));
+            _buffer.Clear();
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "ListenEventQueueWorker flush failed for {Count} events", _buffer.Count);
-        }
-        finally
-        {
-            _buffer.Clear();
+            return false;
         }
     }
 }
