@@ -3,8 +3,8 @@
 
 | Thuộc tính             | Giá trị                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Phiên bản tài liệu** | **2.7**                                                                                                                     |
-| **Ngày cập nhật**      | **2026-04-24**                                                                                                              |
+| **Phiên bản tài liệu** | **2.8**                                                                                                                     |
+| **Ngày cập nhật**      | **2026-04-28**                                                                                                              |
 | **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được; đối chiếu `App/`, `StreetFoodAPI/`, `Web Admin/`, `Web Vendor/`)         |
 | **Mục đích**           | Mô tả yêu cầu sản phẩm; ghi nhận **tiến độ thực tế**, **phiên bản công nghệ**, **tham chiếu file** để nộp đồ án / bàn giao. |
 
@@ -354,21 +354,24 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 ### 6.1 User flow
 
 **Luồng kích hoạt (lần đầu / hết hạn):**  
-`Mở app -> Modal quét/nhập mã -> Kích hoạt local còn hạn -> Tab Bản đồ/Đề xuất`
+`Mở app -> Modal quét/nhập mã -> TryParseActivation -> Lưu hạn dùng local -> Vào tab Bản đồ/Đề xuất`
 
-**Luồng theo vị trí (geofence):**  
-`Kích hoạt -> Cấp GPS -> Bản đồ: theo dõi ~4s -> Vào bán kính POI (một POI ưu tiên nếu overlap) -> Tự phát audio nếu bật auto + qua cooldown (hoặc TTS)`
+**Luồng theo vị trí (geofence + queue POI):**  
+`Kích hoạt -> Cấp GPS -> Poll vị trí -> Xác định activePoi (Premium > heat > khoảng cách) -> Enqueue POI trong vùng -> Auto-play qua gate -> Có thể SwipeLeft để skip POI hiện tại và phát POI kế`
 
 **Luồng chủ động (chạm POI / chi tiết):**  
-`Bản đồ: chạm pin -> Ghim thẻ (có thể ngoài bán kính) -> Vào chi tiết / Play -> Thanh thời gian + tua` (route `poidetail` tùy luồng điều hướng)
+`Bản đồ: chạm pin -> Ghim thẻ (có thể ngoài bán kính) -> Mở chi tiết -> Play/Pause/Seek timeline -> Gửi listen analytics`
+
+**Luồng telemetry nền:**  
+`GPS loop -> POST /api/Poi/log -> visit start/end -> movement -> POST /api/analytics/poi-audio-listen`
 
 ### 6.2 Vendor flow
 
-`Login -> Edit Restaurant Info -> Submit Audio Script Request -> Wait Approval`
+`Login -> Lấy POI của vendor -> Cập nhật shop/menu/media -> Submit script hoặc audio bundle -> Theo dõi trạng thái pending/approved -> (tùy chọn) nâng cấp Premium qua MoMo`
 
 ### 6.3 Admin flow
 
-`Login -> Manage Data -> Review Vendor Requests -> Approve/Reject -> View Analytics`
+`Login + X-Admin-Key (nếu bật) -> Quản lý owner/POI -> Duyệt script request -> Theo dõi dashboard + heatmap + tuyến đi + listen stats + online-now`
 
 ---
 
@@ -376,20 +379,39 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 ```mermaid
 flowchart LR
-    U[User Mobile App - MAUI] -->|HTTPS REST| API[StreetFood API - ASP.NET Core]
-    V[Vendor Web] -->|HTTPS REST| API
-    A[Admin Web] -->|HTTPS REST| API
+    U[User Mobile App - MAUI] -->|GET POI / Detail / Top| API[StreetFood API - ASP.NET Core]
+    U -->|POST log / visit / movement / listen| API
+    V[Vendor Web] -->|Vendor APIs| API
+    A[Admin Web] -->|Admin APIs| API
+
+    API --> OC[(Output Cache)]
+    API --> LQ[ListenEventQueueService Channel]
+    API --> PIQ[PoiIngressQueueService]
+    API --> UIQ[UserIngressQueueService]
+    LQ --> LW[ListenEventQueueWorker]
 
     API --> DB[(PostgreSQL)]
+    LW --> DB
     API --> R2[(Cloudflare R2 - Audio/Image)]
+    API --> AZ[(Azure Translator / Speech TTS)]
     U --> SQ[(SQLite Cache - Offline)]
 
-    subgraph Analytics
-      DB --> D1[Device_Visits]
-      DB --> D2[Location_Logs]
-      DB --> D3[Movement_Paths]
+    subgraph AnalyticsData
+      DB --> D1[device_visits]
+      DB --> D2[location_logs]
+      DB --> D3[movement_paths]
+      DB --> D4[poi_audio_listen_events]
     end
 ```
+
+### 7.1 Vai trò các lớp hiệu năng/đồng thời
+
+- **Output Cache (API đọc):** cache ngắn hạn cho `GET /api/Poi`, `GET /api/Poi/{id}`, `GET /api/Poi/top`, `GET /api/Poi/heat-priority`; có `VaryBy Accept-Language` và query.
+- **Response Compression:** bật Brotli/Gzip để giảm payload JSON khi trả danh sách POI/analytics.
+- **PoiIngressQueueService:** khóa theo `poiId` để tránh race-condition ở luồng visit/session khi nhiều request đồng thời vào cùng POI.
+- **UserIngressQueueService:** khóa theo `username/installId` cho `register-app`, `activate-app`, `activate-device` để tránh ghi đè cạnh tranh.
+- **ListenEventQueueService + Worker:** queue ghi `poi_audio_listen_events` theo batch; khi flush lỗi sẽ giữ buffer để retry, giảm nguy cơ mất dữ liệu.
+- **DB Index tuning:** migration hiệu năng `V4`, `V5`, `V6` tối ưu truy vấn nóng cho telemetry + analytics + đọc POI.
 
 
 
@@ -790,6 +812,16 @@ flowchart LR
 | UC-A06 Phân tích thời lượng nghe | 12.18 | 13.18 |
 | UC-A07 Tạo tài khoản vendor | 12.19 | 13.19 |
 | UC-A08 Phê duyệt yêu cầu vendor | 12.20 | 13.20 |
+
+### 11.6 Use Case chi tiết bổ sung (đồng bộ 2026-04-28)
+
+| ID | Tác nhân | Use case | Tiền điều kiện | Kết quả |
+| --- | --- | --- | --- | --- |
+| UC-S01 | System/API | Chống race ghi visit theo POI | Request `visit/start/end` hợp lệ | Mỗi POI xử lý tuần tự qua ingress lease, trả `queueDelayMs`. |
+| UC-S02 | System/API | Chống race kích hoạt user/device | Request `register-app`/`activate-app`/`activate-device` hợp lệ | Ghi dữ liệu tuần tự theo `user:*` hoặc `install:*`, tránh ghi đè đồng thời. |
+| UC-S03 | System/API | Ghi listen event bất đồng bộ | App gửi `/api/analytics/poi-audio-listen` | Event vào `Channel`, worker batch flush DB, dedupe cửa sổ 15s theo thiết bị. |
+| UC-S04 | System/API | Retry khi flush listen lỗi | DB/network lỗi tạm thời | Không mất buffer; worker backoff ngắn và flush lại vòng sau. |
+| UC-S05 | System/API | Tăng tốc API đọc bằng cache+nén | Request GET POI/top/heat/detail | Trả dữ liệu qua output cache + response compression, giảm tải DB và băng thông. |
 
 ---
 
@@ -1203,6 +1235,91 @@ sequenceDiagram
     API-->>A: Approved
 ```
 
+### 12.21 Sequence - UC-S01 Ingress queue theo POI (visit/session)
+
+```mermaid
+sequenceDiagram
+    participant App as Mobile App
+    participant API as PoiController
+    participant IQ as PoiIngressQueueService
+    participant DB as PostgreSQL
+
+    App->>API: POST /api/Poi/visit/start (poiId, deviceId)
+    API->>IQ: EnterAsync(poiId)
+    IQ-->>API: Lease(waitedMs, wasQueued)
+    API->>DB: Check open session + cooldown
+    alt hợp lệ
+        API->>DB: INSERT device_visits
+        API-->>App: {accepted: true, queueDelayMs}
+    else không hợp lệ
+        API-->>App: {accepted: false, reason, queueDelayMs}
+    end
+    API->>IQ: Dispose lease (release)
+```
+
+### 12.22 Sequence - UC-S02 Ingress queue theo user/install
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as AuthController
+    participant UQ as UserIngressQueueService
+    participant DB as PostgreSQL
+
+    C->>API: POST /api/Auth/activate-app
+    API->>UQ: EnterAsync(user:username)
+    UQ-->>API: Lease acquired
+    API->>DB: SELECT current activation
+    API->>DB: UPDATE expires_at
+    API-->>C: activationExpiresAt mới
+    API->>UQ: Dispose lease
+```
+
+### 12.23 Sequence - UC-S03 Listen event queue batch + retry
+
+```mermaid
+sequenceDiagram
+    participant App as Mobile App
+    participant API as ListenAnalyticsController
+    participant Q as ListenEventQueueService
+    participant W as ListenEventQueueWorker
+    participant DB as PostgreSQL
+
+    App->>API: POST /api/analytics/poi-audio-listen
+    API->>Q: IsDuplicate? + EnqueueAsync
+    API-->>App: accepted / duplicate_window_15s
+    loop Worker tick
+        W->>Q: Read batch (max 500 / 200ms)
+        W->>DB: INSERT UNNEST batch
+        alt flush thành công
+            W->>W: Clear buffer + cleanup dedupe cache
+        else flush lỗi
+            W->>W: Giữ buffer + backoff 500ms + retry vòng sau
+        end
+    end
+```
+
+### 12.24 Sequence - UC-S05 API đọc nhanh (OutputCache + Compression)
+
+```mermaid
+sequenceDiagram
+    participant Client as App/Web
+    participant API as ASP.NET Core Pipeline
+    participant Cache as OutputCache
+    participant DB as PostgreSQL
+
+    Client->>API: GET /api/Poi (Accept-Language: vi)
+    API->>Cache: Lookup key (route + query + header vary)
+    alt Cache hit
+        Cache-->>API: Cached payload
+    else Cache miss
+        API->>DB: Query POI + joins
+        DB-->>API: Result set
+        API->>Cache: Store with short TTL
+    end
+    API-->>Client: Compressed JSON (Brotli/Gzip)
+```
+
 ---
 
 ## 13. Activity diagram
@@ -1458,6 +1575,62 @@ flowchart TD
     C --> D[Vendor theo dõi trạng thái]
 ```
 
+### 13.22 Activity - UC-S01 Ingress queue theo POI (visit/start/end)
+
+```mermaid
+flowchart TD
+    A0[Nhận request visit/start/end] --> A1{poiId hợp lệ?}
+    A1 -- Không --> A9[BadRequest]
+    A1 -- Có --> A2[EnterAsync theo poiId]
+    A2 --> A3[Đọc trạng thái session/cooldown trong DB]
+    A3 --> A4{Đủ điều kiện ghi?}
+    A4 -- Có --> A5[INSERT hoặc UPDATE device_visits]
+    A4 -- Không --> A6[Trả accepted=false + reason]
+    A5 --> A7[Trả accepted=true + queueDelayMs]
+    A6 --> A8[Release lease]
+    A7 --> A8
+```
+
+### 13.23 Activity - UC-S02 Ingress queue theo user/install
+
+```mermaid
+flowchart TD
+    B0[Nhận register-app/activate-app/activate-device] --> B1[Chuẩn hóa key user/install]
+    B1 --> B2[EnterAsync theo key]
+    B2 --> B3[Đọc trạng thái hiện tại]
+    B3 --> B4[Tính hạn mới]
+    B4 --> B5[UPDATE/UPSERT DB]
+    B5 --> B6[Trả response]
+    B6 --> B7[Release lease]
+```
+
+### 13.24 Activity - UC-S03 Listen queue batch + retry
+
+```mermaid
+flowchart TD
+    C0[App gửi listen event] --> C1{Trùng trong 15s?}
+    C1 -- Có --> C2[Trả duplicate_window_15s]
+    C1 -- Không --> C3[Enqueue Channel]
+    C3 --> C4[Worker gom buffer theo batch/time]
+    C4 --> C5{Flush DB thành công?}
+    C5 -- Có --> C6[Clear buffer + cleanup dedupe cache]
+    C5 -- Không --> C7[Giữ buffer + backoff 500ms + retry]
+```
+
+### 13.25 Activity - UC-S05 API đọc nhanh bằng cache + nén
+
+```mermaid
+flowchart TD
+    D0[Request GET POI/top/detail/heat] --> D1[Check output cache theo key vary]
+    D1 --> D2{Cache hit?}
+    D2 -- Có --> D5[Trả payload cache]
+    D2 -- Không --> D3[Query DB]
+    D3 --> D4[Lưu cache TTL ngắn]
+    D4 --> D5
+    D5 --> D6[Compress Brotli/Gzip]
+    D6 --> D7[Response]
+```
+
 ---
 
 ## 14. Data Flow Diagram (DFD Level 1)
@@ -1615,8 +1788,8 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | GET         | `/api/Admin/analytics/popular-paths`          | Cặp POI A→B phổ biến.                                                    |
 | GET         | `/api/Admin/analytics/popular-route-chains`   | Chuỗi tối đa N POI.                                                      |
 | GET         | `/api/Admin/ops/metrics`                      | Snapshot vận hành 24h: số bản ghi `location_logs`, `movement_paths`, `poi_audio_listen_events`, thời điểm mới nhất, tổng POI. |
-| GET         | `/api/Admin/ops/jobs/queue`                   | Tóm tắt hàng đợi TTS (pending/processing/retrying, success/dead 24h, tuổi job chờ). |
-| GET         | `/api/Admin/ops/jobs/recent`                 | Danh sách job audio nền gần đây.                                         |
+| GET         | `/api/Admin/ops/jobs/queue`                   | **Deprecated/410**: endpoint giữ tương thích, audio job queue kiểu cũ đã gỡ. |
+| GET         | `/api/Admin/ops/jobs/recent`                 | **Deprecated/410**: endpoint giữ tương thích, audio job queue kiểu cũ đã gỡ. |
 | GET         | `/api/Admin/ops/ingress-queue`               | Xem cấu hình điều tiết request theo POI (enabled/min/max delay, contention). |
 | POST        | `/api/Admin/ops/ingress-queue`               | Cập nhật cấu hình điều tiết request theo POI lúc runtime.               |
 | POST        | `/api/Admin/poi-with-owner`                   | Tạo user vendor + POI + script khởi tạo (admin).                         |
@@ -1724,7 +1897,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **Cấu hình API cho web** | `Web Admin/wwwroot/config.js`, `Web Vendor/wwwroot/config.js`                                                                                                                                                                                                                                                    |
 | **Client gọi API admin** | `Web Admin/wwwroot/js/admin-api.js` (gồm inject sidebar StreetFood)                                                                                                                                                                                                                                              |
 | **API**                  | `StreetFoodAPI/Controllers/*.cs`, `StreetFoodAPI/Program.cs`, `StreetFoodAPI/appsettings.json`                                                                                                                                                                                                                   |
-| **Migration / SQL**      | `StreetFood.Infrastructure/Migrations/` — `**V1__Initial_schema.sql**` (DDL đầy đủ), `**V2__Seed_core_data.sql**`, `**V3__Seed_demo_analytics.sql**`, `**V4__perf_listen_event_indexes.sql**`, `**V5__perf_visit_and_movement_indexes.sql**` (index tối ưu đồng thời). |
+| **Migration / SQL**      | `StreetFood.Infrastructure/Migrations/` — `**V1__Initial_schema.sql**` (DDL đầy đủ), `**V2__Seed_core_data.sql**`, `**V3__Seed_demo_analytics.sql**`, `**V4__perf_listen_event_indexes.sql**`, `**V5__perf_visit_and_movement_indexes.sql**`, `**V6__perf_hot_query_indexes.sql**` (index tối ưu truy vấn nóng + analytics). |
 | **App MAUI**             | `App/Views/*.xaml`, `App/AppShell.xaml`                                                                                                                                                                                                                                                                          |
 | **Trang HTML admin**     | `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html`, `analyticsPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`, `createPoiOwnerPage.html`, `pendingScriptsPage.html`, `restaurantOwnersPage.html`, `managePOIPage.html`, `manageShopsPage.html`                                   |
 | **Trang HTML vendor**    | `Web Vendor/wwwroot/html/` — `loginPage.html`, `dashboardShopPage.html`, `manageProductsPage.html`, `addProductPage.html`, `requestScriptPage.html`, `upgradePage.html`, `statisticsShopsPage.html`                                                                                                                |
@@ -1749,3 +1922,4 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.6**   | **2026-04-24**  | Đồng bộ toàn PRD với mã nguồn: **kích hoạt** (`QrGatePage`, `QrAccess`, `ActivationService`); **tab Bản đồ / Đề xuất**; `GET /api/Poi/top`, heat-priority, đủ route `Poi` telemetry; **tự phát geofence** (ưu tiên POI, cooldown 300s, GPS 120m, ghim map, không hàng đợi); cập nhật **Sequence/Activity** M01–M07, **API 16.x**, **Admin/Vendor** HTML, **9.3** chu kỳ log; sửa **phạm vi** (MoMo premium vendor). |
 | **2.6.1** | **2026-04-24**  | Sửa **Mermaid** UC-M06: bỏ ký tự gây parse lỗi, `alt/else` tối đa một `else`, tách **12.6a–d** và **13.6/13.5a/13.6a–b**; xóa đoạn văn bản dư do chỉnh sửa. |
 | **2.7**   | **2026-04-24**  | Đồng bộ chức năng mới: **queue POI trên app** khi đi qua nhiều quán, **vuốt trái skip POI** để nghe POI kế tiếp, lock `_queueSync` + gate `_playSwitchGate` chống race; cập nhật **12.6/13.6** theo luồng queue đầy đủ; bổ sung NFR về **ingress queue** API, polling web admin có **anti-overlap + backoff**, thêm migration `V5__perf_visit_and_movement_indexes.sql` và script test `streetfood-poi-concurrency.js`. |
+| **2.8**   | **2026-04-28**  | Cập nhật đầy đủ **luồng hoạt động + kiến trúc + sơ đồ Use Case/Sequence/Activity** theo code hiện tại: thêm hệ **UserIngressQueue** (khóa theo user/install), làm rõ **ListenEventQueue batch+retry không mất buffer khi flush lỗi**, bổ sung **OutputCache + ResponseCompression** cho API đọc, đồng bộ tài liệu migration `V6__perf_hot_query_indexes.sql`, và đánh dấu endpoint `ops/jobs/*` trạng thái **deprecated (410)**. |

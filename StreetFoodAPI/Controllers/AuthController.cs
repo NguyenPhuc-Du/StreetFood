@@ -2,6 +2,7 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using StreetFood.API.Models;
+using StreetFood.API.Services;
 
 namespace StreetFood.API.Controllers;
 
@@ -11,11 +12,13 @@ public partial class AuthController : ControllerBase
 {
     private readonly string _connStr;
     private readonly ILogger<AuthController> _logger;
+    private readonly UserIngressQueueService _userIngressQueue;
 
-    public AuthController(IConfiguration config, ILogger<AuthController> logger)
+    public AuthController(IConfiguration config, ILogger<AuthController> logger, UserIngressQueueService userIngressQueue)
     {
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
         _logger = logger;
+        _userIngressQueue = userIngressQueue;
     }
 
     /// <summary>Đăng nhập: kiểm tra bảng users (username, password, role admin|vendor, không bị ẩn).</summary>

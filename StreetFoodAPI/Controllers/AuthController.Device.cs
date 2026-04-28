@@ -29,6 +29,7 @@ public partial class AuthController
 
         try
         {
+            using var lease = await _userIngressQueue.EnterAsync($"install:{installId}", HttpContext.RequestAborted);
             await using var conn = new NpgsqlConnection(_connStr);
             var currentExp = await conn.QueryFirstOrDefaultAsync<DateTime?>(@"
                 SELECT expires_at FROM device_activations WHERE install_id = @I",

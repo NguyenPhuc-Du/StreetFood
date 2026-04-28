@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.ResponseCompression;
 using Prometheus;
 using StreetFood.API.Middleware;
 using StreetFood.API.Services;
@@ -7,6 +8,43 @@ using StreetFood.Infrastructure.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(o =>
+{
+    o.Level = System.IO.Compression.CompressionLevel.Fastest;
+});
+builder.Services.Configure<GzipCompressionProviderOptions>(o =>
+{
+    o.Level = System.IO.Compression.CompressionLevel.Fastest;
+});
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("PoiListShort", p => p
+        .Expire(TimeSpan.FromSeconds(20))
+        .SetVaryByHeader("Accept-Language")
+        .Tag("poi-read"));
+
+    options.AddPolicy("PoiDetailShort", p => p
+        .Expire(TimeSpan.FromSeconds(30))
+        .SetVaryByHeader("Accept-Language")
+        .Tag("poi-read"));
+
+    options.AddPolicy("PoiTopShort", p => p
+        .Expire(TimeSpan.FromSeconds(30))
+        .SetVaryByHeader("Accept-Language")
+        .SetVaryByQuery("top", "days")
+        .Tag("poi-read"));
+
+    options.AddPolicy("PoiHeatShort", p => p
+        .Expire(TimeSpan.FromSeconds(45))
+        .SetVaryByQuery("days")
+        .Tag("poi-read"));
+});
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
 {
     o.MultipartBodyLengthLimit = 5_242_880;
@@ -17,6 +55,7 @@ builder.Services.AddScoped<AzureSpeechTtsService>();
 builder.Services.AddScoped<R2StorageService>();
 builder.Services.AddSingleton<PremiumService>();
 builder.Services.AddSingleton<PoiIngressQueueService>();
+builder.Services.AddSingleton<UserIngressQueueService>();
 builder.Services.AddSingleton<ListenEventQueueService>();
 builder.Services.AddHostedService<ListenEventQueueWorker>();
 
@@ -69,10 +108,12 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseResponseCompression();
 
 app.UseRouting();
 app.UseCors();
 app.UseSession();
+app.UseOutputCache();
 
 app.UseHttpMetrics();
 app.UseMiddleware<RequestIdLoggingMiddleware>();
