@@ -1013,6 +1013,66 @@ sequenceDiagram
     end
 ```
 
+#### 12.6f Nhiều người nghe đồng thời (backend queue listen-event)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U1 as User A - Mobile
+    participant U2 as User B - Mobile
+    participant API as ListenAnalyticsController
+    participant Q as ListenEventQueueService
+    participant W as ListenEventQueueWorker
+    participant DB as PostgreSQL
+    U1->>API: POST /api/analytics/poi-audio-listen
+    U2->>API: POST /api/analytics/poi-audio-listen
+    API->>Q: IsDuplicate (cửa sổ 15s theo deviceId+poiId+duration)
+    alt Không trùng
+        API->>Q: EnqueueAsync (Channel bounded, multi-writer)
+        API-->>U1: accepted=true
+        API-->>U2: accepted=true
+    else Trùng
+        API-->>U1: accepted=false, reason=duplicate_window_15s
+        API-->>U2: accepted=false, reason=duplicate_window_15s
+    end
+    loop Worker flush mỗi ~200ms hoặc đủ batch 500
+        W->>Q: Read queued events (single-reader)
+        W->>DB: INSERT poi_audio_listen_events theo lô (UNNEST)
+        alt Flush lỗi
+            W->>W: Giữ buffer, retry + backoff ngắn
+        end
+    end
+```
+
+#### 12.6g Một người nghe nhiều POI liên tiếp (queue + cooldown)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant M as HomePage
+    participant API as StreetFood API
+    participant R as Media TTS
+    U->>M: Đi xuyên vùng nhiều POI liên tiếp
+    M->>M: GetNearbyPoiCandidates + UpdateAudioQueue
+    M->>API: visit/start POI A
+    M->>R: Auto play POI A (qua playSwitchGate)
+    U->>M: Vuốt trái hoặc đi khỏi vùng A
+    M->>API: visit/end POI A
+    M->>M: TryPlayNextFromQueueAsync lấy POI B còn hợp lệ
+    M->>API: visit/start POI B + TrackPoiVisit
+    alt Thỏa CanPlay và có audio
+        M->>R: Play POI B
+    else Bị cooldown / thiếu audio / bị dismiss
+        M->>M: Bỏ qua và xét POI kế tiếp trong queue
+    end
+```
+
+**Mapping nhanh cho 3 tình huống bạn hỏi:**
+- **Nhiều người nghe cùng lúc:** xem `12.6f`.
+- **Một người nghe nhiều cái (nhiều POI liên tiếp):** xem `12.6d`, `12.6e`, `12.6g`.
+- **Người dùng đứng giữa 2 POI:** xem `12.6c` (ngoài mọi bán kính) và `12.6a` (nếu giao vùng thì chọn active theo Premium > heat > gần tâm).
+
 ### 12.7 Sequence - UC-M07 Log analytics (tổng hợp)
 
 ```mermaid
