@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Npgsql;
@@ -12,13 +14,17 @@ namespace StreetFood.API.Controllers;
 public class PoiController : ControllerBase
 {
     private readonly string _connStr;
+    private readonly string _publicBaseUrl;
+    private readonly IHttpClientFactory _httpFactory;
     private static readonly TimeSpan VisitSpamWindow = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan MovementSpamWindow = TimeSpan.FromMinutes(2);
     private readonly PoiIngressQueueService _poiIngressQueue;
 
-    public PoiController(IConfiguration config, PoiIngressQueueService poiIngressQueue)
+    public PoiController(IConfiguration config, PoiIngressQueueService poiIngressQueue, IHttpClientFactory httpFactory)
     {
         _connStr = config.GetConnectionString("DefaultConnection") ?? "";
+        _publicBaseUrl = (config["Api:PublicBaseUrl"] ?? "").Trim().TrimEnd('/');
+        _httpFactory = httpFactory;
         _poiIngressQueue = poiIngressQueue;
     }
 
@@ -32,6 +38,29 @@ public class PoiController : ControllerBase
         if (code == "zh") return "cn";
         return code;
     }
+
+    /// <summary>Giống <see cref="GetPoiDetail"/> — tránh lệch điều kiện với proxy audio.</summary>
+    const string SqlPoiDetailByIdAndLang = @"
+                SELECT 
+                    p.Id, p.Latitude, p.Longitude, p.ImageUrl,
+                    t.Name,
+                    p.address AS Address,
+                    t.Description AS Description,
+                    d.OpeningHours, d.Phone,
+                    a.AudioUrl,
+                    (ps.poi_id IS NOT NULL) AS IsPremium
+                FROM POIs p
+                INNER JOIN POI_Translations t ON p.Id = t.PoiId
+                LEFT JOIN Restaurant_Details d ON p.Id = d.PoiId
+                LEFT JOIN Restaurant_Audio a ON p.Id = a.PoiId AND a.LanguageCode = @Lang
+                LEFT JOIN poi_premium_subscriptions ps
+                    ON ps.poi_id = p.id
+                    AND ps.status = 'active'
+                    AND ps.end_at > NOW()
+                LEFT JOIN Restaurant_Owners o ON p.Id = o.PoiId
+                LEFT JOIN Users u ON o.UserId = u.Id
+                WHERE p.Id = @PoiId AND t.LanguageCode = @Lang
+                  AND (u.Id IS NULL OR COALESCE(u.IsHidden, FALSE) = FALSE)";
 
     [HttpGet]
     [OutputCache(PolicyName = "PoiListShort")]
@@ -87,34 +116,12 @@ public class PoiController : ControllerBase
 
             using var conn = new NpgsqlConnection(_connStr);
 
-            var detailSql = @"
-                SELECT 
-                    p.Id, p.Latitude, p.Longitude, p.ImageUrl,
-                    t.Name,
-                    p.address AS Address,
-                    t.Description AS Description,
-                    d.OpeningHours, d.Phone,
-                    a.AudioUrl,
-                    (ps.poi_id IS NOT NULL) AS IsPremium
-                FROM POIs p
-                INNER JOIN POI_Translations t ON p.Id = t.PoiId
-                LEFT JOIN Restaurant_Details d ON p.Id = d.PoiId
-                LEFT JOIN Restaurant_Audio a ON p.Id = a.PoiId AND a.LanguageCode = @Lang
-                LEFT JOIN poi_premium_subscriptions ps
-                    ON ps.poi_id = p.id
-                    AND ps.status = 'active'
-                    AND ps.end_at > NOW()
-                LEFT JOIN Restaurant_Owners o ON p.Id = o.PoiId
-                LEFT JOIN Users u ON o.UserId = u.Id
-                WHERE p.Id = @PoiId AND t.LanguageCode = @Lang
-                  AND (u.Id IS NULL OR COALESCE(u.IsHidden, FALSE) = FALSE)";
-
-            var detail = (await conn.QueryAsync<PoiDetailDto>(detailSql, new { PoiId = id, Lang = lang })).FirstOrDefault();
+            var detail = (await conn.QueryAsync<PoiDetailDto>(SqlPoiDetailByIdAndLang, new { PoiId = id, Lang = lang })).FirstOrDefault();
 
             // fallback to Vietnamese when translation missing
             if (detail == null && lang != "vi")
             {
-                detail = (await conn.QueryAsync<PoiDetailDto>(detailSql, new { PoiId = id, Lang = "vi" })).FirstOrDefault();
+                detail = (await conn.QueryAsync<PoiDetailDto>(SqlPoiDetailByIdAndLang, new { PoiId = id, Lang = "vi" })).FirstOrDefault();
             }
 
             if (detail == null) return NotFound();
@@ -145,6 +152,80 @@ public class PoiController : ControllerBase
             return Ok(detail);
         }
         catch (Exception ex) { return BadRequest(ex.Message); }
+    }
+
+    [HttpGet("{id:int}/audio-range-head")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> ProxyAudioRangeHead([FromRoute] int id, CancellationToken ct)
+    {
+        try
+        {
+            var lang = ResolveLang(Request.Headers["Accept-Language"].ToString());
+            string? audioUrl;
+            await using (var conn = new NpgsqlConnection(_connStr))
+            {
+                var detail = (await conn.QueryAsync<PoiDetailDto>(SqlPoiDetailByIdAndLang, new { PoiId = id, Lang = lang })).FirstOrDefault();
+                if (detail == null && lang != "vi")
+                    detail = (await conn.QueryAsync<PoiDetailDto>(SqlPoiDetailByIdAndLang, new { PoiId = id, Lang = "vi" })).FirstOrDefault();
+                if (detail == null)
+                    return NotFound("poi_not_found");
+                audioUrl = detail.AudioUrl;
+            }
+
+            var abs = ToAbsoluteAudioUrl(audioUrl, _publicBaseUrl);
+            if (string.IsNullOrEmpty(abs))
+                return NotFound("no_audio_url");
+
+            if (!Uri.TryCreate(abs, UriKind.Absolute, out var targetUri)
+                || (targetUri.Scheme != Uri.UriSchemeHttp && targetUri.Scheme != Uri.UriSchemeHttps))
+                return BadRequest();
+
+            var client = _httpFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(45);
+            using var req = new HttpRequestMessage(HttpMethod.Get, targetUri);
+            req.Headers.TryAddWithoutValidation("ngrok-skip-browser-warning", "true");
+            req.Headers.Range = new RangeHeaderValue(0, 0);
+
+            using var upstream = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            var bytes = await upstream.Content.ReadAsByteArrayAsync(ct);
+            if (!upstream.IsSuccessStatusCode && upstream.StatusCode != HttpStatusCode.PartialContent)
+            {
+                if (upstream.StatusCode == HttpStatusCode.NotFound)
+                    return StatusCode(StatusCodes.Status404NotFound, "upstream_not_found");
+                return StatusCode((int)upstream.StatusCode);
+            }
+
+            var mime = upstream.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+            Response.StatusCode = (int)upstream.StatusCode;
+            Response.ContentType = mime;
+            Response.ContentLength = bytes.Length;
+            await Response.Body.WriteAsync(bytes, ct);
+            return new EmptyResult();
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, "upstream: " + ex.Message);
+        }
+        catch (TaskCanceledException)
+        {
+            return StatusCode(StatusCodes.Status504GatewayTimeout);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    static string? ToAbsoluteAudioUrl(string? raw, string publicBase)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var u = raw.Trim();
+        if (u.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || u.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return u;
+        if (u.StartsWith("//", StringComparison.Ordinal))
+            return "https:" + u;
+        if (string.IsNullOrEmpty(publicBase)) return null;
+        return u.StartsWith('/') ? publicBase + u : publicBase + "/" + u.TrimStart('.', '/');
     }
 
     /// <summary>
