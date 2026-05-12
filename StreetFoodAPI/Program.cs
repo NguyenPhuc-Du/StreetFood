@@ -51,6 +51,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
 });
 
 builder.Services.AddHttpClient<AzureTranslatorClient>();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<AzureSpeechTtsService>();
 builder.Services.AddScoped<R2StorageService>();
 builder.Services.AddSingleton<PremiumService>();

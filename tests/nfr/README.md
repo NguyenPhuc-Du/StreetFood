@@ -15,6 +15,21 @@ This folder contains k6 load-test scenarios for StreetFood MVP operations.
 - `streetfood-mixed-load.js`: combined read + write
 - `streetfood-poi-concurrency.js`: session concurrency around one POI (`/api/Poi/log`, `/visit/start`, `/movement`, `/visit/end`)
 - `streetfood-smoke.js`: lightweight smoke check (existing script)
+- `evidence-api-proof.ps1`: **tạo nhiều POI + nhiều thiết bị**, gọi log/visit/movement, xuất file `.txt` chứng minh (có `queueDelayMs`, đối chiếu `analytics/paths`)
+
+## 2b) Báo cáo chứng minh API (file văn bản)
+
+Chạy khi API và DB đã bật; cần **đúng** `X-Admin-Key` với `appsettings` (`Admin:ApiKey`).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests/nfr/evidence-api-proof.ps1 -BaseUrl https://localhost:7236 -AdminApiKey streetfood-admin-dev-key-change-me -NumPois 4 -NumUsers 12
+```
+
+Kết quả: `tests/nfr/results/api-evidence-*.txt` (HTTP từng bước, tóm tắt queue delay, dòng movement khớp `deviceId`).
+
+Trong **Web Admin** có trang **`/html/loadTestGuidePage.html`** (menu **Kiểm thử tải & GPS**): gợi ý k6/Locust/Artillery/Postman, map API, poll ingress + online, và nút gửi thủ công `Poi/log` / `visit/start` / `movement` / `visit/end` với log real-time trong trang.
+
+**Lưu ý:** script tạo user vendor + POI thật trong DB (tên `ev_<timestamp>_o*`). Chỉ chạy trên môi trường dev / DB có thể xóa seed lại.
 
 ## 3) Load Profiles
 

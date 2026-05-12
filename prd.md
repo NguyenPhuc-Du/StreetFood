@@ -797,7 +797,7 @@ flowchart LR
 | UC-M03 Tìm kiếm | 12.3 | 13.3 |
 | UC-M04 Chọn POI để nghe | 12.4 | 13.4 |
 | UC-M05 Theo dõi geofence | 12.5 | 13.5 |
-| UC-M06 Nghe audio tự động | 12.6a–e | 13.6, 13.6a–c |
+| UC-M06 Nghe audio tự động | 12.6a–e, 12.6f–h | 13.6, 13.6a–c |
 | UC-M07 Log analytics | 12.7 | 13.7 |
 | UC-V01 Đăng nhập vendor | 12.8 | 13.8 |
 | UC-V02 Cập nhật thông tin cửa hàng | 12.9 | 13.9 |
@@ -1068,8 +1068,33 @@ sequenceDiagram
     end
 ```
 
-**Mapping nhanh cho 3 tình huống bạn hỏi:**
-- **Nhiều người nghe cùng lúc:** xem `12.6f`.
+#### 12.6h Nhiều user cùng một POI — tải/stream `AudioUrl` song song (client)
+
+Luồng này **không** đi qua `ListenAnalyticsController` hay worker listen-event; mỗi thiết bị mở kết nối HTTP/stream (hoặc Range) tới **cùng một URL** audio của POI. **Web Admin → Kiểm thử tải & GPS** có nút *12.6h — GET Range song song* tới `AudioUrl` của POI #1 để minh họa (khi URL cho phép CORS từ origin admin).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M1 as Mobile user 1
+    participant M2 as Mobile user 2
+    participant Mn as Mobile user n
+    participant R as AudioUrl host
+    Note over M1,Mn: Cùng POI → cùng AudioUrl. Không có cổng nghiệp vụ bắt máy B chờ máy A tải xong.
+    par Stream user 1
+        M1->>R: HTTP GET stream (MediaElement)
+        R-->>M1: bytes
+    and Stream user 2
+        M2->>R: HTTP GET stream (MediaElement)
+        R-->>M2: bytes
+    and Stream user n
+        Mn->>R: HTTP GET stream (MediaElement)
+        R-->>Mn: bytes
+    end
+```
+
+**Mapping nhanh cho các tình huống thường gặp:**
+- **Nhiều user gửi analytics listen (`poi-audio-listen`) cùng lúc — backend queue:** xem `12.6f`.
+- **Nhiều user cùng một POI, tải/stream `AudioUrl` song song (mỗi máy một MediaElement):** xem `12.6h` và nút chứng minh trên **Web Admin → Kiểm thử tải & GPS**.
 - **Một người nghe nhiều cái (nhiều POI liên tiếp):** xem `12.6d`, `12.6e`, `12.6g`.
 - **Người dùng đứng giữa 2 POI:** xem `12.6c` (ngoài mọi bán kính) và `12.6a` (nếu giao vùng thì chọn active theo Premium > heat > gần tâm).
 
@@ -1983,3 +2008,4 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.6.1** | **2026-04-24**  | Sửa **Mermaid** UC-M06: bỏ ký tự gây parse lỗi, `alt/else` tối đa một `else`, tách **12.6a–d** và **13.6/13.5a/13.6a–b**; xóa đoạn văn bản dư do chỉnh sửa. |
 | **2.7**   | **2026-04-24**  | Đồng bộ chức năng mới: **queue POI trên app** khi đi qua nhiều quán, **vuốt trái skip POI** để nghe POI kế tiếp, lock `_queueSync` + gate `_playSwitchGate` chống race; cập nhật **12.6/13.6** theo luồng queue đầy đủ; bổ sung NFR về **ingress queue** API, polling web admin có **anti-overlap + backoff**, thêm migration `V5__perf_visit_and_movement_indexes.sql` và script test `streetfood-poi-concurrency.js`. |
 | **2.8**   | **2026-04-28**  | Cập nhật đầy đủ **luồng hoạt động + kiến trúc + sơ đồ Use Case/Sequence/Activity** theo code hiện tại: thêm hệ **UserIngressQueue** (khóa theo user/install), làm rõ **ListenEventQueue batch+retry không mất buffer khi flush lỗi**, bổ sung **OutputCache + ResponseCompression** cho API đọc, đồng bộ tài liệu migration `V6__perf_hot_query_indexes.sql`, và đánh dấu endpoint `ops/jobs/*` trạng thái **deprecated (410)**. |
+| **2.8.1** | **2026-05-12**  | Thêm sequence **12.6h** (nhiều user cùng POI — stream `AudioUrl` song song); cập nhật bảng UC-M06 và mapping 12.6; Web Admin *Kiểm thử tải & GPS* có nút chứng minh request song song tới `AudioUrl`. |

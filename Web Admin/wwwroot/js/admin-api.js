@@ -63,6 +63,7 @@
         else if (path.indexOf('createpoiownerpage') !== -1) active = 'create';
         else if (path.indexOf('pendingscriptspage') !== -1) active = 'pending';
         else if (path.indexOf('restaurantownerspage') !== -1) active = 'owners';
+        else if (path.indexOf('loadtestguidepage') !== -1) active = 'loadtest';
 
         var items = [
             { id: 'dashboard', href: 'dashboardPage.html', icon: 'fa-border-all', label: 'Bảng điều khiển' },
@@ -70,7 +71,8 @@
             { id: 'route', href: 'routeHeatmapPage.html', icon: 'fa-route', label: 'Tuyến & Heatmap' },
             { id: 'create', href: 'createPoiOwnerPage.html', icon: 'fa-user-plus', label: 'Tạo POI & chủ quán' },
             { id: 'pending', href: 'pendingScriptsPage.html', icon: 'fa-file-signature', label: 'Phê duyệt script' },
-            { id: 'owners', href: 'restaurantOwnersPage.html', icon: 'fa-user-slash', label: 'Chủ cửa hàng' }
+            { id: 'owners', href: 'restaurantOwnersPage.html', icon: 'fa-user-slash', label: 'Chủ cửa hàng' },
+            { id: 'loadtest', href: 'loadTestGuidePage.html', icon: 'fa-gauge-high', label: 'Kiểm thử tải & GPS' }
         ];
 
         ul.innerHTML = items.map(function (it) {

@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiểm thử tải & GPS | StreetFood Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/sidebar.css?v=20260406c">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <style>
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; padding: 0 28px 20px; }
+        .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+        .card h2 { font-size: 16px; margin: 0 0 10px; color: #0f172a; }
+        .card p, .card li { font-size: 13px; color: #475569; line-height: 1.5; margin: 0 0 6px; }
+        .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 3px 7px; border-radius: 6px; background: #dbeafe; color: #1d4ed8; margin-right: 6px; }
+        table.data { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+        table.data th, table.data td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; }
+        table.data th { background: #f8fafc; color: #64748b; font-weight: 600; }
+        .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+        .row-actions input[type="number"], .row-actions input[type="text"] { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; min-width: 100px; }
+        .btn { padding: 8px 14px; border-radius: 10px; border: none; font-weight: 600; font-size: 13px; cursor: pointer; background: #2563eb; color: #fff; }
+        .btn.secondary { background: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; }
+        .btn.danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .form-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        #liveLog { max-height: 320px; overflow: auto; background: #0f172a; color: #a5f3fc; padding: 12px 14px; border-radius: 10px; font-size: 11px; font-family: ui-monospace, monospace; margin-top: 10px; white-space: pre-wrap; }
+        .watch-box { font-size: 12px; color: #334155; background: #f8fafc; border-radius: 10px; padding: 10px 12px; margin-top: 8px; word-break: break-all; }
+        .run-panel { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 12px; }
+        .run-panel label { display: flex; flex-direction: column; font-size: 11px; font-weight: 600; color: #64748b; gap: 4px; }
+        .run-panel input { width: 72px; padding: 6px 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        #runStatus { font-size: 13px; font-weight: 600; color: #0f172a; margin-top: 8px; }
+        .map-card #simMap { height: 420px; width: 100%; border-radius: 12px; margin-top: 12px; border: 1px solid #e2e8f0; z-index: 1; }
+        .map-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+        .centroid-star { background: transparent !important; border: none !important; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="logo"><i class="fa-solid fa-utensils"></i><span>StreetFood</span></div>
+            <nav class="nav-menu"><ul><li><a href="dashboardPage.html"><i class="fa-solid fa-border-all"></i> Bảng điều khiển</a></li></ul></nav>
+        </aside>
+        <div class="main-panel">
+            <header class="top-header">
+                <div class="search-bar"><i class="fa-solid fa-gauge-high"></i><span style="padding-left:8px;color:#64748b;font-size:14px;">Kiểm thử tải & GPS</span></div>
+                <div class="header-actions">
+                    <a class="btn-logout-admin" href="loginPage.html" onclick="window.AdminLogout?.(); return false;"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+                </div>
+            </header>
+            <div class="page-title-block">
+                <h1>Kiểm thử tải & GPS</h1>
+            </div>
+
+            <div class="card map-card" style="margin: 0 28px 18px;">
+                <h2><span class="tag">Map</span> Tam giác ảo + centroid</h2>
+                <div class="map-tools">
+                    <label><input type="checkbox" id="chkMapFakeOnly" checked> Chỉ dùng 3 POI ảo trên map (không vẽ tọa độ từ API)</label>
+                    <button type="button" class="btn secondary" id="btnMapRedraw">Vẽ lại bản đồ</button>
+                </div>
+                <div id="simMap"></div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h2><span class="tag">POI</span> Dùng để test</h2>
+                    <div class="row-actions">
+                        <button type="button" class="btn secondary" id="btnPoiRefresh">Làm mới từ API (3 đầu)</button>
+                        <button type="button" class="btn secondary" id="btnPoiReset">Xóa hết & nạp 3 đầu</button>
+                    </div>
+                    <table class="data" id="poiTable">
+                        <thead><tr><th>Id</th><th>Tên</th><th>Lat</th><th>Lng</th><th></th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="row-actions form-inline">
+                        <input type="number" id="addPoiId" min="1" placeholder="Poi Id" />
+                        <button type="button" class="btn" id="btnPoiAdd">Thêm POI theo Id</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><span class="tag">User ảo</span> deviceId (simulation)</h2>
+                    <div class="row-actions">
+                        <button type="button" class="btn secondary" id="btnUserDefault">Reset 10 user mặc định</button>
+                    </div>
+                    <table class="data" id="userTable">
+                        <thead><tr><th>deviceId (gốc)</th><th></th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="row-actions form-inline">
+                        <input type="text" id="addUserId" maxlength="80" placeholder="vd: sim-khach-11" style="min-width:200px;" />
+                        <button type="button" class="btn" id="btnUserAdd">Thêm user</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin: 0 28px 18px;">
+                <h2><span class="tag">Premium</span> Phân giải tại centroid</h2>
+                <div class="row-actions">
+                    <button type="button" class="btn" id="btnRankCentroid">Phân giải @ centroid (3 POI ảo)</button>
+                </div>
+            </div>
+
+            <div class="card" style="margin: 0 28px 18px;">
+                <h2><span class="tag">Audio</span> GET Range song song (proxy API)</h2>
+                <div class="row-actions">
+                    <button type="button" class="btn secondary" id="btnAudioUrlParallel">GET Range song song → POI #1</button>
+                </div>
+            </div>
+
+            <div class="card" style="margin: 0 28px 18px;">
+                <h2><span class="tag">Chạy</span> Scenario</h2>
+                <div class="run-panel">
+                    <label>Số bước GPS<input type="number" id="simSteps" value="6" min="1" max="40" /></label>
+                    <label>Delay (ms)<input type="number" id="simDelay" value="60" min="0" max="2000" /></label>
+                    <label>Song song<input type="number" id="simConc" value="5" min="1" max="20" /></label>
+                </div>
+                <div class="row-actions form-inline" style="margin-top:10px;">
+                    <label style="font-size:13px;font-weight:500;color:#334155;"><input type="checkbox" id="chkCentroidLogs" checked> Log GPS tại centroid</label>
+                </div>
+                <div class="row-actions form-inline" style="margin-top:6px;">
+                    <label style="font-size:13px;font-weight:500;color:#334155;"><input type="checkbox" id="chkIncludeListen"> Sau visit/end: POST poi-audio-listen</label>
+                </div>
+                <div class="row-actions">
+                    <button type="button" class="btn" id="btnRunScenario">Chạy scenario cho tất cả user</button>
+                    <button type="button" class="btn secondary" id="btnListenParallel">Listen song song</button>
+                    <button type="button" class="btn secondary" id="btnPollToggle">Tạm dừng poll ingress</button>
+                    <button type="button" class="btn secondary" id="btnLogClear">Xóa log console</button>
+                </div>
+                <div id="runStatus"></div>
+                <div class="watch-box" id="watchIngress">Ingress: …</div>
+                <div class="watch-box" id="watchOnline">Online: …</div>
+                <div id="liveLog"></div>
+            </div>
+
+            <div class="card" style="margin: 0 28px 18px;">
+                <h2>Một request</h2>
+                <div class="row-actions form-inline">
+                    <button type="button" class="btn secondary" id="btnOneLog">POST log</button>
+                    <button type="button" class="btn secondary" id="btnOneStart">visit/start</button>
+                    <button type="button" class="btn secondary" id="btnOneMove">movement</button>
+                    <button type="button" class="btn secondary" id="btnOneEnd">visit/end</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <script src="/config.js"></script>
+    <script src="/js/admin-api.js?v=20260512c"></script>
+    <script src="/js/logout.js?v=20260406c"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        (function () {
+            var SK_POIS = 'streetfood_loadtest_pois';
+            var SK_USERS = 'streetfood_loadtest_users';
+            var runSeq = 0;
+            var pollTimer = null;
+            var pollOn = true;
+
+            function apiRoot() {
+                return (window.STREETFOOD_API || '').replace(/\/$/, '');
+            }
+            function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+            async function fetchJson(path, opt) {
+                opt = opt || {};
+                var url = apiRoot() + path;
+                var h = Object.assign(
+                    { 'ngrok-skip-browser-warning': 'true', 'Accept-Language': 'vi' },
+                    opt.headers || {}
+                );
+                var res = await fetch(url, Object.assign({}, opt, { headers: h }));
+                var txt = await res.text();
+                var data = null;
+                try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+                return { ok: res.ok, status: res.status, data: data };
+            }
+
+            async function poiPost(subpath, body) {
+                var t0 = performance.now();
+                var r = await fetchJson('/api/Poi' + subpath, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                r.ms = Math.round(performance.now() - t0);
+                return r;
+            }
+
+            async function listenPost(body) {
+                var t0 = performance.now();
+                var r = await fetchJson('/api/analytics/poi-audio-listen', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                r.ms = Math.round(performance.now() - t0);
+                return r;
+            }
+
+            function defaultUsers() {
+                var t = String(Date.now()).slice(-6);
+                var u = [];
+                for (var i = 1; i <= 10; i++) {
+                    u.push('sim-u-' + t + '-' + String(i).padStart(2, '0'));
+                }
+                return u;
+            }
+
+            function loadState() {
+                var pois = null;
+                var users = null;
+                try {
+                    var pj = sessionStorage.getItem(SK_POIS);
+                    var uj = sessionStorage.getItem(SK_USERS);
+                    if (pj) pois = JSON.parse(pj);
+                    if (uj) users = JSON.parse(uj);
+                } catch (e) { }
+                return {
+                    pois: Array.isArray(pois) ? pois : [],
+                    users: Array.isArray(users) && users.length ? users : defaultUsers()
+                };
+            }
+            function savePois(arr) {
+                sessionStorage.setItem(SK_POIS, JSON.stringify(arr));
+            }
+            function saveUsers(arr) {
+                sessionStorage.setItem(SK_USERS, JSON.stringify(arr));
+            }
+
+            var state = loadState();
+
+            var DEMO_TRIANGLE = [
+                { id: -1, key: 'A', name: 'Ảo · Premium', latitude: 10.7750, longitude: 106.70175, radius: 100, isPremium: true, heatScore: 40 },
+                { id: -2, key: 'B', name: 'Ảo · Premium + heat + R lớn', latitude: 10.77422, longitude: 106.70295, radius: 150, isPremium: true, heatScore: 115 },
+                { id: -3, key: 'C', name: 'Ảo · Thường', latitude: 10.77372, longitude: 106.70135, radius: 95, isPremium: false, heatScore: 7 }
+            ];
+
+            function demoCentroid() {
+                var t = DEMO_TRIANGLE;
+                return {
+                    lat: (t[0].latitude + t[1].latitude + t[2].latitude) / 3,
+                    lng: (t[0].longitude + t[1].longitude + t[2].longitude) / 3
+                };
+            }
+
+            function distMeters(lat1, lng1, lat2, lng2) {
+                var R = 6371000;
+                var rad = Math.PI / 180;
+                var dLat = (lat2 - lat1) * rad;
+                var dLng = (lng2 - lng1) * rad;
+                var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+                return 2 * R * Math.asin(Math.sqrt(Math.min(1, a)));
+            }
+
+            function rankDemoPoisAt(lat, lng) {
+                var scored = DEMO_TRIANGLE.map(function (p) {
+                    var d = distMeters(lat, lng, p.latitude, p.longitude);
+                    return { p: p, d: d, inside: d <= p.radius + 1 };
+                }).filter(function (x) { return x.inside; })
+                    .sort(function (a, b) {
+                        var pb = b.p.isPremium ? 1 : 0, pa = a.p.isPremium ? 1 : 0;
+                        if (pb !== pa) return pb - pa;
+                        if (b.p.heatScore !== a.p.heatScore) return b.p.heatScore - a.p.heatScore;
+                        return a.d - b.d;
+                    });
+                var active = scored.length ? scored[0].p : null;
+                var summary = scored.map(function (x) {
+                    return x.p.key + ':' + (x.p.isPremium ? 'Prem' : 'Thuong') + ',heat=' + x.p.heatScore + ',' + Math.round(x.d) + 'm';
+                }).join(' | ');
+                return { sorted: scored, active: active, summary: summary || '(ngoài mọi vòng — kiểm tra tọa độ)' };
+            }
+
+            var leafMap = null;
+            var simMapLayer = null;
+
+            var logEl = document.getElementById('liveLog');
+            var runStatus = document.getElementById('runStatus');
+            function line(msg) {
+                var t = new Date().toISOString();
+                logEl.textContent = '[' + t + '] ' + msg + '\n' + logEl.textContent;
+            }
+
+            function getPoisForMap() {
+                var fakeEl = document.getElementById('chkMapFakeOnly');
+                if (fakeEl && fakeEl.checked) return DEMO_TRIANGLE.slice();
+                if (state.pois && state.pois.length) return state.pois.slice();
+                return DEMO_TRIANGLE.slice();
+            }
+
+            function buildApproachLatLngs(p0, steps, userIdx) {
+                var off = (userIdx < 0 ? 0 : userIdx) * 0.00003;
+                var lat0 = p0.latitude + 0.002 + off;
+                var lng0 = p0.longitude + 0.002 + off;
+                var lat1 = p0.latitude + off * 0.2;
+                var lng1 = p0.longitude + off * 0.2;
+                var nSeg = Math.max(1, steps - 1);
+                var latlngs = [];
+                for (var s = 0; s < steps; s++) {
+                    var tt = nSeg ? s / nSeg : 1;
+                    latlngs.push([lat0 + (lat1 - lat0) * tt, lng0 + (lng1 - lng0) * tt]);
+                }
+                return latlngs;
+            }
+
+            function buildCentroidLatLngs(steps, userIdx) {
+                var c = demoCentroid();
+                var nUser = Math.max(1, state.users.length);
+                var ang = (userIdx / nUser) * 2 * Math.PI;
+                var mPerDegLat = 110574;
+                var mPerDegLng = 111320 * Math.cos(c.lat * Math.PI / 180);
+                var offN = Math.sin(ang) * (4 + userIdx * 1.1);
+                var offE = Math.cos(ang) * (4 + userIdx * 1.1);
+                var anchorLat = c.lat + offN / mPerDegLat;
+                var anchorLng = c.lng + offE / mPerDegLng;
+                var startLat = anchorLat + 0.0001;
+                var startLng = anchorLng + 0.0001;
+                var nSeg = Math.max(1, steps - 1);
+                var latlngs = [];
+                for (var s = 0; s < steps; s++) {
+                    var tt = nSeg ? s / nSeg : 1;
+                    latlngs.push([startLat + (anchorLat - startLat) * tt, startLng + (anchorLng - startLng) * tt]);
+                }
+                return latlngs;
+            }
+
+            function circleStyleForPoi(p) {
+                if (p.key) {
+                    if (p.isPremium && p.heatScore >= 80) return { color: '#c2410c', weight: 2, fillColor: '#ffedd5', fillOpacity: 0.38 };
+                    if (p.isPremium) return { color: '#b45309', weight: 2, fillColor: '#fef3c7', fillOpacity: 0.32 };
+                    return { color: '#475569', weight: 2, fillColor: '#e2e8f0', fillOpacity: 0.28 };
+                }
+                if (p.isPremium) return { color: '#b45309', weight: 2, fillColor: '#fef3c7', fillOpacity: 0.22 };
+                return { color: '#2563eb', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.12 };
+            }
+
+            function ensureSimMap() {
+                if (typeof L === 'undefined') return false;
+                if (leafMap) return true;
+                var el = document.getElementById('simMap');
+                if (!el) return false;
+                leafMap = L.map('simMap', { scrollWheelZoom: true }).setView([10.774, 106.701], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                }).addTo(leafMap);
+                simMapLayer = L.layerGroup().addTo(leafMap);
+                return true;
+            }
+
+            function redrawMap() {
+                if (!ensureSimMap()) return;
+                simMapLayer.clearLayers();
+                var mapPois = getPoisForMap();
+                var steps = Math.max(1, Math.min(40, parseInt(document.getElementById('simSteps').value, 10) || 6));
+                var bounds = L.latLngBounds([]);
+                var useCentroidPreview = document.getElementById('chkCentroidLogs') && document.getElementById('chkCentroidLogs').checked;
+
+                mapPois.forEach(function (p) {
+                    var lat = p.latitude;
+                    var lng = p.longitude;
+                    var rad = p.radius || 50;
+                    bounds.extend([lat, lng]);
+                    var st = circleStyleForPoi(p);
+                    var meta = (p.isPremium ? 'Premium' : 'Thường') + (p.heatScore != null ? ' · heat~' + p.heatScore : '');
+                    L.circle([lat, lng], { radius: rad, color: st.color, weight: st.weight, fillColor: st.fillColor, fillOpacity: st.fillOpacity })
+                        .bindPopup('<b>' + escapeHtml(String(p.name || '')) + '</b><br>' + meta + '<br>R=' + rad + 'm · id ' + p.id)
+                        .addTo(simMapLayer);
+                    L.marker([lat, lng]).bindPopup('Tâm · ' + escapeHtml(String(p.name || ''))).addTo(simMapLayer);
+                });
+
+                var cen = demoCentroid();
+                bounds.extend([cen.lat, cen.lng]);
+                L.marker([cen.lat, cen.lng], {
+                    icon: L.divIcon({
+                        className: 'centroid-star',
+                        html: '<div style="font-size:22px;line-height:1;">★</div>',
+                        iconSize: [26, 26],
+                        iconAnchor: [13, 26]
+                    })
+                }).bindPopup('Centroid').addTo(simMapLayer);
+
+                var mPerDegLat = 110574;
+                var mPerDegLng = 111320 * Math.cos(cen.lat * Math.PI / 180);
+                state.users.slice(0, 10).forEach(function (u, i) {
+                    var ang = (i / 10) * 2 * Math.PI;
+                    var offN = Math.sin(ang) * (4 + i * 1.1);
+                    var offE = Math.cos(ang) * (4 + i * 1.1);
+                    var ulat = cen.lat + offN / mPerDegLat;
+                    var ulng = cen.lng + offE / mPerDegLng;
+                    bounds.extend([ulat, ulng]);
+                    L.circleMarker([ulat, ulng], { radius: 5, color: '#059669', fillColor: '#34d399', fillOpacity: 0.95, weight: 1 })
+                        .bindPopup('User #' + (i + 1) + '<br><code>' + escapeHtml(u) + '</code>')
+                        .addTo(simMapLayer);
+                });
+
+                var latlngs;
+                if (useCentroidPreview) {
+                    latlngs = buildCentroidLatLngs(steps, 0);
+                } else if (mapPois.length) {
+                    latlngs = buildApproachLatLngs(mapPois[0], steps, 0);
+                } else {
+                    latlngs = [];
+                }
+                if (latlngs.length) {
+                    latlngs.forEach(function (ll) { bounds.extend(ll); });
+                    L.polyline(latlngs, { color: '#ea580c', weight: 3, dashArray: '8 6', opacity: 0.92 })
+                        .bindPopup(useCentroidPreview ? 'GPS user 1' : 'GPS user 1')
+                        .addTo(simMapLayer);
+                }
+
+                var tri = DEMO_TRIANGLE;
+                bounds.extend([tri[0].latitude, tri[0].longitude]);
+                bounds.extend([tri[1].latitude, tri[1].longitude]);
+                L.polyline([[tri[0].latitude, tri[0].longitude], [tri[1].latitude, tri[1].longitude]], { color: '#1d4ed8', weight: 3, dashArray: '4 10', opacity: 0.75 })
+                    .bindPopup('A↔B')
+                    .addTo(simMapLayer);
+
+                if (mapPois.length >= 2 && mapPois[0].id > 0 && mapPois[1].id > 0) {
+                    var a = mapPois[0];
+                    var b = mapPois[1];
+                    bounds.extend([a.latitude, a.longitude]);
+                    bounds.extend([b.latitude, b.longitude]);
+                    L.polyline([[a.latitude, a.longitude], [b.latitude, b.longitude]], { color: '#6366f1', weight: 2, dashArray: '2 6', opacity: 0.65 })
+                        .bindPopup('POI #1 → #2')
+                        .addTo(simMapLayer);
+                }
+
+                if (bounds.isValid()) leafMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
+                leafMap.invalidateSize();
+            }
+
+            function renderPois() {
+                var tb = document.querySelector('#poiTable tbody');
+                tb.innerHTML = '';
+                state.pois.forEach(function (p, idx) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td>' + p.id + '</td><td>' + escapeHtml(String(p.name || '')) + '</td><td>' + p.latitude + '</td><td>' + p.longitude + '</td>' +
+                        '<td><button type="button" class="btn danger btn-poi-del" data-i="' + idx + '">Xóa</button></td>';
+                    tb.appendChild(tr);
+                });
+                tb.querySelectorAll('.btn-poi-del').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        var i = parseInt(b.getAttribute('data-i'), 10);
+                        state.pois.splice(i, 1);
+                        savePois(state.pois);
+                        renderPois();
+                    });
+                });
+                redrawMap();
+            }
+            function renderUsers() {
+                var tb = document.querySelector('#userTable tbody');
+                tb.innerHTML = '';
+                state.users.forEach(function (u, idx) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td><code>' + escapeHtml(u) + '</code></td><td><button type="button" class="btn danger btn-user-del" data-i="' + idx + '">Xóa</button></td>';
+                    tb.appendChild(tr);
+                });
+                tb.querySelectorAll('.btn-user-del').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        var i = parseInt(b.getAttribute('data-i'), 10);
+                        state.users.splice(i, 1);
+                        saveUsers(state.users);
+                        renderUsers();
+                    });
+                });
+                redrawMap();
+            }
+            function escapeHtml(s) {
+                return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+
+            function normalizePoiRow(x) {
+                var au = x.audioUrl != null ? x.audioUrl : x.AudioUrl;
+                return {
+                    id: x.id != null ? x.id : x.Id,
+                    name: x.name != null ? x.name : x.Name,
+                    latitude: x.latitude != null ? x.latitude : x.Latitude,
+                    longitude: x.longitude != null ? x.longitude : x.Longitude,
+                    radius: x.radius != null ? x.radius : (x.Radius || 50),
+                    isPremium: !!(x.isPremium != null ? x.isPremium : x.IsPremium),
+                    heatScore: x.heatScore != null ? x.heatScore : (x.HeatScore != null ? x.HeatScore : 0),
+                    audioUrl: au != null && String(au).trim() ? String(au).trim() : null
+                };
+            }
+
+            function resolveAbsoluteMediaUrl(audioUrl) {
+                var u = String(audioUrl || '').trim();
+                if (!u) return '';
+                if (/^https?:\/\//i.test(u)) return u;
+                if (u.startsWith('//')) return (window.location.protocol || 'https:') + u;
+                var root = apiRoot();
+                if (u.startsWith('/')) return root + u;
+                return root + '/' + u.replace(/^\.\/?/, '');
+            }
+
+            async function probeAudioRangeGet(poiId, idx1) {
+                var t0 = performance.now();
+                try {
+                    var res = await fetch(apiRoot() + '/api/Poi/' + encodeURIComponent(poiId) + '/audio-range-head', {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-store',
+                        headers: { 'ngrok-skip-browser-warning': 'true', 'Accept-Language': 'vi' }
+                    });
+                    var ms = Math.round(performance.now() - t0);
+                    var err = '';
+                    if (!res.ok) {
+                        try {
+                            var tb = await res.text();
+                            if (tb) err = tb.slice(0, 200);
+                        } catch (e2) { }
+                    }
+                    return { idx: idx1, ok: res.ok, status: res.status, ms: ms, err: err || undefined };
+                } catch (e) {
+                    var ms = Math.round(performance.now() - t0);
+                    return { idx: idx1, ok: false, status: 0, ms: ms, err: (e && e.message) ? e.message : String(e) };
+                }
+            }
+
+            async function refreshPoisFromApi(take) {
+                take = take || 3;
+                var r = await fetchJson('/api/Poi');
+                if (!r.ok) { line('GET /api/Poi ' + r.status + ' ' + (typeof r.data === 'string' ? r.data : JSON.stringify(r.data))); return; }
+                var list = Array.isArray(r.data) ? r.data : [];
+                state.pois = list.slice(0, take).map(normalizePoiRow);
+                savePois(state.pois);
+                renderPois();
+                line('Đã nạp ' + state.pois.length + ' POI từ API.');
+            }
+
+            async function addPoiById(id) {
+                var r = await fetchJson('/api/Poi/' + encodeURIComponent(id));
+                if (!r.ok) { line('GET /api/Poi/' + id + ' → ' + r.status); return false; }
+                var p = normalizePoiRow(r.data);
+                if (state.pois.some(function (x) { return x.id === p.id; })) { line('POI ' + p.id + ' đã có trong danh sách.'); return false; }
+                state.pois.push(p);
+                savePois(state.pois);
+                renderPois();
+                line('Đã thêm POI ' + p.id + ' ' + (p.name || ''));
+                return true;
+            }
+
+            async function pollTick() {
+                if (!pollOn) return;
+                try {
+                    var ing = await window.StreetFoodAdmin.getPoiIngressQueue();
+                    document.getElementById('watchIngress').textContent = 'Ingress: ' + JSON.stringify(ing);
+                } catch (e) {
+                    document.getElementById('watchIngress').textContent = 'Ingress (lỗi): ' + (e.message || e);
+                }
+                try {
+                    var on = await window.StreetFoodAdmin.getOnlineNow(5);
+                    var n = on.uniqueDeviceCount != null ? on.uniqueDeviceCount : on.UniqueDeviceCount;
+                    document.getElementById('watchOnline').textContent = 'Online (5s): ' + (n != null ? n : '—');
+                } catch (e) {
+                    document.getElementById('watchOnline').textContent = 'Online (lỗi): ' + (e.message || e);
+                }
+            }
+
+            function startPoll() {
+                if (pollTimer) clearInterval(pollTimer);
+                pollTick();
+                pollTimer = setInterval(pollTick, 4000);
+            }
+
+            document.getElementById('btnPollToggle').addEventListener('click', function () {
+                pollOn = !pollOn;
+                this.textContent = pollOn ? 'Tạm dừng poll ingress' : 'Bật lại poll ingress';
+                if (pollOn) startPoll();
+                else if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            });
+
+            document.getElementById('btnPoiRefresh').addEventListener('click', function () { refreshPoisFromApi(3); });
+            document.getElementById('btnPoiReset').addEventListener('click', function () {
+                state.pois = [];
+                savePois(state.pois);
+                refreshPoisFromApi(3);
+            });
+            document.getElementById('btnPoiAdd').addEventListener('click', async function () {
+                var id = parseInt(document.getElementById('addPoiId').value, 10);
+                if (!id || id < 1) { line('Nhập Poi Id hợp lệ.'); return; }
+                await addPoiById(id);
+            });
+
+            document.getElementById('btnUserDefault').addEventListener('click', function () {
+                state.users = defaultUsers();
+                saveUsers(state.users);
+                renderUsers();
+                line('Đã reset 10 user mặc định.');
+            });
+            document.getElementById('btnUserAdd').addEventListener('click', function () {
+                var v = document.getElementById('addUserId').value.trim().replace(/\s+/g, '-');
+                if (!v) { line('Nhập deviceId.'); return; }
+                if (v.length > 80) { line('deviceId quá dài (tối đa 80 ký tự gốc).'); return; }
+                if (state.users.indexOf(v) >= 0) { line('Đã tồn tại.'); return; }
+                state.users.push(v);
+                saveUsers(state.users);
+                renderUsers();
+                document.getElementById('addUserId').value = '';
+            });
+
+            document.getElementById('chkMapFakeOnly').addEventListener('change', redrawMap);
+            document.getElementById('btnMapRedraw').addEventListener('click', redrawMap);
+            document.getElementById('simSteps').addEventListener('input', redrawMap);
+            document.getElementById('chkCentroidLogs').addEventListener('change', redrawMap);
+
+            document.getElementById('btnRankCentroid').addEventListener('click', function () {
+                var c = demoCentroid();
+                var rk = rankDemoPoisAt(c.lat, c.lng);
+                line('--- Phân giải @centroid (' + c.lat.toFixed(6) + ',' + c.lng.toFixed(6) + ') ---');
+                line('Thứ tự trong vòng: ' + rk.summary);
+                line('→ POI active (app sẽ ưu tiên): ' + (rk.active ? rk.active.key + ' ' + rk.active.name + ' (Premium=' + rk.active.isPremium + ', heat=' + rk.active.heatScore + ')' : 'không có'));
+            });
+
+            document.getElementById('btnAudioUrlParallel').addEventListener('click', async function () {
+                if (!state.pois[0]) { line('Cần ít nhất 1 POI trong bảng (POI #1).'); return; }
+                var raw = state.pois[0].audioUrl || state.pois[0].AudioUrl;
+                if (!raw) {
+                    line('POI #1 chưa có audioUrl.');
+                    return;
+                }
+                var abs = resolveAbsoluteMediaUrl(raw);
+                if (!abs) { line('Không ghép được URL tuyệt đối.'); return; }
+                var n = Math.min(10, Math.max(1, state.users.length));
+                var pid = state.pois[0].id;
+                line('--- ' + n + ' GET /api/Poi/' + pid + '/audio-range-head (song song) ---');
+                line('AudioUrl (100 ký tự đầu): ' + abs.slice(0, 100) + (abs.length > 100 ? '…' : ''));
+                var tWall = performance.now();
+                var results = await Promise.all(
+                    Array.from({ length: n }, function (_, i) { return probeAudioRangeGet(pid, i + 1); })
+                );
+                var wallMs = Math.round(performance.now() - tWall);
+                var sumMs = results.reduce(function (a, r) { return a + r.ms; }, 0);
+                results.forEach(function (r) {
+                    var tail = r.err ? (' err=' + r.err) : '';
+                    line('[req#' + r.idx + '] status=' + r.status + ' ' + r.ms + 'ms' + tail);
+                });
+                line('Wall Promise.all: ' + wallMs + 'ms · tổng ms từng request: ' + sumMs + 'ms');
+                line('--- Xong ---');
+            });
+
+            document.getElementById('btnListenParallel').addEventListener('click', async function () {
+                if (!state.pois[0]) { line('Cần ít nhất 1 POI thật trong bảng để gửi listen.'); return; }
+                var pid = state.pois[0].id;
+                var rid2 = ++runSeq;
+                line('--- POST listen song song → poiId=' + pid + ' (run tag ' + rid2 + ') ---');
+                var mBefore = null;
+                try {
+                    mBefore = await window.StreetFoodAdmin.getOpsMetrics();
+                    var l0 = mBefore.listenEvents24h != null ? mBefore.listenEvents24h : mBefore.ListenEvents24h;
+                    line('Ops (trước burst): listenEvents24h=' + l0);
+                } catch (e) {
+                    line('Không đọc ops/metrics trước burst: ' + (e.message || e));
+                }
+                await Promise.all(state.users.map(async function (baseId, uidx) {
+                    var deviceId = (baseId + '-L' + rid2).slice(0, 64);
+                    var dsec = 12 + (uidx % 30);
+                    var rl = await listenPost({ poiId: pid, durationSeconds: dsec, deviceId: deviceId });
+                    line('[' + deviceId + '] listen ' + rl.status + ' ' + (typeof rl.data === 'string' ? rl.data : JSON.stringify(rl.data)));
+                }));
+                await sleep(1800);
+                try {
+                    var mAfter = await window.StreetFoodAdmin.getOpsMetrics();
+                    var l1 = mAfter.listenEvents24h != null ? mAfter.listenEvents24h : mAfter.ListenEvents24h;
+                    var l0b = mBefore ? (mBefore.listenEvents24h != null ? mBefore.listenEvents24h : mBefore.ListenEvents24h) : null;
+                    var delta = l0b != null ? (l1 - l0b) : '?';
+                    line('Ops sau ~1.8s: listenEvents24h=' + l1 + ' · delta≈' + delta);
+                } catch (e) {
+                    line('Không đọc ops/metrics sau burst: ' + (e.message || e));
+                }
+                line('--- Xong listen song song ---');
+            });
+
+            document.getElementById('btnLogClear').addEventListener('click', function () { logEl.textContent = ''; });
+
+            document.getElementById('btnRunScenario').addEventListener('click', async function () {
+                var btn = this;
+                if (state.pois.length < 1) { runStatus.textContent = 'Cần ít nhất 1 POI trong danh sách.'; return; }
+                if (state.users.length < 1) { runStatus.textContent = 'Cần ít nhất 1 user ảo.'; return; }
+                var steps = Math.max(1, Math.min(40, parseInt(document.getElementById('simSteps').value, 10) || 6));
+                var delayMs = Math.max(0, Math.min(2000, parseInt(document.getElementById('simDelay').value, 10) || 60));
+                var conc = Math.max(1, Math.min(20, parseInt(document.getElementById('simConc').value, 10) || 5));
+                var p0 = state.pois[0];
+                var p1 = state.pois.length > 1 ? state.pois[1] : null;
+                runSeq++;
+                var rid = runSeq;
+                btn.disabled = true;
+                runStatus.textContent = 'Đang chạy… (run #' + rid + ')';
+                var ok = 0, fail = 0;
+                var t0 = performance.now();
+
+                async function runOneUser(baseId) {
+                    var deviceId = (baseId + '-r' + rid).slice(0, 100);
+                    var uidx = state.users.indexOf(baseId);
+                    var useCentroid = document.getElementById('chkCentroidLogs').checked;
+                    var latlngs = useCentroid ? buildCentroidLatLngs(steps, uidx) : buildApproachLatLngs(p0, steps, uidx);
+                    for (var si = 0; si < latlngs.length; si++) {
+                        var ll = latlngs[si];
+                        var r = await poiPost('/log', { deviceId: deviceId, latitude: ll[0], longitude: ll[1] });
+                        if (r.ok) ok++; else fail++;
+                        if (delayMs) await sleep(delayMs);
+                    }
+                    var last = latlngs[latlngs.length - 1];
+                    var rk = rankDemoPoisAt(last[0], last[1]);
+                    line('[' + deviceId + '] Ưu tiên POI ảo @điểm log: ' + rk.summary + ' → ACTIVE=' + (rk.active ? rk.active.key + ':' + rk.active.name : '—'));
+
+                    var r2 = await poiPost('/visit/start', { deviceId: deviceId, poiId: p0.id, atUtc: new Date().toISOString() });
+                    line('[' + deviceId + '] visit/start ' + r2.status + ' ' + (typeof r2.data === 'string' ? r2.data : JSON.stringify(r2.data)) + ' (' + r2.ms + 'ms)');
+                    if (r2.ok) ok++; else fail++;
+                    if (delayMs) await sleep(delayMs);
+                    if (p1 && p1.id !== p0.id) {
+                        var r3 = await poiPost('/movement', { deviceId: deviceId, fromPoiId: p0.id, toPoiId: p1.id, atUtc: new Date().toISOString() });
+                        line('[' + deviceId + '] movement ' + r3.status + ' ' + (typeof r3.data === 'string' ? r3.data : JSON.stringify(r3.data)));
+                        if (r3.ok) ok++; else fail++;
+                        if (delayMs) await sleep(delayMs);
+                    } else {
+                        line('[' + deviceId + '] bỏ qua movement (cần ≥2 POI trong danh sách).');
+                    }
+                    var r4 = await poiPost('/visit/end', { deviceId: deviceId, poiId: p0.id, atUtc: new Date().toISOString() });
+                    line('[' + deviceId + '] visit/end ' + r4.status + ' ' + (typeof r4.data === 'string' ? r4.data : JSON.stringify(r4.data)));
+                    if (r4.ok) ok++; else fail++;
+
+                    if (document.getElementById('chkIncludeListen').checked && state.pois[0]) {
+                        var dsec = 10 + (uidx % 25);
+                        var devL = deviceId.length > 64 ? deviceId.slice(0, 64) : deviceId;
+                        var rl = await listenPost({ poiId: state.pois[0].id, durationSeconds: dsec, deviceId: devL });
+                        line('[' + deviceId + '] listen → ' + rl.status + ' ' + (typeof rl.data === 'string' ? rl.data : JSON.stringify(rl.data)) + ' (' + rl.ms + 'ms)');
+                        if (rl.ok) ok++; else fail++;
+                    }
+                }
+
+                try {
+                    for (var i = 0; i < state.users.length; i += conc) {
+                        var chunk = state.users.slice(i, i + conc);
+                        await Promise.all(chunk.map(runOneUser));
+                    }
+                } catch (e) {
+                    line('Lỗi scenario: ' + (e.message || e));
+                }
+                var ms = Math.round(performance.now() - t0);
+                runStatus.textContent = 'Xong run #' + rid + ' — OK~' + ok + ', lỗi~' + fail + ', ~' + ms + 'ms';
+                btn.disabled = false;
+                pollTick();
+                redrawMap();
+            });
+
+            function firstUser() { return state.users[0] || 'sim-u-placeholder'; }
+            function effDevice() {
+                var b = firstUser();
+                return (b + '-m' + Date.now()).slice(0, 100);
+            }
+
+            document.getElementById('btnOneLog').addEventListener('click', async function () {
+                if (!state.pois[0]) { line('Chưa có POI.'); return; }
+                var p = state.pois[0];
+                var d = effDevice();
+                var r = await poiPost('/log', { deviceId: d, latitude: p.latitude, longitude: p.longitude });
+                line('log ' + r.status + ' ' + (typeof r.data === 'string' ? r.data : JSON.stringify(r.data)));
+            });
+            document.getElementById('btnOneStart').addEventListener('click', async function () {
+                if (!state.pois[0]) return;
+                var r = await poiPost('/visit/start', { deviceId: effDevice(), poiId: state.pois[0].id, atUtc: new Date().toISOString() });
+                line('visit/start ' + r.status + ' ' + (typeof r.data === 'string' ? r.data : JSON.stringify(r.data)));
+            });
+            document.getElementById('btnOneMove').addEventListener('click', async function () {
+                if (state.pois.length < 2) { line('Cần 2 POI.'); return; }
+                var r = await poiPost('/movement', { deviceId: effDevice(), fromPoiId: state.pois[0].id, toPoiId: state.pois[1].id, atUtc: new Date().toISOString() });
+                line('movement ' + r.status + ' ' + (typeof r.data === 'string' ? r.data : JSON.stringify(r.data)));
+            });
+            document.getElementById('btnOneEnd').addEventListener('click', async function () {
+                if (!state.pois[0]) return;
+                var r = await poiPost('/visit/end', { deviceId: effDevice(), poiId: state.pois[0].id, atUtc: new Date().toISOString() });
+                line('visit/end ' + r.status + ' ' + (typeof r.data === 'string' ? r.data : JSON.stringify(r.data)));
+            });
+
+            (async function init() {
+                if (!sessionStorage.getItem(SK_USERS)) saveUsers(state.users);
+                renderUsers();
+                if (state.pois.length) {
+                    renderPois();
+                    line('Đã khôi phục ' + state.pois.length + ' POI từ session.');
+                } else {
+                    await refreshPoisFromApi(3);
+                    if (!state.pois.length) {
+                        renderPois();
+                        line('Chưa có POI từ API — map mẫu.');
+                    }
+                }
+                redrawMap();
+                setTimeout(redrawMap, 400);
+                startPoll();
+            })();
+        })();
+    </script>
+</body>
+</html>
