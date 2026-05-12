@@ -18,6 +18,7 @@
         table.data th { background: #f8fafc; color: #64748b; font-weight: 600; }
         .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
         .row-actions input[type="number"], .row-actions input[type="text"] { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; min-width: 100px; }
+        table.data input.user-coord { width: 110px; padding: 6px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; }
         .btn { padding: 8px 14px; border-radius: 10px; border: none; font-weight: 600; font-size: 13px; cursor: pointer; background: #2563eb; color: #fff; }
         .btn.secondary { background: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; }
         .btn.danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
@@ -78,11 +79,12 @@
                 </div>
                 <div class="card">
                     <h2><span class="tag">User ảo</span> deviceId (simulation)</h2>
+                    <p style="font-size:12px;color:#64748b;margin:0 0 8px;">Mỗi dòng: Lat/Lng tùy chọn (cả hai mới dùng làm neo GPS); để trống = vị trí auto quanh centroid.</p>
                     <div class="row-actions">
                         <button type="button" class="btn secondary" id="btnUserDefault">Reset 10 user mặc định</button>
                     </div>
                     <table class="data" id="userTable">
-                        <thead><tr><th>deviceId (gốc)</th><th></th></tr></thead>
+                        <thead><tr><th>deviceId (gốc)</th><th>Lat (trống = auto)</th><th>Lng (trống = auto)</th><th></th></tr></thead>
                         <tbody></tbody>
                     </table>
                     <div class="row-actions form-inline">
@@ -205,6 +207,43 @@
                 return u;
             }
 
+            function userDeviceId(entry) {
+                if (entry == null) return '';
+                if (typeof entry === 'string') return entry;
+                return String(entry.deviceId || entry.id || '');
+            }
+
+            function normalizeUserEntry(u) {
+                if (typeof u === 'string') return { deviceId: u, lat: null, lng: null };
+                if (u && typeof u === 'object') {
+                    var id = u.deviceId != null ? String(u.deviceId) : (u.id != null ? String(u.id) : '');
+                    var latN = u.lat != null && u.lat !== '' ? Number(u.lat) : NaN;
+                    var lngN = u.lng != null && u.lng !== '' ? Number(u.lng) : NaN;
+                    return {
+                        deviceId: id || 'sim-unknown',
+                        lat: isFinite(latN) ? latN : null,
+                        lng: isFinite(lngN) ? lngN : null
+                    };
+                }
+                return { deviceId: 'sim-unknown', lat: null, lng: null };
+            }
+
+            function userAnchorLatLng(userIdx, userEntry, centroid, nUser) {
+                var ue = normalizeUserEntry(userEntry);
+                if (ue.lat != null && ue.lng != null) return { lat: ue.lat, lng: ue.lng };
+                var c = centroid || demoCentroid();
+                var n = Math.max(1, nUser || 1);
+                var ang = (userIdx / n) * 2 * Math.PI;
+                var mPerDegLat = 110574;
+                var mPerDegLng = 111320 * Math.cos(c.lat * Math.PI / 180);
+                var offN = Math.sin(ang) * (4 + userIdx * 1.1);
+                var offE = Math.cos(ang) * (4 + userIdx * 1.1);
+                return {
+                    lat: c.lat + offN / mPerDegLat,
+                    lng: c.lng + offE / mPerDegLng
+                };
+            }
+
             function loadState() {
                 var pois = null;
                 var users = null;
@@ -214,9 +253,10 @@
                     if (pj) pois = JSON.parse(pj);
                     if (uj) users = JSON.parse(uj);
                 } catch (e) { }
+                var rawUsers = Array.isArray(users) && users.length ? users : defaultUsers();
                 return {
                     pois: Array.isArray(pois) ? pois : [],
-                    users: Array.isArray(users) && users.length ? users : defaultUsers()
+                    users: rawUsers.map(normalizeUserEntry)
                 };
             }
             function savePois(arr) {
@@ -287,12 +327,17 @@
                 return DEMO_TRIANGLE.slice();
             }
 
-            function buildApproachLatLngs(p0, steps, userIdx) {
+            function buildApproachLatLngs(p0, steps, userIdx, userEntry) {
                 var off = (userIdx < 0 ? 0 : userIdx) * 0.00003;
-                var lat0 = p0.latitude + 0.002 + off;
-                var lng0 = p0.longitude + 0.002 + off;
+                var ue = normalizeUserEntry(userEntry);
                 var lat1 = p0.latitude + off * 0.2;
                 var lng1 = p0.longitude + off * 0.2;
+                if (ue.lat != null && ue.lng != null) {
+                    lat1 = ue.lat;
+                    lng1 = ue.lng;
+                }
+                var lat0 = p0.latitude + 0.002 + off;
+                var lng0 = p0.longitude + 0.002 + off;
                 var nSeg = Math.max(1, steps - 1);
                 var latlngs = [];
                 for (var s = 0; s < steps; s++) {
@@ -302,16 +347,12 @@
                 return latlngs;
             }
 
-            function buildCentroidLatLngs(steps, userIdx) {
+            function buildCentroidLatLngs(steps, userIdx, userEntry) {
                 var c = demoCentroid();
                 var nUser = Math.max(1, state.users.length);
-                var ang = (userIdx / nUser) * 2 * Math.PI;
-                var mPerDegLat = 110574;
-                var mPerDegLng = 111320 * Math.cos(c.lat * Math.PI / 180);
-                var offN = Math.sin(ang) * (4 + userIdx * 1.1);
-                var offE = Math.cos(ang) * (4 + userIdx * 1.1);
-                var anchorLat = c.lat + offN / mPerDegLat;
-                var anchorLng = c.lng + offE / mPerDegLng;
+                var anchor = userAnchorLatLng(userIdx, userEntry, c, nUser);
+                var anchorLat = anchor.lat;
+                var anchorLng = anchor.lng;
                 var startLat = anchorLat + 0.0001;
                 var startLng = anchorLng + 0.0001;
                 var nSeg = Math.max(1, steps - 1);
@@ -379,25 +420,24 @@
                     })
                 }).bindPopup('Centroid').addTo(simMapLayer);
 
-                var mPerDegLat = 110574;
-                var mPerDegLng = 111320 * Math.cos(cen.lat * Math.PI / 180);
-                state.users.slice(0, 10).forEach(function (u, i) {
-                    var ang = (i / 10) * 2 * Math.PI;
-                    var offN = Math.sin(ang) * (4 + i * 1.1);
-                    var offE = Math.cos(ang) * (4 + i * 1.1);
-                    var ulat = cen.lat + offN / mPerDegLat;
-                    var ulng = cen.lng + offE / mPerDegLng;
+                var nUsers = Math.max(1, state.users.length);
+                state.users.forEach(function (u, i) {
+                    var a = userAnchorLatLng(i, u, cen, nUsers);
+                    var ulat = a.lat;
+                    var ulng = a.lng;
                     bounds.extend([ulat, ulng]);
+                    var ue = normalizeUserEntry(u);
+                    var custom = ue.lat != null && ue.lng != null ? ' · tay' : ' · auto';
                     L.circleMarker([ulat, ulng], { radius: 5, color: '#059669', fillColor: '#34d399', fillOpacity: 0.95, weight: 1 })
-                        .bindPopup('User #' + (i + 1) + '<br><code>' + escapeHtml(u) + '</code>')
+                        .bindPopup('User #' + (i + 1) + custom + '<br><code>' + escapeHtml(userDeviceId(u)) + '</code><br>' + ulat.toFixed(6) + ', ' + ulng.toFixed(6))
                         .addTo(simMapLayer);
                 });
 
                 var latlngs;
                 if (useCentroidPreview) {
-                    latlngs = buildCentroidLatLngs(steps, 0);
+                    latlngs = buildCentroidLatLngs(steps, 0, state.users[0] || null);
                 } else if (mapPois.length) {
-                    latlngs = buildApproachLatLngs(mapPois[0], steps, 0);
+                    latlngs = buildApproachLatLngs(mapPois[0], steps, 0, state.users[0] || null);
                 } else {
                     latlngs = [];
                 }
@@ -452,8 +492,14 @@
                 var tb = document.querySelector('#userTable tbody');
                 tb.innerHTML = '';
                 state.users.forEach(function (u, idx) {
+                    var ue = normalizeUserEntry(u);
                     var tr = document.createElement('tr');
-                    tr.innerHTML = '<td><code>' + escapeHtml(u) + '</code></td><td><button type="button" class="btn danger btn-user-del" data-i="' + idx + '">Xóa</button></td>';
+                    var latStr = ue.lat != null ? String(ue.lat) : '';
+                    var lngStr = ue.lng != null ? String(ue.lng) : '';
+                    tr.innerHTML = '<td><code>' + escapeHtml(userDeviceId(ue)) + '</code></td>' +
+                        '<td><input type="text" class="user-coord" inputmode="decimal" data-i="' + idx + '" data-f="lat" placeholder="auto" value="' + escapeHtml(latStr) + '"></td>' +
+                        '<td><input type="text" class="user-coord" inputmode="decimal" data-i="' + idx + '" data-f="lng" placeholder="auto" value="' + escapeHtml(lngStr) + '"></td>' +
+                        '<td><button type="button" class="btn danger btn-user-del" data-i="' + idx + '">Xóa</button></td>';
                     tb.appendChild(tr);
                 });
                 tb.querySelectorAll('.btn-user-del').forEach(function (b) {
@@ -462,6 +508,25 @@
                         state.users.splice(i, 1);
                         saveUsers(state.users);
                         renderUsers();
+                    });
+                });
+                tb.querySelectorAll('input.user-coord').forEach(function (inp) {
+                    inp.addEventListener('change', function () {
+                        var i = parseInt(inp.getAttribute('data-i'), 10);
+                        var f = inp.getAttribute('data-f');
+                        var raw = inp.value.trim().replace(',', '.');
+                        var n = raw === '' ? null : Number(raw);
+                        if (raw !== '' && !isFinite(n)) {
+                            line('User #' + (i + 1) + ': ' + f + ' không phải số hợp lệ.');
+                            return;
+                        }
+                        var cur = normalizeUserEntry(state.users[i]);
+                        if (f === 'lat') cur.lat = n;
+                        else cur.lng = n;
+                        state.users[i] = cur;
+                        saveUsers(state.users);
+                        line('User #' + (i + 1) + ' (' + userDeviceId(cur) + '): ' + f + '=' + (n == null ? 'auto' : n));
+                        redrawMap();
                     });
                 });
                 redrawMap();
@@ -584,7 +649,7 @@
             });
 
             document.getElementById('btnUserDefault').addEventListener('click', function () {
-                state.users = defaultUsers();
+                state.users = defaultUsers().map(function (s) { return normalizeUserEntry(s); });
                 saveUsers(state.users);
                 renderUsers();
                 line('Đã reset 10 user mặc định.');
@@ -593,8 +658,8 @@
                 var v = document.getElementById('addUserId').value.trim().replace(/\s+/g, '-');
                 if (!v) { line('Nhập deviceId.'); return; }
                 if (v.length > 80) { line('deviceId quá dài (tối đa 80 ký tự gốc).'); return; }
-                if (state.users.indexOf(v) >= 0) { line('Đã tồn tại.'); return; }
-                state.users.push(v);
+                if (state.users.some(function (x) { return userDeviceId(x) === v; })) { line('Đã tồn tại.'); return; }
+                state.users.push({ deviceId: v, lat: null, lng: null });
                 saveUsers(state.users);
                 renderUsers();
                 document.getElementById('addUserId').value = '';
@@ -622,7 +687,7 @@
                 }
                 var abs = resolveAbsoluteMediaUrl(raw);
                 if (!abs) { line('Không ghép được URL tuyệt đối.'); return; }
-                var n = Math.min(10, Math.max(1, state.users.length));
+                var n = Math.min(50, Math.max(1, state.users.length));
                 var pid = state.pois[0].id;
                 line('--- ' + n + ' GET /api/Poi/' + pid + '/audio-range-head (song song) ---');
                 line('AudioUrl (100 ký tự đầu): ' + abs.slice(0, 100) + (abs.length > 100 ? '…' : ''));
@@ -653,7 +718,8 @@
                 } catch (e) {
                     line('Không đọc ops/metrics trước burst: ' + (e.message || e));
                 }
-                await Promise.all(state.users.map(async function (baseId, uidx) {
+                await Promise.all(state.users.map(async function (entry, uidx) {
+                    var baseId = userDeviceId(entry);
                     var deviceId = (baseId + '-L' + rid2).slice(0, 64);
                     var dsec = 12 + (uidx % 30);
                     var rl = await listenPost({ poiId: pid, durationSeconds: dsec, deviceId: deviceId });
@@ -690,11 +756,13 @@
                 var ok = 0, fail = 0;
                 var t0 = performance.now();
 
-                async function runOneUser(baseId) {
+                async function runOneUser(userEntry) {
+                    var baseId = userDeviceId(userEntry);
                     var deviceId = (baseId + '-r' + rid).slice(0, 100);
-                    var uidx = state.users.indexOf(baseId);
+                    var uidx = state.users.findIndex(function (x) { return userDeviceId(x) === baseId; });
+                    if (uidx < 0) uidx = 0;
                     var useCentroid = document.getElementById('chkCentroidLogs').checked;
-                    var latlngs = useCentroid ? buildCentroidLatLngs(steps, uidx) : buildApproachLatLngs(p0, steps, uidx);
+                    var latlngs = useCentroid ? buildCentroidLatLngs(steps, uidx, userEntry) : buildApproachLatLngs(p0, steps, uidx, userEntry);
                     for (var si = 0; si < latlngs.length; si++) {
                         var ll = latlngs[si];
                         var r = await poiPost('/log', { deviceId: deviceId, latitude: ll[0], longitude: ll[1] });
@@ -745,7 +813,7 @@
                 redrawMap();
             });
 
-            function firstUser() { return state.users[0] || 'sim-u-placeholder'; }
+            function firstUser() { return userDeviceId(state.users[0]) || 'sim-u-placeholder'; }
             function effDevice() {
                 var b = firstUser();
                 return (b + '-m' + Date.now()).slice(0, 100);
@@ -775,7 +843,7 @@
             });
 
             (async function init() {
-                if (!sessionStorage.getItem(SK_USERS)) saveUsers(state.users);
+                saveUsers(state.users);
                 renderUsers();
                 if (state.pois.length) {
                     renderPois();

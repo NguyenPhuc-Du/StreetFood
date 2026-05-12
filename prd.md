@@ -3,8 +3,8 @@
 
 | Thuộc tính             | Giá trị                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Phiên bản tài liệu** | **2.8**                                                                                                                     |
-| **Ngày cập nhật**      | **2026-04-28**                                                                                                              |
+| **Phiên bản tài liệu** | **2.8.2**                                                                                                                   |
+| **Ngày cập nhật**      | **2026-05-12**                                                                                                              |
 | **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được; đối chiếu `App/`, `StreetFoodAPI/`, `Web Admin/`, `Web Vendor/`)         |
 | **Mục đích**           | Mô tả yêu cầu sản phẩm; ghi nhận **tiến độ thực tế**, **phiên bản công nghệ**, **tham chiếu file** để nộp đồ án / bàn giao. |
 
@@ -172,6 +172,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 | FR-A02 Upload audio          | **Tùy cấu hình** | TTS/regenerate qua API (`regenerate-audio`); vendor có thể gửi **gói 5 URL** (`submit-audio-bundle`).                                                                                             |
 | FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`; online-now có polling thông minh (pause khi tab ẩn, chống chồng request, backoff khi lỗi/chậm). |
 | FR-A04 Duyệt script          | **Đã có**        | `pendingScriptsPage.html`; phê duyệt + TTS/dịch theo `AdminController`.                                                                                                                           |
+| FR-A05 Kiểm thử tải & GPS (dev) | **Đã có**     | `loadTestGuidePage.html`: user ảo (`deviceId`, lưu `sessionStorage`); **Lat/Lng tùy chọn** theo user để neo đường GPS mô phỏng trong scenario (`Poi/log`, visit/movement/end); map Leaflet; burst song song `GET /api/Poi/{id}/audio-range-head` (tối đa **50** request, số lượng theo số user ảo). |
 
 
 #### Vendor Web (`Web Vendor/wwwroot/html/`)
@@ -301,7 +302,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 - Danh sách request đổi script.
 - Approve/Reject + lưu lịch sử.
 
-**Triển khai UI (tham chiếu):** `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html` (KPI + online-now + biểu đồ theo `device_visits`), `analyticsPage.html` (giờ / online-now), `routeHeatmapPage.html` (heatmap + paths + phổ biến), `poiListenStatsPage.html` (thời lượng nghe theo POI), `createPoiOwnerPage.html` (tạo POI + owner), `pendingScriptsPage.html`, `restaurantOwnersPage.html` (hide/unhide), `managePOIPage.html`, `manageShopsPage.html`. Sidebar: inject DOM trong `admin-api.js`.
+**Triển khai UI (tham chiếu):** `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html` (KPI + online-now + biểu đồ theo `device_visits`), `analyticsPage.html` (giờ / online-now), `routeHeatmapPage.html` (heatmap + paths + phổ biến), `poiListenStatsPage.html` (thời lượng nghe theo POI), `createPoiOwnerPage.html` (tạo POI + owner), `pendingScriptsPage.html`, `restaurantOwnersPage.html` (hide/unhide), `managePOIPage.html`, `manageShopsPage.html`, `loadTestGuidePage.html` (kiểm thử tải/GPS — xem **FR-A05**). Sidebar: inject DOM trong `admin-api.js`.
 
 ## 4.4 Vendor Web
 
@@ -1070,7 +1071,9 @@ sequenceDiagram
 
 #### 12.6h Nhiều user cùng một POI — tải/stream `AudioUrl` song song (client)
 
-Luồng này **không** đi qua `ListenAnalyticsController` hay worker listen-event; mỗi thiết bị mở kết nối HTTP/stream (hoặc Range) tới **cùng một URL** audio của POI. **Web Admin → Kiểm thử tải & GPS** có nút *12.6h — GET Range song song* tới `AudioUrl` của POI #1 để minh họa (khi URL cho phép CORS từ origin admin).
+**Ứng dụng mobile:** luồng này **không** đi qua `ListenAnalyticsController` hay worker listen-event; mỗi thiết bị mở kết nối HTTP/stream (hoặc Range) tới **cùng một URL** `AudioUrl` của POI (CDN/R2).
+
+**Web Admin → Kiểm thử tải & GPS** (`loadTestGuidePage.html`): trang demo/NFR — danh sách **user ảo** (`deviceId`, lưu `sessionStorage` dạng `{ deviceId, lat?, lng? }`; tương thích chuỗi cũ khi đọc). Với mỗi user có thể nhập **Lat và Lng** (cả hai) để **neo** điểm GPS mô phỏng khi chạy scenario; để trống thì vị trí vẫn dùng vòng quanh centroid như trước. Nút **GET Range song song** gọi song song `GET /api/Poi/{poiId}/audio-range-head` cho POI #1 trong bảng, với `poiId` lấy từ danh sách POI test; số request = `min(50, số user ảo)` (ví dụ 11 user → 11 request). Mục đích: minh họa gánh HTTP song song qua API/CDN và log status (ví dụ 206); khác với app thật mở trực tiếp `AudioUrl` trên từng máy.
 
 ```mermaid
 sequenceDiagram
@@ -1094,7 +1097,7 @@ sequenceDiagram
 
 **Mapping nhanh cho các tình huống thường gặp:**
 - **Nhiều user gửi analytics listen (`poi-audio-listen`) cùng lúc — backend queue:** xem `12.6f`.
-- **Nhiều user cùng một POI, tải/stream `AudioUrl` song song (mỗi máy một MediaElement):** xem `12.6h` và nút chứng minh trên **Web Admin → Kiểm thử tải & GPS**.
+- **Nhiều user cùng một POI, tải/stream `AudioUrl` song song (mỗi máy một MediaElement):** xem `12.6h` (app) và trang **Web Admin → Kiểm thử tải & GPS** (burst `audio-range-head` + user ảo / tọa độ tùy chỉnh).
 - **Một người nghe nhiều cái (nhiều POI liên tiếp):** xem `12.6d`, `12.6e`, `12.6g`.
 - **Người dùng đứng giữa 2 POI:** xem `12.6c` (ngoài mọi bán kính) và `12.6a` (nếu giao vùng thì chọn active theo Premium > heat > gần tâm).
 
@@ -1984,7 +1987,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **API**                  | `StreetFoodAPI/Controllers/*.cs`, `StreetFoodAPI/Program.cs`, `StreetFoodAPI/appsettings.json`                                                                                                                                                                                                                   |
 | **Migration / SQL**      | `StreetFood.Infrastructure/Migrations/` — `**V1__Initial_schema.sql**` (DDL đầy đủ), `**V2__Seed_core_data.sql**`, `**V3__Seed_demo_analytics.sql**`, `**V4__perf_listen_event_indexes.sql**`, `**V5__perf_visit_and_movement_indexes.sql**`, `**V6__perf_hot_query_indexes.sql**` (index tối ưu truy vấn nóng + analytics). |
 | **App MAUI**             | `App/Views/*.xaml`, `App/AppShell.xaml`                                                                                                                                                                                                                                                                          |
-| **Trang HTML admin**     | `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html`, `analyticsPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`, `createPoiOwnerPage.html`, `pendingScriptsPage.html`, `restaurantOwnersPage.html`, `managePOIPage.html`, `manageShopsPage.html`                                   |
+| **Trang HTML admin**     | `Web Admin/wwwroot/html/` — `loginPage.html`, `dashboardPage.html`, `analyticsPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`, `createPoiOwnerPage.html`, `pendingScriptsPage.html`, `restaurantOwnersPage.html`, `managePOIPage.html`, `manageShopsPage.html`, `loadTestGuidePage.html` (kiểm thử tải & GPS) |
 | **Trang HTML vendor**    | `Web Vendor/wwwroot/html/` — `loginPage.html`, `dashboardShopPage.html`, `manageProductsPage.html`, `addProductPage.html`, `requestScriptPage.html`, `upgradePage.html`, `statisticsShopsPage.html`                                                                                                                |
 | **NFR / Load test**      | `tests/nfr/` — `streetfood-smoke.js`, `streetfood-read-load.js`, `streetfood-write-load.js`, `streetfood-mixed-load.js`, `streetfood-poi-concurrency.js`, `run-capacity.ps1`. |
 | **Sơ đồ ERD**            | Mermaid ERD duy nhất tại [mục 8.2](#82-sơ-đồ-erd-mermaid).                                                                                                                                                                                                                                                       |
@@ -2009,3 +2012,4 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.7**   | **2026-04-24**  | Đồng bộ chức năng mới: **queue POI trên app** khi đi qua nhiều quán, **vuốt trái skip POI** để nghe POI kế tiếp, lock `_queueSync` + gate `_playSwitchGate` chống race; cập nhật **12.6/13.6** theo luồng queue đầy đủ; bổ sung NFR về **ingress queue** API, polling web admin có **anti-overlap + backoff**, thêm migration `V5__perf_visit_and_movement_indexes.sql` và script test `streetfood-poi-concurrency.js`. |
 | **2.8**   | **2026-04-28**  | Cập nhật đầy đủ **luồng hoạt động + kiến trúc + sơ đồ Use Case/Sequence/Activity** theo code hiện tại: thêm hệ **UserIngressQueue** (khóa theo user/install), làm rõ **ListenEventQueue batch+retry không mất buffer khi flush lỗi**, bổ sung **OutputCache + ResponseCompression** cho API đọc, đồng bộ tài liệu migration `V6__perf_hot_query_indexes.sql`, và đánh dấu endpoint `ops/jobs/*` trạng thái **deprecated (410)**. |
 | **2.8.1** | **2026-05-12**  | Thêm sequence **12.6h** (nhiều user cùng POI — stream `AudioUrl` song song); cập nhật bảng UC-M06 và mapping 12.6; Web Admin *Kiểm thử tải & GPS* có nút chứng minh request song song tới `AudioUrl`. |
+| **2.8.2** | **2026-05-12**  | Đồng bộ **12.6h** và trang admin: mô tả đúng burst `GET /api/Poi/{id}/audio-range-head` (tối đa 50, theo số user ảo); user ảo lưu `{ deviceId, lat?, lng? }`, **Lat/Lng tùy chọn** để neo GPS scenario; map vẽ mọi user; thêm **FR-A05**, mục **4.3** + **21** (đường dẫn `loadTestGuidePage.html`). |
