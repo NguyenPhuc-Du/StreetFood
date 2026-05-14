@@ -6,17 +6,18 @@
 import http from 'k6/http';
 import { sleep } from 'k6';
 import {
+  clientHeadersForVu,
   defaultThresholds,
   getBaseUrl,
-  getHeaders,
   getLoadProfile,
   check2xx,
   getPoiList,
   postListenEvent,
+  k6DeviceId,
+  logVuPlatformOnce,
 } from './k6-common.js';
 
 const base = getBaseUrl();
-const headers = getHeaders();
 const profile = getLoadProfile();
 
 export const options = {
@@ -26,16 +27,18 @@ export const options = {
 };
 
 export default function () {
-  const health = http.get(`${base}/api/health`, { headers });
+  logVuPlatformOnce(__VU);
+  const h = clientHeadersForVu(__VU);
+  const health = http.get(`${base}/api/health`, { headers: h });
   check2xx(health, 'health 2xx');
 
-  const poiList = getPoiList(base, headers);
+  const poiList = getPoiList(base, h);
   check2xx(poiList, 'poi list 2xx');
 
-  const listen = postListenEvent(base, headers, {
+  const listen = postListenEvent(base, h, {
     poiId: Number(__ENV.POI_ID || 1),
     durationSeconds: Number(__ENV.DURATION_SECONDS || 10),
-    deviceId: `k6-mixed-${__VU}-${Date.now()}`,
+    deviceId: k6DeviceId('mixed', __VU, Date.now()),
   });
   check2xx(listen, 'listen event 2xx');
 

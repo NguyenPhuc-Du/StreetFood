@@ -6,6 +6,7 @@
  */
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { clientHeadersForVu, logVuPlatformOnce } from './k6-common.js';
 
 const base = __ENV.BASE_URL || __ENV.K6_BASE_URL || 'http://127.0.0.1:5288';
 
@@ -18,9 +19,9 @@ export const options = {
   },
 };
 
-const h = { 'ngrok-skip-browser-warning': 'true' };
-
 export default function () {
+  logVuPlatformOnce(__VU);
+  const h = clientHeadersForVu(__VU);
   const r1 = http.get(`${base}/api/health`, { headers: h });
   check(r1, { 'health 200': (r) => r.status === 200 });
   const r2 = http.get(`${base}/api/Poi`, { headers: h });

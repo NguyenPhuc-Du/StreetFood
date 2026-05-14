@@ -15,6 +15,11 @@ public class ApiService
 
     private readonly HttpClient client = new() { Timeout = TimeSpan.FromSeconds(20) };
 
+    private ApiService()
+    {
+        ClientPlatformHttpHeaders.ApplyTo(client);
+    }
+
     static string ApiPoiUrl => $"{ApiConfig.GetBaseUrl()}/api/poi";
     private const string LanguageKey = "appLanguage";
     private static readonly LocalCacheService _cache = new();

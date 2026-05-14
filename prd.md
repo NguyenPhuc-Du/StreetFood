@@ -3,8 +3,8 @@
 
 | Thuộc tính             | Giá trị                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Phiên bản tài liệu** | **2.8.2**                                                                                                                   |
-| **Ngày cập nhật**      | **2026-05-12**                                                                                                              |
+| **Phiên bản tài liệu** | **2.9.2**                                                                                                                   |
+| **Ngày cập nhật**      | **2026-05-14**                                                                                                              |
 | **Trạng thái**         | Đồng bộ với mã nguồn trong repo (MVP vận hành được; đối chiếu `App/`, `StreetFoodAPI/`, `Web Admin/`, `Web Vendor/`)         |
 | **Mục đích**           | Mô tả yêu cầu sản phẩm; ghi nhận **tiến độ thực tế**, **phiên bản công nghệ**, **tham chiếu file** để nộp đồ án / bàn giao. |
 
@@ -170,7 +170,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 | ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-A01 Quản lý dữ liệu & tài khoản | **Một phần** | **Tạo** POI+owner `createPoiOwnerPage.html`; trang `managePOIPage.html` / `manageShopsPage.html` (theo tên); CRUD món/ảnh/audio chi tiết qua **vendor** + `poi-with-owner` / phê duyệt. |
 | FR-A02 Upload audio          | **Tùy cấu hình** | TTS/regenerate qua API (`regenerate-audio`); vendor có thể gửi **gói 5 URL** (`submit-audio-bundle`).                                                                                             |
-| FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html`, `routeHeatmapPage.html`, `poiListenStatsPage.html`; online-now có polling thông minh (pause khi tab ẩn, chống chồng request, backoff khi lỗi/chậm). |
+| FR-A03 Dashboard / analytics | **Đã có**        | `dashboardPage.html` (**UC-A09**, sơ đồ **12.26** / **13.26**: KPI `dashboard/summary` + `hourly-visits` + `online-now` + polling); `routeHeatmapPage.html`, `poiListenStatsPage.html`; online-now pause khi tab ẩn, chống chồng request, backoff khi lỗi/chậm. |
 | FR-A04 Duyệt script          | **Đã có**        | `pendingScriptsPage.html`; phê duyệt + TTS/dịch theo `AdminController`.                                                                                                                           |
 | FR-A05 Kiểm thử tải & GPS (dev) | **Đã có**     | `loadTestGuidePage.html`: user ảo (`deviceId`, lưu `sessionStorage`); **Lat/Lng tùy chọn** theo user để neo đường GPS mô phỏng trong scenario (`Poi/log`, visit/movement/end); map Leaflet; burst song song `GET /api/Poi/{id}/audio-range-head` (tối đa **50** request, số lượng theo số user ảo). |
 
@@ -291,10 +291,11 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 ### FR-A03: Dashboard analytics
 
+- **Bảng điều khiển** (`dashboardPage.html`, **UC-A09** — Sequence **12.26**, Activity **13.26**): KPI từ `GET /api/admin/dashboard/summary`; biểu đồ khách theo giờ từ `GET .../user-analysis/hourly-visits`; **online-now** + **polling** (tab hiện).
 - Most visited restaurants.
 - Số người dùng đang hoạt động (online now, cập nhật theo cửa sổ thời gian ngắn).
-- Heatmap vị trí người dùng.
-- Most popular routes giữa POIs.
+- Heatmap vị trí người dùng (`location_logs`): **N ngày gần nhất** + tùy chọn **khung giờ theo giờ Việt Nam** (`hourFrom`/`hourTo`, múi `Asia/Ho_Chi_Minh`; cả hai “cả ngày” = không lọc giờ; **hourTo ≥ hourFrom**). Trang `routeHeatmapPage.html` tải song song heatmap và **popular route chains**, bản đồ Leaflet + OSM.
+- Most popular routes giữa POIs (cùng trang heatmap hoặc API riêng).
 - Average visit duration.
 
 ### FR-A04: Duyệt yêu cầu từ vendor
@@ -345,7 +346,8 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 ### 5.3 Admin
 
 - Là admin, tôi muốn quản lý POI và tài khoản chủ quán để kiểm soát dữ liệu hệ thống.
-- Là admin, tôi muốn xem analytics và số người dùng đang hoạt động theo thời gian thực để tối ưu vận hành.
+- Là admin, tôi muốn **mở bảng điều khiển** để thấy nhanh KPI hệ thống, biểu đồ theo giờ và số thiết bị đang hoạt động.
+- Là admin, tôi muốn xem analytics chi tiết (heatmap, tuyến, thời lượng nghe) và số người dùng đang hoạt động theo thời gian thực để tối ưu vận hành.
 - Là admin, tôi muốn duyệt yêu cầu vendor theo quy trình rõ ràng.
 
 ---
@@ -372,7 +374,7 @@ Trạng thái gợi ý: **Đã có** = có UI/API rõ trong repo; **Một phần
 
 ### 6.3 Admin flow
 
-`Login + X-Admin-Key (nếu bật) -> Quản lý owner/POI -> Duyệt script request -> Theo dõi dashboard + heatmap + tuyến đi + listen stats + online-now`
+`Login + X-Admin-Key (nếu bật) -> **Dashboard** (KPI + biểu đồ + online-now) -> Quản lý owner/POI -> Duyệt script request -> Heatmap + tuyến + listen stats`
 
 ---
 
@@ -584,7 +586,7 @@ erDiagram
 
 - Top N POI theo lượt ghé.
 - Thời lượng ghé trung bình theo POI.
-- Bản đồ nhiệt theo khung giờ.
+- Bản đồ nhiệt theo khung giờ (lọc theo **giờ trong ngày** tính theo VN trên `createdat`, gộp theo ngày trong khoảng `days`; không hỗ trợ “cắt qua đêm” hourFrom > hourTo).
 - Top tuyến di chuyển (cặp POI) theo tần suất.
 
 ### 9.3 Chu kỳ cập nhật
@@ -682,8 +684,9 @@ Phần này được chuẩn hóa lại theo phạm vi hiện tại bạn yêu c
 | UC-V04 | Vendor | Gửi yêu cầu audio | Gửi script text hoặc audio bundle chờ duyệt. |
 | UC-V05 | Vendor | Nâng cấp Premium | Tạo thanh toán MoMo, nhận callback/IPN và cập nhật trạng thái premium. |
 | UC-A01 | Admin | Đăng nhập | Xác thực role admin. |
+| UC-A09 | Admin | Xem bảng điều khiển (dashboard) | Trang `dashboardPage.html`: KPI tổng quan (`GET .../dashboard/summary`), biểu đồ khách theo giờ từ `device_visits` (`GET .../user-analysis/hourly-visits`), **online-now** + **polling** khi tab hiện. |
 | UC-A02 | Admin | Quản lý tài khoản vendor | Xem danh sách và hide/unhide vendor. |
-| UC-A03 | Admin | Phân tích người dùng | Theo dõi người dùng theo khung giờ và chỉ số online-now (đang hoạt động) từ analytics. |
+| UC-A03 | Admin | Phân tích người dùng (theo giờ + online) | Dữ liệu hourly visits và online-now (dùng trên dashboard và có thể dùng ở trang analytics). |
 | UC-A04 | Admin | Phân tích heatmap | Xem mật độ vị trí người dùng trên bản đồ. |
 | UC-A05 | Admin | Phân tích tuyến đi | Xem movement paths/popular paths/route chains. |
 | UC-A06 | Admin | Phân tích thời lượng nghe | Theo dõi thống kê nghe audio theo POI. |
@@ -758,8 +761,9 @@ flowchart LR
     A[Admin]
     subgraph AW[StreetFood Admin Web]
       A1(UC-A01 Đăng nhập)
+      A9(UC-A09 Bảng điều khiển dashboard)
       A2(UC-A02 Quản lý tài khoản vendor)
-      A3(UC-A03 Phân tích người dùng + online-now)
+      A3(UC-A03 Phân tích người dùng theo giờ và online)
       A4(UC-A04 Phân tích heatmap)
       A5(UC-A05 Phân tích tuyến đi)
       A6(UC-A06 Phân tích thời lượng nghe)
@@ -767,6 +771,7 @@ flowchart LR
       A8(UC-A08 Phê duyệt yêu cầu vendor)
     end
     A --- A1
+    A --- A9
     A --- A2
     A --- A3
     A --- A4
@@ -774,6 +779,7 @@ flowchart LR
     A --- A6
     A --- A7
     A --- A8
+    A9 -. "<<include>>" .-> A1
     A2 -. "<<include>>" .-> A1
     A3 -. "<<include>>" .-> A1
     A4 -. "<<include>>" .-> A1
@@ -786,7 +792,7 @@ flowchart LR
 ### 11.4.1 Quy tắc include cho đăng nhập
 
 - Với **Vendor Web**: `UC-V02`, `UC-V03`, `UC-V04`, `UC-V05` đều `<<include>> UC-V01 Đăng nhập`.
-- Với **Admin Web**: `UC-A02` đến `UC-A08` đều `<<include>> UC-A01 Đăng nhập`.
+- Với **Admin Web**: `UC-A09`, `UC-A02` đến `UC-A08` đều `<<include>> UC-A01 Đăng nhập`.
 - Ý nghĩa: người dùng web phải qua bước xác thực trước khi thực thi bất kỳ chức năng nghiệp vụ nào.
 
 ### 11.5 Mapping Use Case -> Sequence -> Activity
@@ -798,7 +804,7 @@ flowchart LR
 | UC-M03 Tìm kiếm | 12.3 | 13.3 |
 | UC-M04 Chọn POI để nghe | 12.4 | 13.4 |
 | UC-M05 Theo dõi geofence | 12.5 | 13.5 |
-| UC-M06 Nghe audio tự động | 12.6a–e, 12.6f–h | 13.6, 13.6a–c |
+| UC-M06 Nghe audio tự động | 12.6a–h (chi tiết **11.5.1**) | 13.6, 13.5a, 13.6a–c |
 | UC-M07 Log analytics | 12.7 | 13.7 |
 | UC-V01 Đăng nhập vendor | 12.8 | 13.8 |
 | UC-V02 Cập nhật thông tin cửa hàng | 12.9 | 13.9 |
@@ -806,13 +812,37 @@ flowchart LR
 | UC-V04 Gửi yêu cầu audio | 12.11 | 13.11 |
 | UC-V05 Nâng cấp Premium | 12.12 | 13.12 |
 | UC-A01 Đăng nhập admin | 12.13 | 13.13 |
+| UC-A09 Xem bảng điều khiển dashboard | 12.26 | 13.26 |
 | UC-A02 Quản lý tài khoản vendor | 12.14 | 13.14 |
-| UC-A03 Phân tích người dùng + online-now | 12.15 | 13.15 |
+| UC-A03 Phân tích người dùng theo giờ và online | 12.15 | 13.15 |
 | UC-A04 Phân tích heatmap | 12.16 | 13.16 |
 | UC-A05 Phân tích tuyến đi | 12.17 | 13.17 |
 | UC-A06 Phân tích thời lượng nghe | 12.18 | 13.18 |
 | UC-A07 Tạo tài khoản vendor | 12.19 | 13.19 |
 | UC-A08 Phê duyệt yêu cầu vendor | 12.20 | 13.20 |
+| UC-S01 Chống race visit theo POI | 12.21 | 13.21 |
+| UC-S02 Chống race kích hoạt user/device | 12.22 | 13.22 |
+| UC-S03 Ghi listen event bất đồng bộ (queue) | 12.23 | 13.23 |
+| UC-S04 Retry khi flush listen lỗi | 12.24 | 13.24 |
+| UC-S05 API đọc nhanh (cache + nén) | 12.25 | 13.25 |
+
+**Quy ước đồng bộ số mục:** Với mỗi UC trong bảng trên, **chỉ số mục Sequence (mục 12) và Activity (mục 13) trùng nhau** (ví dụ UC-S02 ↔ **12.22** ↔ **13.22**).
+
+#### 11.5.1 UC-M06 — ánh xạ chi tiết (sequence tách nhánh, activity tách luồng con)
+
+UC-M06 không dùng một cặp **12.6 / 13.6** đơn vì nghiệp vụ nhánh; tham chiếu nhanh:
+
+| Kịch bản | Sequence (mục 12) | Activity (mục 13) |
+| --- | --- | --- |
+| Cổng CheckNearby + queue | 12.6a | 13.6 (E0→E5, Q0) |
+| Đã ghim bằng chạm map | 12.6b | 13.6b |
+| Ngoài mọi bán kính | 12.6c | 13.6 (nhánh E4) |
+| Trong bán kính + queue phát | 12.6d | 13.6a |
+| Vuốt trái skip POI | 12.6e | 13.6c |
+| Nhiều user POST listen (queue API) | 12.6f | 13.23 (enqueue + worker trong UC-S03) |
+| Worker retry khi flush DB lỗi (UC-S04) | 12.24 | 13.24 |
+| Một user nhiều POI liên tiếp | 12.6g | 13.6a + 13.6c |
+| Nhiều user stream cùng AudioUrl | 12.6h | (client/CDN; không có activity DB riêng) |
 
 ### 11.6 Use Case chi tiết bổ sung (đồng bộ 2026-04-28)
 
@@ -823,6 +853,8 @@ flowchart LR
 | UC-S03 | System/API | Ghi listen event bất đồng bộ | App gửi `/api/analytics/poi-audio-listen` | Event vào `Channel`, worker batch flush DB, dedupe cửa sổ 15s theo thiết bị. |
 | UC-S04 | System/API | Retry khi flush listen lỗi | DB/network lỗi tạm thời | Không mất buffer; worker backoff ngắn và flush lại vòng sau. |
 | UC-S05 | System/API | Tăng tốc API đọc bằng cache+nén | Request GET POI/top/heat/detail | Trả dữ liệu qua output cache + response compression, giảm tải DB và băng thông. |
+
+- **Sơ đồ:** UC-S01–UC-S05 có cặp **Sequence (mục 12.x) ↔ Activity (mục 13.x)** cùng chỉ số **x** — xem bảng **[11.5](#115-mapping-use-case---sequence---activity)**.
 
 ---
 
@@ -1227,7 +1259,9 @@ sequenceDiagram
     API-->>A: Thành công
 ```
 
-### 12.15 Sequence - UC-A03 Phân tích người dùng
+### 12.15 Sequence - UC-A03 Phân tích người dùng theo giờ và online-now
+
+**Phạm vi:** Hai API dưới đây dùng cho **biểu đồ theo giờ** và **online-now** (trang `dashboardPage.html` gọi chúng **cùng lúc** với `GET .../dashboard/summary` — xem **12.26**).
 
 ```mermaid
 sequenceDiagram
@@ -1247,19 +1281,32 @@ sequenceDiagram
 
 ### 12.16 Sequence - UC-A04 Phân tích heatmap
 
+**Triển khai UI:** `routeHeatmapPage.html` — gọi **song song** heatmap và chuỗi tuyến phổ biến; bản đồ Leaflet + tile OpenStreetMap; khi đổi bộ lọc có **tải lại có kiểm soát** (token chống race) và **hủy map cũ** (`remove`) trước khi khởi tạo lại.
+
+**Tham số API (ngoài sơ đồ):** `days` (1–366), `hourFrom`/`hourTo` (0–23, múi **Asia/Ho_Chi_Minh**; bỏ cả hai = cả ngày; `hourTo` phải ≥ `hourFrom`); tùy chọn cặp `fromUtc` + `toUtc` (ISO).
+
 ```mermaid
 sequenceDiagram
     participant A as Admin Web
     participant API as StreetFood API
     participant DB as PostgreSQL
 
-    A->>API: GET /api/admin/analytics/heatmap
-    API->>DB: Aggregate location_logs
+    par Heatmap query
+        A->>API: GET heatmap with days and optional VN hours
+    and Route chains query
+        A->>API: GET popular route chains
+    end
+    API->>DB: Aggregate location_logs for heat
     DB-->>API: Heat points
-    API-->>A: Dữ liệu heatmap
+    API->>DB: Query movement_paths for chains
+    DB-->>API: Route chains
+    API-->>A: JSON heat and chains
+    A->>A: Leaflet map heat and polylines
 ```
 
 ### 12.17 Sequence - UC-A05 Phân tích tuyến đi
+
+**Ghi chú:** Các GET dưới đây có thể gọi **độc lập** hoặc **song song** với heatmap trên cùng trang admin (xem **12.16**).
 
 ```mermaid
 sequenceDiagram
@@ -1387,7 +1434,28 @@ sequenceDiagram
     end
 ```
 
-### 12.24 Sequence - UC-S05 API đọc nhanh (OutputCache + Compression)
+### 12.24 Sequence - UC-S04 Retry khi flush listen lỗi (worker)
+
+**Ghi chú:** Luồng enqueue/duplicate nằm ở **12.23**; mục này tách **nhánh worker** khi INSERT batch thất bại.
+
+```mermaid
+sequenceDiagram
+    participant W as ListenEventQueueWorker
+    participant DB as PostgreSQL
+
+    W->>W: Đọc buffer batch (tối đa 500 / tick ~200ms)
+    W->>DB: INSERT poi_audio_listen_events (UNNEST batch)
+    alt Lỗi DB / mạng tạm thời
+        DB-->>W: Exception
+        W->>W: Giữ nguyên buffer + backoff ~500ms
+        Note over W: Vòng tick kế thử lại (không mất sự kiện trong buffer)
+    else Thành công
+        DB-->>W: OK
+        W->>W: Clear buffer + cleanup dedupe cache
+    end
+```
+
+### 12.25 Sequence - UC-S05 API đọc nhanh (OutputCache + Compression)
 
 ```mermaid
 sequenceDiagram
@@ -1406,6 +1474,37 @@ sequenceDiagram
         API->>Cache: Store with short TTL
     end
     API-->>Client: Compressed JSON (Brotli/Gzip)
+```
+
+### 12.26 Sequence - UC-A09 Bảng điều khiển admin (`dashboardPage.html`)
+
+**Luồng tải trang:** `Promise.all` gọi song song **summary**, **hourly-visits (30 ngày)**, **online-now**; sau đó vẽ KPI + biểu đồ; **polling** `online-now` mỗi ~5 giây khi tab hiện (backoff khi lỗi, dừng khi tab ẩn).
+
+```mermaid
+sequenceDiagram
+    participant P as dashboardPage
+    participant API as StreetFood API
+    participant DB as PostgreSQL
+
+    par Summary KPI
+        P->>API: GET dashboard summary
+    and Hourly chart
+        P->>API: GET user analysis hourly visits 30 days
+    and Online first paint
+        P->>API: GET online now 5 seconds window
+    end
+    API->>DB: Count POIs vendors pending scripts audio location samples
+    DB-->>API: DashboardSummaryDto
+    API->>DB: Aggregate device visits by hour of day
+    DB-->>API: Hourly rows
+    API->>DB: Distinct deviceId in location_logs recent window
+    DB-->>API: Online count
+    API-->>P: Three JSON payloads
+    P->>P: Fill stat cards and render 24 hour bars
+    loop Polling online when tab visible
+        P->>API: GET online now
+        API-->>P: Updated unique device count
+    end
 ```
 
 ---
@@ -1602,24 +1701,34 @@ flowchart TD
     L2 --> L3[Cập nhật trạng thái]
 ```
 
-### 13.15 Activity - UC-A03 Phân tích người dùng
+### 13.15 Activity - UC-A03 Phân tích người dùng theo giờ và online-now
+
+**Phạm vi:** Luồng **chỉ hai API** hourly + online (ví dụ tái sử dụng trên trang khác). Trang **dashboard** đầy đủ ba API + KPI — xem **13.26**.
 
 ```mermaid
 flowchart TD
-    M0[Mở analytics người dùng] --> M1[Tải hourly users]
+    M0[Mở trang dùng hourly và online] --> M1[Tải hourly visits]
     M1 --> M2[Tải online-now]
-    M2 --> M3[Hiển thị biểu đồ người dùng + chỉ số đang hoạt động]
+    M2 --> M3[Hiển thị biểu đồ theo giờ và chỉ số online]
 ```
 
 ### 13.16 Activity - UC-A04 Phân tích heatmap
 
 ```mermaid
 flowchart TD
-    N0[Mở analytics heatmap] --> N1[Tải heat points]
-    N1 --> N2[Render heatmap]
+    N0[Mở routeHeatmapPage] --> N1[Chọn số ngày N + tùy chọn khung giờ VN]
+    N1 --> N2{Cả ngày ở cả hai ô giờ?}
+    N2 -- Có --> N3[Không gửi hourFrom/hourTo]
+    N2 -- Không --> N4[Chọn đủ Giờ từ và Giờ đến; Đến tự động ≥ Từ]
+    N3 --> N5[Tải song song: GET heatmap + GET popular-route-chains]
+    N4 --> N5
+    N5 --> N6[Leaflet: tile OSM + heatLayer + polyline tuyến]
+    N6 --> N7[map.remove nếu có map cũ; invalidateSize sau layout]
 ```
 
 ### 13.17 Activity - UC-A05 Phân tích tuyến đi
+
+**Ghi chú đồng bộ UI:** Trên **`routeHeatmapPage.html`**, dữ liệu **popular route chains** đã được tải **song song** với heatmap (xem **13.16**). Mục **13.17** bổ sung khi chỉ cần phân tích tuyến qua API (hoặc màn hình khác tương lai).
 
 ```mermaid
 flowchart TD
@@ -1654,16 +1763,7 @@ flowchart TD
     R2 -- Reject --> R4[Cập nhật status reject]
 ```
 
-### 13.21 FR-V02 - Request thay đổi audio script
-
-```mermaid
-flowchart TD
-    A[Vendor gửi request audio] --> B[Lưu trạng thái pending]
-    B --> C[Thông báo đã ghi nhận request]
-    C --> D[Vendor theo dõi trạng thái]
-```
-
-### 13.22 Activity - UC-S01 Ingress queue theo POI (visit/start/end)
+### 13.21 Activity - UC-S01 Ingress queue theo POI (visit/start/end)
 
 ```mermaid
 flowchart TD
@@ -1679,7 +1779,7 @@ flowchart TD
     A7 --> A8
 ```
 
-### 13.23 Activity - UC-S02 Ingress queue theo user/install
+### 13.22 Activity - UC-S02 Ingress queue theo user/install
 
 ```mermaid
 flowchart TD
@@ -1692,7 +1792,7 @@ flowchart TD
     B6 --> B7[Release lease]
 ```
 
-### 13.24 Activity - UC-S03 Listen queue batch + retry
+### 13.23 Activity - UC-S03 Listen queue batch + retry
 
 ```mermaid
 flowchart TD
@@ -1703,6 +1803,17 @@ flowchart TD
     C4 --> C5{Flush DB thành công?}
     C5 -- Có --> C6[Clear buffer + cleanup dedupe cache]
     C5 -- Không --> C7[Giữ buffer + backoff 500ms + retry]
+```
+
+### 13.24 Activity - UC-S04 Retry khi flush listen lỗi (worker)
+
+```mermaid
+flowchart TD
+    R0[Worker: có batch listen trong buffer] --> R1[Thử INSERT DB batch]
+    R1 --> R2{Thành công?}
+    R2 -- Có --> R3[Clear buffer + cleanup dedupe cache]
+    R2 -- Không --> R4[Giữ buffer + backoff ~500ms]
+    R4 --> R0
 ```
 
 ### 13.25 Activity - UC-S05 API đọc nhanh bằng cache + nén
@@ -1717,6 +1828,21 @@ flowchart TD
     D4 --> D5
     D5 --> D6[Compress Brotli/Gzip]
     D6 --> D7[Response]
+```
+
+### 13.26 Activity - UC-A09 Bảng điều khiển admin (`dashboardPage.html`)
+
+```mermaid
+flowchart TD
+    H0[Mở dashboardPage] --> H1[Tải song song summary hourly online]
+    H1 --> H2{API thành công}
+    H2 -- Không --> H3[Hiện dashErr và chart trống]
+    H2 -- Có --> H4[Cập nhật các thẻ KPI]
+    H4 --> H5{Có device_visits 30 ngày}
+    H5 -- Không --> H6[Thông báo chart trống theo code]
+    H5 -- Có --> H7[Vẽ 24 cột theo giờ]
+    H6 --> H8[Bật polling online khi tab hiện]
+    H7 --> H8
 ```
 
 ---
@@ -1868,7 +1994,7 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | ----------- | --------------------------------------------- | ------------------------------------------------------------------------ |
 | GET         | `/api/Admin/dashboard/summary`                | KPI: số POI, vendor, pending script, audio tracks, mẫu location 30 ngày. |
 | GET         | `/api/Admin/analytics/online-now?seconds=`    | Số thiết bị đang dùng app theo cửa sổ giây (mặc định 5s, tối thiểu 5s). |
-| GET         | `/api/Admin/analytics/heatmap`                | Điểm nhiệt từ `location_logs`.                                           |
+| GET         | `/api/Admin/analytics/heatmap`                | Điểm nhiệt từ `location_logs`: `days` (1–366), tùy chọn `hourFrom`/`hourTo` (0–23, giờ **Asia/Ho_Chi_Minh**; cả hai bỏ = cả ngày; **`hourTo` ≥ `hourFrom`**); hoặc cặp `fromUtc`+`toUtc` (tối đa 366 ngày). |
 | GET         | `/api/Admin/analytics/poi-audio-listen?days=` | Thống kê **thời lượng nghe** trung bình theo POI.                        |
 | GET         | `/api/Admin/analytics/paths`                  | Chuỗi di chuyển gần đây.                                                 |
 | GET         | `/api/Admin/analytics/hourly-active-users`   | Tổng hợp từ `location_logs` theo giờ.                                   |
@@ -2013,3 +2139,6 @@ Base URL ví dụ: `https://localhost:7236`. Route gốc của controller nằm 
 | **2.8**   | **2026-04-28**  | Cập nhật đầy đủ **luồng hoạt động + kiến trúc + sơ đồ Use Case/Sequence/Activity** theo code hiện tại: thêm hệ **UserIngressQueue** (khóa theo user/install), làm rõ **ListenEventQueue batch+retry không mất buffer khi flush lỗi**, bổ sung **OutputCache + ResponseCompression** cho API đọc, đồng bộ tài liệu migration `V6__perf_hot_query_indexes.sql`, và đánh dấu endpoint `ops/jobs/*` trạng thái **deprecated (410)**. |
 | **2.8.1** | **2026-05-12**  | Thêm sequence **12.6h** (nhiều user cùng POI — stream `AudioUrl` song song); cập nhật bảng UC-M06 và mapping 12.6; Web Admin *Kiểm thử tải & GPS* có nút chứng minh request song song tới `AudioUrl`. |
 | **2.8.2** | **2026-05-12**  | Đồng bộ **12.6h** và trang admin: mô tả đúng burst `GET /api/Poi/{id}/audio-range-head` (tối đa 50, theo số user ảo); user ảo lưu `{ deviceId, lat?, lng? }`, **Lat/Lng tùy chọn** để neo GPS scenario; map vẽ mọi user; thêm **FR-A05**, mục **4.3** + **21** (đường dẫn `loadTestGuidePage.html`). |
+| **2.9.2** | **2026-05-14**  | Thêm **UC-A09** (bảng điều khiển admin): **Sequence 12.26** + **Activity 13.26** (`dashboardPage.html`); cập nhật **11.1**, **11.4**, **11.5**, **FR-A03**, **5.3**, **6.3**; làm rõ **12.15**/**13.15** chỉ cặp API hourly + online (dashboard đầy đủ xem **12.26**/**13.26**). |
+| **2.9.1** | **2026-05-14**  | Sửa **Mermaid 12.16**: bỏ `Note` và ký tự đặc biệt trong khối sơ đồ (lỗi parse do `;`, `≥`, v.v.); chi tiết query chuyển ra đoạn văn phía trên. |
+| **2.9.0** | **2026-05-14**  | Đồng bộ **heatmap admin** với mã: query `days` + `hourFrom`/`hourTo` (VN), tải song song **popular-route-chains** trên `routeHeatmapPage`; cập nhật **12.16 / 13.16**, **FR-A03**, **9.2**, **API 16.4**. Chuẩn hóa **ánh xạ UC-S01–S05**: bỏ mục Activity trùng FR-V02 (**13.21** cũ); thêm **Sequence 12.24** + **Activity 13.24** cho **UC-S04**; đổi **UC-S05** → **12.25 / 13.25**; bảng **11.5** + **11.5.1** (UC-M06) để số Sequence và Activity **khớp từng cặp**. |

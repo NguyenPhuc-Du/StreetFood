@@ -206,9 +206,60 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("analytics/heatmap")]
-    public async Task<IActionResult> GetHeatmapPoints()
+    public async Task<IActionResult> GetHeatmapPoints(
+        [FromQuery] string? fromUtc,
+        [FromQuery] string? toUtc,
+        [FromQuery] int? days,
+        [FromQuery] int? hourFrom,
+        [FromQuery] int? hourTo)
     {
         if (AdminUnauthorized() is { } u) return u;
+        var hasHourF = hourFrom.HasValue;
+        var hasHourT = hourTo.HasValue;
+        if (hasHourF != hasHourT)
+            return BadRequest(new { message = "Cần cả hourFrom và hourTo (0–23, giờ Việt Nam), hoặc bỏ cả hai để lấy cả ngày." });
+        var applyHour = false;
+        var hf = 0;
+        var ht = 0;
+        if (hasHourF && hasHourT)
+        {
+            hf = hourFrom!.Value;
+            ht = hourTo!.Value;
+            if (hf < 0 || hf > 23 || ht < 0 || ht > 23)
+                return BadRequest(new { message = "hourFrom và hourTo phải trong 0–23." });
+            if (ht < hf)
+                return BadRequest(new { message = "hourTo phải ≥ hourFrom." });
+            applyHour = true;
+        }
+
+        var hasFrom = !string.IsNullOrWhiteSpace(fromUtc);
+        var hasTo = !string.IsNullOrWhiteSpace(toUtc);
+        if (hasFrom != hasTo)
+            return BadRequest(new { message = "Cần cả fromUtc và toUtc (ISO 8601), hoặc bỏ cả hai để dùng tham số days (mặc định 90 ngày)." });
+        DateTime from;
+        DateTime to;
+        if (hasFrom && hasTo)
+        {
+            if (!DateTimeOffset.TryParse(fromUtc, out var fo) || !DateTimeOffset.TryParse(toUtc, out var tdo))
+                return BadRequest(new { message = "fromUtc / toUtc không đọc được (dùng ISO 8601)." });
+            from = fo.UtcDateTime;
+            to = tdo.UtcDateTime;
+            var now = DateTime.UtcNow;
+            if (to > now)
+                to = now;
+            if (from > to)
+                return BadRequest(new { message = "fromUtc phải ≤ toUtc (sau khi chặn tương lai)." });
+            if ((to - from).TotalDays > 366)
+                return BadRequest(new { message = "Khung ngày tối đa 366 ngày." });
+        }
+        else
+        {
+            var d = days ?? 90;
+            d = Math.Clamp(d, 1, 366);
+            to = DateTime.UtcNow;
+            from = to.AddDays(-d);
+        }
+
         try
         {
             await using var conn = new NpgsqlConnection(_connStr);
@@ -218,10 +269,15 @@ public class AdminController : ControllerBase
                     ROUND(longitude::numeric, 4)::double precision AS Lng,
                     COUNT(*)::int AS Weight
                 FROM location_logs
-                WHERE createdat > NOW() - INTERVAL '90 days'
+                WHERE createdat >= @FromUtc::timestamptz AND createdat <= @ToUtc::timestamptz
+                  AND (
+                    CAST(@HourMode AS integer) = 0
+                    OR (EXTRACT(HOUR FROM createdat AT TIME ZONE 'Asia/Ho_Chi_Minh'))::int BETWEEN @HourFrom AND @HourTo
+                  )
                 GROUP BY ROUND(latitude::numeric, 4), ROUND(longitude::numeric, 4)
                 ORDER BY Weight DESC
-                LIMIT 5000");
+                LIMIT 5000",
+                new { FromUtc = from, ToUtc = to, HourMode = applyHour ? 1 : 0, HourFrom = hf, HourTo = ht });
             return Ok(rows);
         }
         catch (Exception ex)

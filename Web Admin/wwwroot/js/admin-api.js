@@ -21,7 +21,17 @@
 
     window.StreetFoodAdmin = {
         baseUrl: base,
-        getHeatmap: () => adminFetch('/api/admin/analytics/heatmap'),
+        getHeatmap: (opts) => {
+            opts = opts || {};
+            const qs = new URLSearchParams();
+            if (opts.fromUtc) qs.set('fromUtc', opts.fromUtc);
+            if (opts.toUtc) qs.set('toUtc', opts.toUtc);
+            if (opts.days != null && opts.days !== '') qs.set('days', String(opts.days));
+            if (opts.hourFrom != null && opts.hourFrom !== '') qs.set('hourFrom', String(opts.hourFrom));
+            if (opts.hourTo != null && opts.hourTo !== '') qs.set('hourTo', String(opts.hourTo));
+            const q = qs.toString();
+            return adminFetch('/api/admin/analytics/heatmap' + (q ? '?' + q : ''));
+        },
         getPoiListenStats: (days) => adminFetch('/api/admin/analytics/poi-audio-listen?days=' + encodeURIComponent(days == null ? 365 : days)),
         getHourlyActiveUsers: (days) => adminFetch('/api/admin/analytics/hourly-active-users?days=' + encodeURIComponent(days == null ? 30 : days)),
         getUserAnalysisByVisitHour: (days) => adminFetch('/api/admin/analytics/user-analysis/hourly-visits?days=' + encodeURIComponent(days == null ? 30 : days)),
