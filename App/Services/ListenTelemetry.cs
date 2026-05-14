@@ -9,6 +9,11 @@ public static class ListenTelemetry
     const int MaxSeconds = 3600;
     static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(20) };
 
+    static ListenTelemetry()
+    {
+        ClientPlatformHttpHeaders.ApplyTo(Client);
+    }
+
     public static void ReportFireAndForget(int poiId, int durationSeconds)
     {
         if (poiId <= 0 || durationSeconds < MinSeconds) return;

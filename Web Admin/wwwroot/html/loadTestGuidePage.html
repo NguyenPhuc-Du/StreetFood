@@ -102,9 +102,16 @@
             </div>
 
             <div class="card" style="margin: 0 28px 18px;">
-                <h2><span class="tag">Audio</span> GET Range song song (proxy API)</h2>
+                <h2><span class="tag">Audio</span> API + CDN (phát hết, muted)</h2>
+                <p style="font-size:12px;color:#64748b;margin:0 0 10px;">Thứ tự hoạt động: <b>①</b> GET <code>audio-range-head</code> (đủ: tổng vòng, ttfb, DL, http) → <b>②</b> CDN tải + phát muted tới <code>ended</code> → <b>③</b> <code>tổng=①+②</code> mỗi luồng. Dòng Wall: <code>Wall①</code>/<code>Wall②</code> = thời tường song song; <code>Σ①</code>/<code>Σ②</code>/<code>Σ③</code> = cộng theo từng luồng. <code>RT①</code> = Resource Timing (có thể thiếu nếu CDN không Timing-Allow).</p>
                 <div class="row-actions">
-                    <button type="button" class="btn secondary" id="btnAudioUrlParallel">GET Range song song → POI #1</button>
+                    <button type="button" class="btn secondary" id="btnAudioUrlParallel">GET Range + CDN phát hết → POI #1</button>
+                </div>
+                <div class="row-actions form-inline" style="margin-top:10px;">
+                    <label style="font-size:13px;font-weight:500;color:#334155;max-width:640px;">
+                        <input type="checkbox" id="chkAudioParallelVirtual" checked>
+                        Mô phỏng 6 máy ảo (Android/iOS xoay vòng): mỗi request gửi <code>X-StreetFood-Client-Platform</code> + <code>X-Device-Id</code> khác nhau (trình duyệt thường không cho đổi User-Agent từ JS).
+                    </label>
                 </div>
             </div>
 
@@ -156,6 +163,8 @@
             var runSeq = 0;
             var pollTimer = null;
             var pollOn = true;
+            /** Nền tảng trình duyệt thật (dùng cho GET audio-range song song). */
+            var parallelAudioHost = { short: 'unknown', label: 'Không rõ' };
 
             function apiRoot() {
                 return (window.STREETFOOD_API || '').replace(/\/$/, '');
@@ -559,28 +568,308 @@
                 return root + '/' + u.replace(/^\.\/?/, '');
             }
 
-            async function probeAudioRangeGet(poiId, idx1) {
-                var t0 = performance.now();
+            /**
+             * Phát hiện nền tảng từ navigator (máy đang mở Web Admin).
+             * Giá trị short khớp kiểu MAUI/API: android | ios | windows | macos | linux | unknown.
+             */
+            function detectBrowserHostPlatform() {
+                var ua = navigator.userAgent || '';
+                var ual = (ua || '').toLowerCase();
+                if ((ual.indexOf('macintosh') >= 0 || ual.indexOf('mac os x') >= 0) && navigator.maxTouchPoints > 1)
+                    return { short: 'ios', label: 'iOS (iPad / touch)' };
+                if (/iphone|ipod/i.test(ua))
+                    return { short: 'ios', label: 'iOS (iPhone/iPod)' };
+                if (/ipad/i.test(ua))
+                    return { short: 'ios', label: 'iOS (iPad)' };
+                if (ual.indexOf('android') >= 0)
+                    return { short: 'android', label: 'Android' };
+                if (ual.indexOf('windows') >= 0)
+                    return { short: 'windows', label: 'Windows' };
+                if (ual.indexOf('mac os x') >= 0 || ual.indexOf('macintosh') >= 0)
+                    return { short: 'macos', label: 'macOS' };
+                if (ual.indexOf('cros') >= 0)
+                    return { short: 'linux', label: 'ChromeOS' };
+                if (ual.indexOf('linux') >= 0)
+                    return { short: 'linux', label: 'Linux' };
+                return { short: 'unknown', label: 'Không rõ' };
+            }
+
+            function refreshParallelAudioHost() {
+                parallelAudioHost = detectBrowserHostPlatform();
+                return parallelAudioHost;
+            }
+
+            /** 6 profile máy ảo (3 Android + 3 iOS), xoay vòng theo số thứ tự request. */
+            function getVirtualDevicePool() {
+                return [
+                    { short: 'android', label: 'Android ảo #1', deviceId: 'virt-loadtest-and-1' },
+                    { short: 'ios', label: 'iOS ảo #1', deviceId: 'virt-loadtest-ios-1' },
+                    { short: 'android', label: 'Android ảo #2', deviceId: 'virt-loadtest-and-2' },
+                    { short: 'ios', label: 'iOS ảo #2', deviceId: 'virt-loadtest-ios-2' },
+                    { short: 'android', label: 'Android ảo #3', deviceId: 'virt-loadtest-and-3' },
+                    { short: 'ios', label: 'iOS ảo #3', deviceId: 'virt-loadtest-ios-3' }
+                ];
+            }
+
+            function pickVirtualProfileForReqIdx(idx1) {
+                var pool = getVirtualDevicePool();
+                var i = Math.max(0, (Number(idx1) || 1) - 1) % pool.length;
+                return pool[i];
+            }
+
+            function buildParallelAudioRangeHeaders(idx1) {
+                var useVirt = document.getElementById('chkAudioParallelVirtual').checked;
+                var h = {
+                    'ngrok-skip-browser-warning': 'true',
+                    'Accept-Language': 'vi'
+                };
+                if (useVirt) {
+                    var v = pickVirtualProfileForReqIdx(idx1);
+                    h['X-StreetFood-Client-Platform'] = v.short;
+                    h['X-Device-Id'] = v.deviceId;
+                    return { headers: h, profile: v, virtual: true };
+                }
+                h['X-StreetFood-Client-Platform'] = parallelAudioHost.short;
+                return { headers: h, profile: parallelAudioHost, virtual: false };
+            }
+
+            /** Resource Timing (chuẩn trình duyệt): TTFB ≈ responseStart − fetchStart. Có thể thiếu nếu cross-origin không Timing-Allow-Origin. */
+            function takeResourceTimingEntry(fullUrl) {
                 try {
-                    var res = await fetch(apiRoot() + '/api/Poi/' + encodeURIComponent(poiId) + '/audio-range-head', {
+                    var list = performance.getEntriesByName(fullUrl);
+                    if (!list || list.length === 0) return null;
+                    var e = list[list.length - 1];
+                    if (!e || e.fetchStart == null || e.responseStart == null || e.responseStart <= 0) return null;
+                    return {
+                        ttfb: Math.round(e.responseStart - e.fetchStart),
+                        total: Math.round(e.duration),
+                        download: Math.max(0, Math.round(e.responseEnd - e.responseStart))
+                    };
+                } catch (ex) { return null; }
+            }
+
+            async function probeAudioRangeGet(poiId, idx1) {
+                var probeTag = 'r' + idx1 + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+                var path = '/api/Poi/' + encodeURIComponent(poiId) + '/audio-range-head';
+                var sep = path.indexOf('?') >= 0 ? '&' : '?';
+                var fullUrl = apiRoot() + path + sep + 'sfProbe=' + encodeURIComponent(probeTag);
+                var t0 = performance.now();
+                var pack = buildParallelAudioRangeHeaders(idx1);
+                var prof = pack.profile;
+                try {
+                    var res = await fetch(fullUrl, {
                         method: 'GET',
                         mode: 'cors',
                         cache: 'no-store',
-                        headers: { 'ngrok-skip-browser-warning': 'true', 'Accept-Language': 'vi' }
+                        headers: pack.headers
                     });
-                    var ms = Math.round(performance.now() - t0);
+                    var t1 = performance.now();
+                    var ttfbMs = Math.round(t1 - t0);
                     var err = '';
+                    var fullMs;
+                    var downloadMs = 0;
                     if (!res.ok) {
                         try {
                             var tb = await res.text();
                             if (tb) err = tb.slice(0, 200);
                         } catch (e2) { }
+                        fullMs = Math.round(performance.now() - t0);
+                        downloadMs = Math.max(0, fullMs - ttfbMs);
+                    } else {
+                        await res.arrayBuffer();
+                        var t2 = performance.now();
+                        fullMs = Math.round(t2 - t0);
+                        downloadMs = Math.max(0, Math.round(t2 - t1));
                     }
-                    return { idx: idx1, ok: res.ok, status: res.status, ms: ms, err: err || undefined };
+                    var rt = takeResourceTimingEntry(fullUrl);
+                    return {
+                        idx: idx1,
+                        platform: prof.short,
+                        platformLabel: prof.label,
+                        virtDeviceId: pack.virtual ? prof.deviceId : '',
+                        virtual: pack.virtual,
+                        ok: res.ok,
+                        status: res.status,
+                        ms: fullMs,
+                        ttfbMs: ttfbMs,
+                        downloadMs: downloadMs,
+                        rtTtfb: rt ? rt.ttfb : null,
+                        rtTotal: rt ? rt.total : null,
+                        rtDownload: rt ? rt.download : null,
+                        err: err || undefined
+                    };
                 } catch (e) {
-                    var ms = Math.round(performance.now() - t0);
-                    return { idx: idx1, ok: false, status: 0, ms: ms, err: (e && e.message) ? e.message : String(e) };
+                    var msE = Math.round(performance.now() - t0);
+                    return {
+                        idx: idx1,
+                        platform: prof.short,
+                        platformLabel: prof.label,
+                        virtDeviceId: pack.virtual ? prof.deviceId : '',
+                        virtual: pack.virtual,
+                        ok: false,
+                        status: 0,
+                        ms: msE,
+                        ttfbMs: msE,
+                        downloadMs: 0,
+                        rtTtfb: null,
+                        rtTotal: null,
+                        rtDownload: null,
+                        err: (e && e.message) ? e.message : String(e)
+                    };
                 }
+            }
+
+            /** Chỉ bật crossOrigin khi media cùng host trang hoặc cùng host API — host CDN thường không có CORS cho anonymous → mediaErr=4 nếu ép crossOrigin. */
+            function applyAudioCrossOriginPolicy(audioEl, absUrl) {
+                try {
+                    var u = new URL(absUrl, window.location.href);
+                    var pageHost = window.location.hostname;
+                    var apiHost = '';
+                    try {
+                        apiHost = new URL(apiRoot() || window.location.origin, window.location.href).hostname;
+                    } catch (e2) { }
+                    if (u.hostname === pageHost || (apiHost && u.hostname === apiHost))
+                        audioEl.crossOrigin = 'anonymous';
+                } catch (e) { }
+            }
+
+            /** CDN: cache-bust → canplaythrough → play muted → ended. Trả readyMs, mediaTotalMs (src→ended), playThroughMs. */
+            async function probeAudioUrlMediaReady(absUrl, idx1) {
+                var pack = buildParallelAudioRangeHeaders(idx1);
+                var prof = pack.profile;
+                var bust = (absUrl.indexOf('?') >= 0 ? '&' : '?') + 'sfMediaProbe=' + encodeURIComponent('m' + idx1 + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8));
+                var url = absUrl + bust;
+                var t0 = performance.now();
+                var waits = 0;
+                var stalls = 0;
+                var audio = new Audio();
+                applyAudioCrossOriginPolicy(audio, absUrl);
+                audio.preload = 'auto';
+                audio.muted = true;
+                var onWait = function () { waits++; };
+                var onStall = function () { stalls++; };
+                audio.addEventListener('waiting', onWait);
+                audio.addEventListener('stalled', onStall);
+                function detach() {
+                    audio.removeEventListener('waiting', onWait);
+                    audio.removeEventListener('stalled', onStall);
+                    try {
+                        audio.pause();
+                        audio.removeAttribute('src');
+                        audio.load();
+                    } catch (ex) { }
+                }
+                function row(extra) {
+                    return Object.assign({
+                        idx: idx1,
+                        platform: prof.short,
+                        platformLabel: prof.label,
+                        virtDeviceId: pack.virtual ? prof.deviceId : '',
+                        virtual: pack.virtual,
+                        waits: waits,
+                        stalls: stalls
+                    }, extra);
+                }
+                try {
+                    await new Promise(function (res, rej) {
+                        var to = setTimeout(function () { rej(new Error('canplay T/O')); }, 120000);
+                        audio.addEventListener('canplaythrough', function () { clearTimeout(to); res(); }, { once: true });
+                        audio.addEventListener('error', function () {
+                            clearTimeout(to);
+                            rej(new Error('mediaErr=' + (audio.error ? audio.error.code : '?')));
+                        }, { once: true });
+                        audio.src = url;
+                        audio.load();
+                    });
+                } catch (e) {
+                    detach();
+                    var elapsed = Math.round(performance.now() - t0);
+                    return row({ ok: false, err: e.message || String(e), readyMs: elapsed, playThroughMs: null, mediaTotalMs: null });
+                }
+                var readyMs = Math.round(performance.now() - t0);
+                try {
+                    var pr = audio.play();
+                    if (pr && typeof pr.then === 'function') await pr;
+                } catch (ePlay) {
+                    detach();
+                    var dur = audio.duration;
+                    if (isFinite(dur) && dur > 0) {
+                        var est = Math.round(dur * 1000);
+                        return row({ ok: true, err: '', note: 'play blocked, est', readyMs: readyMs, playThroughMs: est, mediaTotalMs: readyMs + est });
+                    }
+                    return row({ ok: false, err: 'play ' + (ePlay.message || ePlay), readyMs: readyMs, playThroughMs: null, mediaTotalMs: null });
+                }
+                try {
+                    await new Promise(function (res, rej) {
+                        var to2 = setTimeout(function () { rej(new Error('ended T/O')); }, 200000);
+                        audio.addEventListener('ended', function () { clearTimeout(to2); res(); }, { once: true });
+                    });
+                } catch (e2) {
+                    detach();
+                    return row({ ok: false, err: e2.message || String(e2), readyMs: readyMs, playThroughMs: null, mediaTotalMs: null });
+                }
+                var mediaTotalMs = Math.round(performance.now() - t0);
+                detach();
+                return row({
+                    ok: true,
+                    err: '',
+                    readyMs: readyMs,
+                    playThroughMs: mediaTotalMs - readyMs,
+                    mediaTotalMs: mediaTotalMs
+                });
+            }
+
+            /** Xếp mạnh/yếu theo totalLagMs (api + CDN đến ended); thiếu totalLagMs → không xếp. */
+            function assignTotalLagBands(mediaResults) {
+                mediaResults.forEach(function (m) {
+                    if (m.totalLagMs == null) {
+                        m._speedBand = 'lỗi';
+                        m._lagVsBest = null;
+                    }
+                });
+                var ok = mediaResults.filter(function (m) { return m.totalLagMs != null; });
+                if (ok.length === 0) return;
+                if (ok.length === 1) {
+                    ok[0]._speedBand = 'mạnh nhất';
+                    ok[0]._lagVsBest = 0;
+                    return;
+                }
+                var wrap = ok.map(function (m) {
+                    return { ms: m.totalLagMs, _m: m };
+                });
+                assignAudioRangeSpeedBands(wrap);
+                wrap.forEach(function (w) {
+                    w._m._speedBand = w._speedBand;
+                    w._m._lagVsBest = w._lagVsBest;
+                });
+            }
+
+            /** Gán lag (so với request nhanh nhất đợt) + nhãn mạnh/yếu; xử lý đồng hạng ms. */
+            function assignAudioRangeSpeedBands(results) {
+                if (results.length === 0) return;
+                var mss = results.map(function (r) { return r.ms; });
+                var minMs = Math.min.apply(null, mss);
+                var maxMs = Math.max.apply(null, mss);
+                var span = maxMs - minMs;
+                results.forEach(function (r) {
+                    r._lagVsBest = r.ms - minMs;
+                    if (span === 0) {
+                        r._speedBand = 'trung bình';
+                        return;
+                    }
+                    if (r.ms === minMs) {
+                        r._speedBand = 'mạnh nhất';
+                        return;
+                    }
+                    if (r.ms === maxMs) {
+                        r._speedBand = 'yếu nhất';
+                        return;
+                    }
+                    var t = (r.ms - minMs) / span;
+                    if (t <= 1 / 3) r._speedBand = 'mạnh';
+                    else if (t >= 2 / 3) r._speedBand = 'yếu';
+                    else r._speedBand = 'trung bình';
+                });
             }
 
             async function refreshPoisFromApi(take) {
@@ -689,20 +978,68 @@
                 if (!abs) { line('Không ghép được URL tuyệt đối.'); return; }
                 var n = Math.min(50, Math.max(1, state.users.length));
                 var pid = state.pois[0].id;
-                line('--- ' + n + ' GET /api/Poi/' + pid + '/audio-range-head (song song) ---');
-                line('AudioUrl (100 ký tự đầu): ' + abs.slice(0, 100) + (abs.length > 100 ? '…' : ''));
-                var tWall = performance.now();
+                refreshParallelAudioHost();
+                var useVirt = document.getElementById('chkAudioParallelVirtual').checked;
+                line('--- ' + n + ' luồng: audio-range-head → CDN phát hết (muted) ---');
+                if (!useVirt) {
+                    line('API: ' + parallelAudioHost.short + ' (host thật)');
+                }
+                line('AudioUrl: ' + abs.slice(0, 80) + (abs.length > 80 ? '…' : ''));
+                var tWallApi = performance.now();
                 var results = await Promise.all(
                     Array.from({ length: n }, function (_, i) { return probeAudioRangeGet(pid, i + 1); })
                 );
-                var wallMs = Math.round(performance.now() - tWall);
-                var sumMs = results.reduce(function (a, r) { return a + r.ms; }, 0);
-                results.forEach(function (r) {
-                    var tail = r.err ? (' err=' + r.err) : '';
-                    line('[req#' + r.idx + '] status=' + r.status + ' ' + r.ms + 'ms' + tail);
+                var wallApi = Math.round(performance.now() - tWallApi);
+                var sumApi = results.reduce(function (a, r) { return a + r.ms; }, 0);
+                var tWallCdn = performance.now();
+                var mediaResults = await Promise.all(
+                    Array.from({ length: n }, function (_, i) { return probeAudioUrlMediaReady(abs, i + 1); })
+                );
+                var wallCdn = Math.round(performance.now() - tWallCdn);
+                mediaResults.forEach(function (m, ii) {
+                    m.totalLagMs = (m.ok && m.mediaTotalMs != null) ? (results[ii].ms + m.mediaTotalMs) : null;
                 });
-                line('Wall Promise.all: ' + wallMs + 'ms · tổng ms từng request: ' + sumMs + 'ms');
-                line('--- Xong ---');
+                assignTotalLagBands(mediaResults);
+                var sumCdn = 0;
+                var sumTổng = 0;
+                for (var si = 0; si < n; si++) {
+                    if (mediaResults[si].ok && mediaResults[si].mediaTotalMs != null)
+                        sumCdn += mediaResults[si].mediaTotalMs;
+                    if (mediaResults[si].totalLagMs != null)
+                        sumTổng += mediaResults[si].totalLagMs;
+                }
+                for (var li = 0; li < n; li++) {
+                    var r = results[li];
+                    var m = mediaResults[li];
+                    var tail = r.err ? (' errApi=' + r.err) : '';
+                    var mid = r.virtDeviceId ? (' · ' + r.virtDeviceId) : '';
+                    var band = m._speedBand ? (' · ' + m._speedBand) : '';
+                    var tailBits = [];
+                    if (r.rtTtfb != null) {
+                        var rtS = 'RT① ttfb=' + r.rtTtfb + 'ms tổng=' + (r.rtTotal != null ? r.rtTotal + 'ms' : '—') + ' DL=' + (r.rtDownload != null ? r.rtDownload + 'ms' : '—');
+                        tailBits.push(rtS);
+                    }
+                    var tailExtra = tailBits.length ? (' · ' + tailBits.join(' · ')) : '';
+                    var b1 = '①api=' + r.ms + 'ms ttfb=' + r.ttfbMs + 'ms DL=' + (r.downloadMs || 0) + 'ms http=' + r.status;
+                    var b2 = (m.ok && m.mediaTotalMs != null)
+                        ? ('②cdn=' + m.mediaTotalMs + 'ms')
+                        : ('②cdn=— ' + (m.err || ''));
+                    var b3;
+                    if (m.totalLagMs != null) {
+                        var chk = r.ms + m.mediaTotalMs;
+                        var drift = Math.abs(m.totalLagMs - chk);
+                        b3 = '③tổng=' + m.totalLagMs + 'ms' + (drift > 2 ? ' (!①+②)' : '');
+                    } else {
+                        b3 = '③tổng=—';
+                    }
+                    var core = b1 + ' · ' + b2 + ' · ' + b3;
+                    if (m.note) core += ' · ' + m.note;
+                    line('[req#' + r.idx + ' · ' + (r.platformLabel || r.platform || '?') + mid + band + '] ' + core + tailExtra + tail);
+                }
+                var failN = mediaResults.filter(function (mm) { return mm.totalLagMs == null; }).length;
+                if (failN) line('Lỗi/lẻ: ' + failN + '/' + n);
+                line('Wall① api ' + wallApi + 'ms Σ① ' + sumApi + 'ms · Wall② cdn ' + wallCdn + 'ms Σ② ' + sumCdn + 'ms · Σ③ ' + sumTổng + 'ms');
+                line('Xong.');
             });
 
             document.getElementById('btnListenParallel').addEventListener('click', async function () {
@@ -723,7 +1060,7 @@
                     var deviceId = (baseId + '-L' + rid2).slice(0, 64);
                     var dsec = 12 + (uidx % 30);
                     var rl = await listenPost({ poiId: pid, durationSeconds: dsec, deviceId: deviceId });
-                    line('[' + deviceId + '] listen ' + rl.status + ' ' + (typeof rl.data === 'string' ? rl.data : JSON.stringify(rl.data)));
+                    line('[' + deviceId + '] listen ' + rl.status + ' tảiAPI=' + rl.ms + 'ms · ngheAudio=' + dsec + 's (durationSeconds gửi lên) · ' + (typeof rl.data === 'string' ? rl.data : JSON.stringify(rl.data)));
                 }));
                 await sleep(1800);
                 try {
@@ -793,7 +1130,7 @@
                         var dsec = 10 + (uidx % 25);
                         var devL = deviceId.length > 64 ? deviceId.slice(0, 64) : deviceId;
                         var rl = await listenPost({ poiId: state.pois[0].id, durationSeconds: dsec, deviceId: devL });
-                        line('[' + deviceId + '] listen → ' + rl.status + ' ' + (typeof rl.data === 'string' ? rl.data : JSON.stringify(rl.data)) + ' (' + rl.ms + 'ms)');
+                        line('[' + deviceId + '] listen → ' + rl.status + ' tảiAPI=' + rl.ms + 'ms · ngheAudio=' + dsec + 's (durationSeconds gửi lên) · ' + (typeof rl.data === 'string' ? rl.data : JSON.stringify(rl.data)));
                         if (rl.ok) ok++; else fail++;
                     }
                 }

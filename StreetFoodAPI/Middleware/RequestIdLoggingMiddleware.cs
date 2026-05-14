@@ -25,6 +25,7 @@ public sealed class RequestIdLoggingMiddleware
         var path = context.Request.Path + context.Request.QueryString;
         var method = context.Request.Method;
         var devId = context.Request.Headers["X-Device-Id"].FirstOrDefault();
+        var clientPlatform = context.Request.Headers["X-StreetFood-Client-Platform"].FirstOrDefault();
 
         var sw = Stopwatch.StartNew();
         try
@@ -35,8 +36,8 @@ public sealed class RequestIdLoggingMiddleware
         {
             sw.Stop();
             _logger.LogInformation(
-                "HTTP {Method} {Path} requestId={RequestId} deviceId={DeviceId} status={Status} {Ms}ms",
-                method, path, id, devId ?? "(none)", context.Response.StatusCode, sw.ElapsedMilliseconds);
+                "HTTP {Method} {Path} requestId={RequestId} deviceId={DeviceId} clientPlatform={ClientPlatform} status={Status} {Ms}ms",
+                method, path, id, devId ?? "(none)", clientPlatform ?? "(none)", context.Response.StatusCode, sw.ElapsedMilliseconds);
         }
     }
 }

@@ -184,7 +184,17 @@ public class PoiController : ControllerBase
             client.Timeout = TimeSpan.FromSeconds(45);
             using var req = new HttpRequestMessage(HttpMethod.Get, targetUri);
             req.Headers.TryAddWithoutValidation("ngrok-skip-browser-warning", "true");
-            req.Headers.Range = new RangeHeaderValue(0, 0);
+            // Mặc định 1 byte (206) để probe nhẹ; ?sfByteEnd=43 cho WAV chuẩn 44-byte header (tối đa 8191).
+            var rangeEnd = 0;
+            if (Request.Query.TryGetValue("sfByteEnd", out var qEnd)
+                && int.TryParse(qEnd.ToString(), out var parsedEnd))
+            {
+                rangeEnd = Math.Clamp(parsedEnd, 0, 8191);
+            }
+
+            req.Headers.Range = rangeEnd > 0
+                ? new RangeHeaderValue(0, rangeEnd)
+                : new RangeHeaderValue(0, 0);
 
             using var upstream = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             var bytes = await upstream.Content.ReadAsByteArrayAsync(ct);

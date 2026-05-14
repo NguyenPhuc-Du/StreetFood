@@ -11,10 +11,9 @@
  */
 import http from 'k6/http';
 import { sleep } from 'k6';
-import { check2xx, getBaseUrl, getHeaders } from './k6-common.js';
+import { check2xx, clientHeadersForVu, getBaseUrl, logVuPlatformOnce, platformForVu } from './k6-common.js';
 
 const base = getBaseUrl();
-const headers = getHeaders();
 
 const vus = Number(__ENV.VUS || 20);
 const hold = String(__ENV.HOLD || '90s');
@@ -46,8 +45,11 @@ function jitterCoord(baseValue, scale = 0.00015) {
 }
 
 export default function () {
+  logVuPlatformOnce(__VU);
+  const headers = clientHeadersForVu(__VU);
   const now = Date.now();
-  const deviceId = `k6-poi-${__VU}`;
+  const plat = platformForVu(__VU);
+  const deviceId = `${plat}-k6-poi-${__VU}`;
 
   const lat = Number(__ENV.BASE_LAT || 10.776889);
   const lng = Number(__ENV.BASE_LNG || 106.700806);

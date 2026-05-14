@@ -90,6 +90,11 @@
                     const found = (rows || []).find(r => (r.hourOfDay ?? r.HourOfDay) === h);
                     return { hour: h, count: found ? (found.userCount ?? found.UserCount ?? 0) : 0 };
                 });
+                const totalVisits = allRows.reduce((s, x) => s + x.count, 0);
+                if (totalVisits === 0) {
+                    userAnalysisChartEl.innerHTML = '<div class="hourly-empty">Chưa có dữ liệu <code>device_visits</code> trong 30 ngày gần nhất nên biểu đồ theo giờ trống. Mở app (có visit) hoặc chạy seed demo trong DB để thấy cột.</div>';
+                    return;
+                }
                 const maxCount = Math.max(...allRows.map(x => x.count), 1);
                 userAnalysisChartEl.innerHTML = allRows.map(x => {
                     const height = Math.max(4, Math.round((x.count / maxCount) * 100));

@@ -4,11 +4,18 @@
  *   k6 run -e BASE_URL=https://<api-url> -e LOAD_LEVEL=50 tests/nfr/streetfood-read-load.js
  */
 import { sleep } from 'k6';
-import { defaultThresholds, getBaseUrl, getHeaders, getLoadProfile, check2xx, getPoiList } from './k6-common.js';
+import {
+  clientHeadersForVu,
+  defaultThresholds,
+  getBaseUrl,
+  getLoadProfile,
+  check2xx,
+  getPoiList,
+  logVuPlatformOnce,
+} from './k6-common.js';
 import http from 'k6/http';
 
 const base = getBaseUrl();
-const headers = getHeaders();
 const profile = getLoadProfile();
 
 export const options = {
@@ -18,10 +25,12 @@ export const options = {
 };
 
 export default function () {
-  const health = http.get(`${base}/api/health`, { headers });
+  logVuPlatformOnce(__VU);
+  const h = clientHeadersForVu(__VU);
+  const health = http.get(`${base}/api/health`, { headers: h });
   check2xx(health, 'health 2xx');
 
-  const poiList = getPoiList(base, headers);
+  const poiList = getPoiList(base, h);
   check2xx(poiList, 'poi list 2xx');
 
   sleep(0.2);
